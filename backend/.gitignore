@@ -1,0 +1,25 @@
+# Environment files
+*.env
+*.env.*
+!.env.example
+
+# Database files
+*.db
+*.db-*
+
+# Logs
+logs
+*.log
+
+# Dependency directories
+node_modules/
+
+# Production build
+dist/
+
+# Editor files
+.vscode/
+.idea/
+
+# macOS files
+.DS_Store

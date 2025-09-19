@@ -1,0 +1,443 @@
+/* Points Display */
+.points-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 15px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+  margin-left: auto;
+}
+
+.claim-btn {
+  background: linear-gradient(45deg, #00cc66, #00b359);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 15px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.claim-btn:hover {
+  transform: scale(1.05);
+}
+
+.claim-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .points-display {
+    padding: 6px 12px;
+    font-size: 0.9em;
+  }
+  
+  .claim-btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+  }
+}
+/* ===== MAIN LAYOUT STYLES ===== */
+.app-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.main-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #444;
+  margin-bottom: 20px;
+}
+
+.main-nav button {
+  padding: 10px 20px;
+  margin-right: 10px;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.main-nav button.active {
+  background: #646cff;
+}
+
+.wallet-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.wallet-btn {
+  background: linear-gradient(45deg, #2196F3, #21CBF3);
+  padding: 10px 20px;
+  border-radius: 5px;
+  color: white;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+}
+
+.wallet-address {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px 15px;
+  border-radius: 5px;
+}
+
+/* ===== EVENTS INTERFACE ===== */
+.events-container {
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.create-btn {
+  background: linear-gradient(45deg, #00cc66, #00b359);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.events-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.event-card {
+  background: #1e1e1e;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: left;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.event-header h3 {
+  margin: 0;
+}
+
+.capacity {
+  background: #646cff;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.9em;
+}
+
+.description {
+  color: #aaa;
+  margin-bottom: 15px;
+}
+
+.event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== MODAL STYLES ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #2d2d2d;
+  padding: 30px;
+  border-radius: 10px;
+  width: 500px;
+  max-width: 90%;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input, 
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+  color: white;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+}
+
+.modal-actions button.primary {
+  background: #646cff;
+  color: white;
+}
+
+/* ===== REGISTRATION FORM ===== */
+.register-container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.register-form {
+  background: #1e1e1e;
+  border-radius: 10px;
+  padding: 30px;
+}
+
+.register-form .form-group {
+  margin-bottom: 20px;
+}
+
+.register-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.register-form input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 5px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+  color: white;
+}
+
+.register-form .error {
+  color: #ff6b6b;
+  margin-top: 5px;
+}
+
+.register-form .error-message {
+  color: #ff6b6b;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 5px;
+}
+
+.register-form .success-message {
+  color: #00cc66;
+  padding: 15px;
+  text-align: center;
+  background: rgba(0, 204, 102, 0.1);
+  border-radius: 5px;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(45deg, #2196F3, #21CBF3);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.submit-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+/* Navigation link styles */
+.nav-link {
+  padding: 10px 20px;
+  margin-right: 10px;
+  background: #333;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.nav-link.active {
+  background: #646cff;
+}
+
+/* ===== PREDICTIONS INTERFACE ===== */
+.predictions-container {
+  padding: 20px;
+}
+/* ===== TOURNAMENT STYLES ===== */
+.tournament-card {
+  background: #1e1e1e;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.tournament-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.tournament-header h3 {
+  margin: 0;
+  color: #fff;
+}
+
+.tournament-meta {
+  display: flex;
+  gap: 15px;
+}
+
+.entry-fee {
+  background: #646cff;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.9em;
+}
+
+.time-remaining {
+  background: #00b359;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.9em;
+}
+
+.description {
+  color: #aaa;
+  margin-bottom: 15px;
+}
+
+.bet-options {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.bet-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.bet-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.bet-btn.yes {
+  background: linear-gradient(45deg, #00cc66, #00b359);
+  color: white;
+}
+
+.bet-btn.no {
+  background: linear-gradient(45deg, #ff6b6b, #ff5252);
+  color: white;
+}
+
+.bet-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.bet-status {
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.bet-status.success {
+  background: rgba(0, 204, 102, 0.2);
+  color: #00cc66;
+}
+
+.bet-status.error {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.tournaments-container {
+  width: 100%;
+}
+
+.tournaments-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2em;
+}
+
+.loading {
+  color: #646cff;
+}
+
+.error {
+  color: #ff6b6b;
+}

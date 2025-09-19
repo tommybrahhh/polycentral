@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running GitGuardian scan..."
+npx --no-install gitguardian scan --exit-code
+
+if [ $? -ne 0 ]; then
+  echo "GitGuardian detected secrets! Commit rejected."
+  exit 1
+fi
