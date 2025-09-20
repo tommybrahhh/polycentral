@@ -344,102 +344,6 @@ async function resolvePendingEvents() {
     console.error('Error in resolvePendingEvents:', error);
   }
 }
-async function resolveEvents() {
-  let client;
-
-  try {
-    console.log('Checking for expired events...');
-    const now = new Date().toISOString();
-
-    // Get database client
-    client = await pool.connect();
-    
-    // Find active events that have ended
-    const { rows: events } = await client.query(
-      `SELECT id, title FROM events
-       WHERE end_time < $1 AND status = 'active'`,
-      [now]
-    );
-
-    if (events.length === 0) {
-      console.log('No events to resolve');
-      return;
-    }
-
-    console.log(`Found ${events.length} events to resolve`);
-
-    // Get current crypto price with retry logic
-    const apiKey = process.env.COINGECKO_API_KEY;
-    const cryptoSymbol = process.env.DEFAULT_CRYPTO_SYMBOL || 'btc';
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoSymbol}&vs_currencies=usd`;
-    
-    let response;
-    let attempt = 0;
-    while (attempt < MAX_RETRIES) {
-      try {
-        response = await fetch(url, {
-          headers: { 'x-cg-demo-api-key': apiKey },
-          timeout: 5000
-        });
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        break;
-      } catch (error) {
-        attempt++;
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-        
-        if (attempt === MAX_RETRIES) {
-          throw new Error(`Price API failed after ${MAX_RETRIES} attempts: ${error.message}`);
-        }
-        
-        console.log(`Retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-
-    const data = await response.json();
-    const cryptoPrice = data[cryptoSymbol].usd;
-    const correctAnswer = cryptoPrice >= 98000 ? 'Yes' : 'No';
-    
-    console.log(`Price check successful: $${cryptoPrice} - Correct answer: ${correctAnswer}`);
-
-    // Process events in transaction
-    await client.query('BEGIN');
-    try {
-      for (const event of events) {
-        console.log(`Processing event ${event.id}: ${event.title}`);
-        
-        await client.query(
-          `UPDATE events SET
-           correct_answer = $1, status = 'resolved'
-           WHERE id = $2`,
-          [correctAnswer, event.id]
-        );
-
-        const result = await client.query(
-          `UPDATE users SET points = points + events.entry_fee
-           FROM participants
-           JOIN events ON participants.event_id = events.id
-           WHERE participants.event_id = $1
-           AND participants.prediction = $2`,
-          [event.id, correctAnswer]
-        );
-        
-        console.log(`Awarded ${result.rowCount} participants for event ${event.id}`);
-      }
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    }
-
-  } catch (error) {
-    console.error('Event resolution failed:', error);
-    throw error;
-  } finally {
-    if (client) client.release();
-  }
-}
 
 // Constants declaration
 const MAX_RETRIES = 5;
@@ -449,131 +353,99 @@ const BASE_DELAY_MS = 1000;
 cron.schedule('0 0 * * *', createDailyEvent);
 cron.schedule('*/30 * * * *', resolvePendingEvents);
 
-async function resolveEvents() {
-  const MAX_RETRIES = 5;
-  const BASE_DELAY_MS = 1000;
-  let client;
-
+// Initialize cron jobs after server starts
+(() => {
   try {
-    client = await pool.connect();
-    await client.query('BEGIN');
+    cron.schedule('0 0 * * *', createDailyEvent);
+    cron.schedule('*/30 * * * *', resolvePendingEvents);
+    console.log('Cron jobs initialized');
+  } catch (error) {
+    console.error('Failed to initialize cron jobs:', error);
+  }
+})();
 
-    // Find active events that have ended (single query)
-    const { rows: events } = await client.query(
-      `SELECT id, title FROM events
-       WHERE end_time < NOW() AND status = 'active'`
+// --- Event Resolution Function ---
+async function resolveEvent(eventId) {
+  try {
+    console.log(`Resolving event ${eventId}...`);
+    // Get event details
+    const { rows: [event] } = await pool.query(
+      `SELECT id, crypto_symbol, end_time, initial_price FROM events WHERE id = $1`,
+      [eventId]
     );
 
-    if (events.length === 0) {
-      console.log('No events to resolve');
+    if (!event) {
+      console.error(`Event ${eventId} not found`);
       return;
     }
 
-    // Get current price with retry logic (single implementation)
-    const apiKey = process.env.COINGECKO_API_KEY;
-    const cryptoSymbol = process.env.DEFAULT_CRYPTO_SYMBOL || 'btc';
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoSymbol}&vs_currencies=usd`;
+    // Get historical price at event end time
+    const historicalPrice = await coingecko.getHistoricalPrice(
+      event.crypto_symbol || 'btc',
+      formatDate(event.end_time)
+    );
     
-    let response;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        response = await fetch(url, {
-          headers: { 'x-cg-demo-api-key': apiKey },
-          timeout: 5000
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        break;
-      } catch (error) {
-        if (attempt === MAX_RETRIES) throw error;
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-
-    const priceData = await priceResponse.json();
-    const currentPrice = priceData[cryptoId].usd;
-    const outcome = currentPrice >= 98000 ? 'Yes' : 'No';
-
-    // Process each event
-    for (const event of events) {
-      try {
-        await client.query(
-          `UPDATE events SET
-           correct_answer = $1, status = 'resolved'
-           WHERE id = $2`,
-          [outcome, event.id]
-        );
-
-        const result = await client.query(
-          `UPDATE users SET points = points + events.entry_fee
-           FROM participants
-           WHERE participants.event_id = $1
-           AND participants.prediction = $2`,
-          [event.id, outcome]
-        );
-        
-        console.log(`Awarded ${result.rowCount} winners for event ${event.id}`);
-      } catch (error) {
-        console.error(`Failed to resolve event ${event.id}: ${error.message}`);
-        throw error;
-      }
-    }
-
-    await client.query('COMMIT');
-
-    // Get current Bitcoin price
-    const apiKey = process.env.COINGECKO_API_KEY;
-    const cryptoSymbol = process.env.DEFAULT_CRYPTO_SYMBOL || 'btc';
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoSymbol}&vs_currencies=usd`;
+    // Update event with final price
+    await pool.query(
+      `UPDATE events SET final_price = $1, resolution_status = 'resolved' WHERE id = $2`,
+      [historicalPrice, event.id]
+    );
     
-    let response;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        response = await fetch(url, {
-          headers: { 'x-cg-demo-api-key': apiKey },
-          timeout: 5000
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        break;
-      } catch (error) {
-        if (attempt === MAX_RETRIES) throw error;
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+    // Resolve predictions
+    const outcome = historicalPrice > event.initial_price ? 'Up' : 'Down';
+    
+    // Award points to winners
+    const result = await pool.query(
+      `UPDATE users SET points = points + events.entry_fee
+       FROM participants
+       JOIN events ON participants.event_id = events.id
+       WHERE participants.event_id = $1
+       AND participants.prediction = $2`,
+      [event.id, outcome]
+    );
+    
+    console.log(`Resolved event ${eventId}. Awarded ${result.rowCount} winners.`);
+  } catch (error) {
+    console.error(`Error resolving event ${eventId}:`, error);
+  }
+}
+
+// --- Schedule Event Resolution ---
+cron.schedule('*/30 * * * *', async () => {
+  try {
+    console.log('Checking for unresolved events...');
+    const now = new Date();
+    const { rows: unresolvedEvents } = await pool.query(
+      `SELECT id FROM events
+       WHERE end_time <= $1 AND resolution_status = 'pending'`,
+      [now]
+    );
+    
+    for (const event of unresolvedEvents) {
+      await resolveEvent(event.id);
     }
+  } catch (error) {
+    console.error('Error in event resolution scheduler:', error);
+  }
+});
 
-    const data = await response.json();
-    const cryptoPrice = data[cryptoSymbol].usd;
-    const correctAnswer = cryptoPrice >= 98000 ? 'Yes' : 'No';
+// --- Schedule Daily Event Creation ---
+cron.schedule('0 0 * * *', async () => {
+  try {
+    console.log('Creating daily Bitcoin prediction event...');
+    const price = await coingecko.getCurrentPrice('bitcoin');
+    
+    // Create event in database
+    await createEvent(price);
+    console.log(`Created new Bitcoin prediction event with initial price: $${price}`);
+  } catch (error) {
+    console.error('Event creation failed:', error);
+  }
+});
 
-    // Process each event
-    for (const event of events) {
-      try {
-        await client.query(
-          `UPDATE events SET
-           correct_answer = $1, status = 'resolved'
-           WHERE id = $2`,
-          [correctAnswer, event.id]
-        );
-
-        const result = await client.query(
-          `UPDATE users SET points = points + events.entry_fee
-           FROM participants
-           WHERE participants.event_id = $1
-           AND participants.prediction = $2`,
-          [event.id, correctAnswer]
-        );
-        
-        console.log(`Awarded ${result.rowCount} winners for event ${event.id}`);
-      } catch (error) {
-        console.error(`Failed to resolve event ${event.id}: ${error.message}`);
-        throw error;
-      }
-    }
-
-    await client.query('COMMIT');
-
-    // Rest of the implementation...
+// --- Event Resolution Function ---
+async function resolveEvents() {
+  let client;
   try {
     console.log('Checking for expired events...');
     const now = new Date().toISOString();
@@ -680,185 +552,6 @@ async function resolveEvents() {
     }
   }
 }
-
-// Initialize cron jobs after server starts
-(() => {
-  try {
-    cron.schedule('0 0 * * *', createDailyEvent);
-    cron.schedule('*/30 * * * *', resolvePendingEvents);
-    console.log('Cron jobs initialized');
-  } catch (error) {
-    console.error('Failed to initialize cron jobs:', error);
-  }
-})();
-  }
-  await client.query('COMMIT');
-  } catch (error) {
-    console.error('Error in resolveEvents:', error);
-    throw error;
-  } finally {
-    if (client) client.release();
-  }
-}
-
-    // Get current Bitcoin price
-    const apiKey = process.env.COINGECKO_API_KEY;
-    const currentCryptoId = process.env.CRYPTO_ID || 'bitcoin';
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${currentCryptoId}&vs_currencies=usd`;
-    
-    let response;
-    const maxRetries = 5;
-    const baseDelay = 1000;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await fetch(url, {
-          headers: { 'x-cg-demo-api-key': apiKey },
-          timeout: 5000
-        });
-        
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-        return await response.json();
-      } catch (error) {
-        if (attempt === maxRetries) {
-          console.error(`Coingecko API failed after ${maxRetries} attempts: ${error.message}`);
-          throw new Error('Price service unavailable');
-        }
-        
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.log(`Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-      } catch (error) {
-        if (attempt === maxRetries) {
-          console.error(`Coingecko API failed after ${maxRetries} attempts: ${error.message}`);
-          throw new Error('Price service unavailable');
-        }
-        
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.log(`Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-
-    const data = await response.json();
-    const cryptoSymbol = process.env.DEFAULT_CRYPTO_SYMBOL || 'btc';
-    const cryptoPrice = data[cryptoId].usd;
-    const correctAnswer = cryptoPrice >= 98000 ? 'Yes' : 'No';
-    console.log(`Outcome determined: ${correctAnswer}`);
-
-    // Process each event
-    for (const event of events) {
-      console.log(`Resolving event ${event.id}: ${event.title}`);
-      try {
-        await pool.query('BEGIN');
-        
-        // Update event status and correct answer
-        await pool.query(
-          `UPDATE events SET
-           correct_answer = $1, status = 'resolved'
-           WHERE id = $2`,
-          [correctAnswer, event.id]
-        );
-        
-        // Award points to winners
-        const result = await pool.query(
-          `UPDATE users SET points = points + events.entry_fee
-           FROM participants
-           JOIN events ON participants.event_id = events.id
-           WHERE participants.event_id = $1
-           AND participants.prediction = $2`,
-          [event.id, correctAnswer]
-        );
-        console.log(`Awarded points to ${result.rowCount} winners`);
-        
-        await pool.query('COMMIT');
-        console.log(`Event ${event.id} ('${event.title}') resolved successfully`);
-      } catch (error) {
-        await pool.query('ROLLBACK');
-        console.error(`Failed to resolve event ${event.id}: ${error.message}`, error.stack);
-      }
-  } catch (error) {
-    console.error('Error in resolveEvents:', error);
-  }
-}
-
-// --- Event Resolution Function ---
-async function resolveEvent(eventId) {
-  try {
-    console.log(`Resolving event ${eventId}...`);
-    // Get event details
-    const { rows: [event] } = await pool.query(
-      `SELECT id, crypto_symbol, end_time, initial_price FROM events WHERE id = $1`,
-      [eventId]
-    );
-
-    if (!event) {
-      console.error(`Event ${eventId} not found`);
-      return;
-    }
-
-    // Get historical price at event end time
-    const historicalPrice = await coingecko.getHistoricalPrice(
-      event.crypto_symbol || 'btc',
-      formatDate(event.end_time)
-    );
-    
-    // Update event with final price
-    await pool.query(
-      `UPDATE events SET final_price = $1, resolution_status = 'resolved' WHERE id = $2`,
-      [historicalPrice, event.id]
-    );
-    
-    // Resolve predictions
-    const outcome = historicalPrice > event.initial_price ? 'Up' : 'Down';
-    
-    // Award points to winners
-    const result = await pool.query(
-      `UPDATE users SET points = points + events.entry_fee
-       FROM participants
-       JOIN events ON participants.event_id = events.id
-       WHERE participants.event_id = $1
-       AND participants.prediction = $2`,
-      [event.id, outcome]
-    );
-    
-    console.log(`Resolved event ${eventId}. Awarded ${result.rowCount} winners.`);
-  } catch (error) {
-    console.error(`Error resolving event ${eventId}:`, error);
-  }
-}
-
-// --- Schedule Event Resolution ---
-cron.schedule('*/30 * * * *', async () => {
-  try {
-    console.log('Checking for unresolved events...');
-    const now = new Date();
-    const { rows: unresolvedEvents } = await pool.query(
-      `SELECT id FROM events
-       WHERE end_time <= $1 AND resolution_status = 'pending'`,
-      [now]
-    );
-    
-    for (const event of unresolvedEvents) {
-      await resolveEvent(event.id);
-    }
-  } catch (error) {
-    console.error('Error in event resolution scheduler:', error);
-  }
-});
-
-// --- Schedule Daily Event Creation ---
-cron.schedule('0 0 * * *', async () => {
-  try {
-    console.log('Creating daily Bitcoin prediction event...');
-    const price = await coingecko.getCurrentPrice('bitcoin');
-    
-    // Create event in database
-    await createEvent(price);
-    console.log(`Created new Bitcoin prediction event with initial price: $${price}`);
-  } catch (error) {
-    console.error('Event creation failed:', error);
-  }
-});
 
 // Schedule event resolution to run daily at 23:59 UTC
 cron.schedule('59 23 * * *', resolveEvents);
