@@ -122,11 +122,21 @@ const App = () => {
         <nav className="main-nav">
           <Link to="/events" className="nav-link">Events</Link>
           <Link to="/predictions" className="nav-link">Predictions</Link>
-          <button 
+          <button
             className="nav-link"
             onClick={() => setShowRegisterModal(true)}
           >
             Register
+          </button>
+          <button
+            className="nav-link"
+            onClick={() => {
+              // In a real app, this would open a login modal
+              // For now, we'll use the register modal for both
+              setShowRegisterModal(true);
+            }}
+          >
+            Login
           </button>
           
           {/* --- Wallet Button Logic --- */}
