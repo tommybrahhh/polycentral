@@ -11,37 +11,6 @@ const App = () => {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showTestButton, setShowTestButton] = useState(true); // Show test button for development
 
-  // Function to create a test event
-  const createTestEvent = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        alert('Please log in first');
-        return;
-      }
-
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/events/test`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data.success) {
-        alert('Test event created successfully!');
-        // Refresh events
-        fetchEvents();
-      }
-    } catch (error) {
-      console.error('Error creating test event:', error);
-      alert('Failed to create test event: ' + (error.response?.data?.error || error.message));
-    }
-  };
-
   // This function checks if a wallet is connected when the app loads
   const checkIfWalletIsConnected = async () => {
     try {
@@ -151,25 +120,6 @@ const App = () => {
              </p>
            )}
            
-           {/* Test Button for Development */}
-           {showTestButton && (
-             <button
-               onClick={createTestEvent}
-               className="test-btn"
-               style={{
-                 backgroundColor: '#ff6b6b',
-                 color: 'white',
-                 padding: '8px 15px',
-                 border: 'none',
-                 borderRadius: '5px',
-                 cursor: 'pointer',
-                 marginLeft: '10px',
-                 fontWeight: 'bold'
-               }}
-             >
-               🧪 Create Test Event
-             </button>
-           )}
             <div className="points-display">
               🪙 {points} Points
               <button
@@ -189,6 +139,43 @@ const App = () => {
               >
                 + Claim
               </button>
+              
+              {/* Admin button to manually create event */}
+              {currentAccount && (
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Are you sure you want to create a new event?')) return;
+                    try {
+                      const token = localStorage.getItem('auth_token');
+                      const response = await axios.post(
+                        `${import.meta.env.VITE_API_BASE_URL}/api/admin/events/create`,
+                        {},
+                        {
+                          headers: { Authorization: `Bearer ${token}` }
+                        }
+                      );
+                      alert(response.data.message);
+                      // Refresh events
+                      fetchEvents();
+                    } catch (error) {
+                      console.error('Error creating event:', error);
+                      alert('Failed to create event: ' + (error.response?.data?.error || error.message));
+                    }
+                  }}
+                  style={{
+                    backgroundColor: '#4CAF50',
+                    color: 'white',
+                    padding: '8px 15px',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    marginLeft: '10px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  + Create Event
+                </button>
+              )}
             </div>
           </div>
         </nav>

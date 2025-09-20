@@ -303,22 +303,18 @@ async function createEvent(initialPrice) {
   const eventDate = new Date().toISOString().split('T')[0];
   const title = `${process.env.CRYPTO_ID || 'bitcoin'} Price Prediction ${eventDate}`;
   
-  await pool.query(
-    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global']
-  );
-}
-
-async function createDailyEvent() {
-  try {
-    console.log('Creating daily Bitcoin prediction event...');
-    const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
-    await createEvent(currentPrice);
-    console.log(`Created new Bitcoin event with initial price: $${currentPrice}`);
-  } catch (error) {
-    console.error('Error creating daily event:', error);
+  // Look up event type 'prediction'
+  const typeQuery = await pool.query(`SELECT id FROM event_types WHERE name = 'prediction'`);
+  if (typeQuery.rows.length === 0) {
+    throw new Error("Event type 'prediction' not found");
   }
+  const eventTypeId = typeQuery.rows[0].id;
+
+  await pool.query(
+    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending')`,
+    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId]
+  );
 }
 
 // --- Event Resolution Job ---
@@ -355,8 +351,22 @@ async function resolvePendingEvents() {
         
         console.log(`Resolved event ${event.id} with final price: $${finalPrice}`);
         
-        // Update user points based on predictions
-        // (Implementation depends on your prediction system)
+        // Determine outcome based on price comparison
+        const outcome = finalPrice > event.initial_price ? 'Higher' : 'Lower';
+        
+        // Award points to winners
+        const result = await pool.query(
+          `UPDATE users SET points = points + (
+             SELECT entry_fee FROM events WHERE id = $1
+           )
+           WHERE id IN (
+             SELECT user_id FROM participants
+             WHERE event_id = $1 AND prediction = $2
+           )`,
+          [event.id, outcome]
+        );
+        
+        console.log(`Awarded points to ${result.rowCount} winners for event ${event.id}`);
       } catch (error) {
         console.error(`Failed to resolve event ${event.id}:`, error);
       }
@@ -366,219 +376,7 @@ async function resolvePendingEvents() {
   }
 }
 
-// Constants declaration
-const MAX_RETRIES = 5;
-const BASE_DELAY_MS = 1000;
 
-// Cron jobs should be scheduled outside the function
-cron.schedule('0 0 * * *', createDailyEvent);
-cron.schedule('*/30 * * * *', resolvePendingEvents);
-
-// Initialize cron jobs after server starts
-(() => {
-  try {
-    cron.schedule('0 0 * * *', createDailyEvent);
-    cron.schedule('*/30 * * * *', resolvePendingEvents);
-    console.log('Cron jobs initialized');
-  } catch (error) {
-    console.error('Failed to initialize cron jobs:', error);
-  }
-})();
-
-// --- Event Resolution Function ---
-async function resolveEvent(eventId) {
-  try {
-    console.log(`Resolving event ${eventId}...`);
-    // Get event details
-    const { rows: [event] } = await pool.query(
-      `SELECT id, crypto_symbol, end_time, initial_price FROM events WHERE id = $1`,
-      [eventId]
-    );
-
-    if (!event) {
-      console.error(`Event ${eventId} not found`);
-      return;
-    }
-
-    // Get historical price at event end time
-    const historicalPrice = await coingecko.getHistoricalPrice(
-      event.crypto_symbol || 'btc',
-      formatDate(event.end_time)
-    );
-    
-    // Update event with final price
-    await pool.query(
-      `UPDATE events SET final_price = $1, resolution_status = 'resolved' WHERE id = $2`,
-      [historicalPrice, event.id]
-    );
-    
-    // Determine outcome based on price comparison
-    const outcome = historicalPrice > event.initial_price ? 'Higher' : 'Lower';
-    
-    // Award points to winners
-    const result = await pool.query(
-      `UPDATE users SET points = points + events.entry_fee
-       FROM participants
-       JOIN events ON participants.event_id = events.id
-       WHERE participants.event_id = $1
-       AND participants.prediction = $2`,
-      [event.id, outcome]
-    );
-    
-    console.log(`Resolved event ${eventId}. Awarded ${result.rowCount} winners.`);
-  } catch (error) {
-    console.error(`Error resolving event ${eventId}:`, error);
-  }
-}
-
-// --- Schedule Event Resolution ---
-cron.schedule('*/30 * * * *', async () => {
-  try {
-    console.log('Checking for unresolved events...');
-    const now = new Date();
-    const { rows: unresolvedEvents } = await pool.query(
-      `SELECT id FROM events
-       WHERE end_time <= $1 AND resolution_status = 'pending'`,
-      [now]
-    );
-    
-    for (const event of unresolvedEvents) {
-      await resolveEvent(event.id);
-    }
-  } catch (error) {
-    console.error('Error in event resolution scheduler:', error);
-  }
-});
-
-// --- Schedule Daily Event Creation ---
-cron.schedule('0 0 * * *', async () => {
-  try {
-    console.log('Creating daily Bitcoin prediction event...');
-    const price = await coingecko.getCurrentPrice('bitcoin');
-    
-    // Create event in database
-    await createEvent(price);
-    console.log(`Created new Bitcoin prediction event with initial price: $${price}`);
-  } catch (error) {
-    console.error('Event creation failed:', error);
-  }
-});
-
-// --- Event Resolution Function ---
-async function resolveEvents() {
-  let client;
-  try {
-    console.log('Checking for expired events...');
-    const now = new Date().toISOString();
-
-    // Find active events that have ended
-    const { rows: events } = await pool.query(
-      `SELECT id, title FROM events
-       WHERE end_time < $1 AND status = 'active'`,
-      [now]
-    );
-
-    if (events.length === 0) {
-      console.log('No events to resolve');
-      return;
-    }
-
-    console.log(`Found ${events.length} events to resolve`);
-
-    // Get current Bitcoin price
-    const apiKey = process.env.COINGECKO_API_KEY;
-    const cryptoSymbol = process.env.DEFAULT_CRYPTO_SYMBOL || 'btc';
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoSymbol}&vs_currencies=usd`;
-    
-    let response;
-    const maxRetries = 5;
-    const baseDelay = 1000;
-    let attempt = 0;
-
-    // Retry logic for CoinGecko API
-    while (attempt < maxRetries) {
-      try {
-        response = await fetch(url, {
-          headers: { 'x-cg-demo-api-key': apiKey },
-          timeout: 5000
-        });
-        
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-        break;
-      } catch (error) {
-        attempt++;
-        const delay = baseDelay * Math.pow(2, attempt);
-        
-        if (attempt === maxRetries) {
-          console.error(`Coingecko API failed after ${maxRetries} attempts: ${error.message}`);
-          throw new Error('Price service unavailable');
-        }
-        
-        console.log(`Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-
-    const data = await response.json();
-    const cryptoPrice = data[cryptoSymbol].usd;
-    const correctAnswer = cryptoPrice >= 98000 ? 'Yes' : 'No';
-    
-    console.log(`API call successful. ${cryptoSymbol.toUpperCase()} price: $${cryptoPrice}`);
-    console.log(`Outcome determined: ${correctAnswer}`);
-
-    // Process each event with transaction
-    for (const event of events) {
-      const client = await pool.connect();
-      console.log(`Resolving event ${event.id}: ${event.title}`);
-      try {
-        await client.query('BEGIN');
-        
-        // Update event status and correct answer
-        // Note: The correctAnswer logic with 98000 threshold seems incorrect for our use case
-        // We should determine the outcome based on price comparison
-        const outcome = finalPrice > event.initial_price ? 'Higher' : 'Lower';
-        await pool.query(
-          `UPDATE events SET
-           correct_answer = $1, status = 'resolved'
-           WHERE id = $2`,
-          [outcome, event.id]
-        );
-        
-        // Award points to winners
-        const result = await pool.query(
-          `UPDATE users SET points = points + events.entry_fee
-           FROM participants
-           JOIN events ON participants.event_id = events.id
-           WHERE participants.event_id = $1
-           AND participants.prediction = $2`,
-          [event.id, correctAnswer]
-        );
-        console.log(`Awarded points to ${result.rowCount} winners`);
-        
-        await client.query('COMMIT');
-        client.release();
-        console.log(`Event ${event.id} resolved successfully`);
-      } catch (error) {
-        await client.query('ROLLBACK');
-        client.release();
-        console.error(`Failed to resolve event ${event.id}: ${error.message}`);
-      }
-    }
-  } catch (error) {
-    console.error('Error in resolveEvents:', error);
-    if (client) {
-      await client.query('ROLLBACK');
-    }
-    throw error;
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-}
-
-// Schedule event resolution to run daily at 23:59 UTC
-cron.schedule('59 23 * * *', resolveEvents);
 
 // --- API Routes, Cron Job, and Server Startup ---
 // (I am including the full working code below for completeness)
@@ -586,24 +384,6 @@ cron.schedule('59 23 * * *', resolveEvents);
 // Middleware to authenticate admin API key
 const authenticateAdmin = (req, res, next) => {
     
-// --- Manual Event Creation Endpoint ---
-// This endpoint is for testing purposes only
-// It allows immediate creation of a prediction event without waiting for the daily trigger
-app.post('/api/events/test', authenticateAdmin, async (req, res) => {
-  try {
-    console.log('Creating test event...');
-    const price = await coingecko.getCurrentPrice('bitcoin');
-    
-    // Create event in database
-    await createEvent(price);
-    console.log(`Created test event with initial price: $${price}`);
-    
-    res.json({ success: true, message: "Test event created successfully" });
-  } catch (error) {
-    console.error('Test event creation failed:', error);
-    res.status(500).json({ error: 'Failed to create test event' });
-  }
-});
 
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -852,7 +632,7 @@ app.get('/api/events/active', async (req, res) => {
         options,
         entry_fee,
         start_time,
-        prediction_window AS end_time,
+        end_time,
         initial_price,
         final_price,
         correct_answer,
@@ -921,12 +701,41 @@ async function createInitialEvent() {
     );
     if (existing.rows.length === 0) {
       const price = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
-      await createDailyEvent(price);
+      await createEvent(price);
     }
   } catch (error) {
     console.error('Initial event creation failed:', error);
   }
 }
+
+// --- Daily Event Creation Function ---
+async function createDailyEvent() {
+  try {
+    console.log('Creating daily Bitcoin prediction event...');
+    const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
+    await createEvent(currentPrice);
+    console.log(`Created new Bitcoin event with initial price: $${currentPrice}`);
+  } catch (error) {
+    console.error('Error creating daily event:', error);
+  }
+}
+
+// Schedule cron jobs
+cron.schedule('0 0 * * *', createDailyEvent);
+cron.schedule('*/30 * * * *', resolvePendingEvents);
+
+// --- Admin Manual Event Creation Endpoint ---
+// This endpoint allows admin to manually trigger event creation
+app.post('/api/admin/events/create', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('Admin manually triggering event creation...');
+    await createDailyEvent();
+    res.json({ success: true, message: "Event creation triggered successfully" });
+  } catch (error) {
+    console.error('Admin event creation failed:', error);
+    res.status(500).json({ error: 'Failed to create event' });
+  }
+});
 
 async function startServer() {
   try {
