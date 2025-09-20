@@ -238,24 +238,37 @@ async function runMigrations() {
             path.join(__dirname, 'sql', dbType, file),
             'utf8'
         );
-    
-    if (dbType === 'sqlite') {
-      const statements = migrationSql.split(';').filter(stmt => stmt.trim());
-      for (const stmt of statements) {
-        await runMigrationSafe(stmt);
-      }
-    } else {
-      await runMigrationSafe(migrationSql);
-    }
-    
-    // Record migration completion
+
         if (dbType === 'sqlite') {
-            const statements = migrationSql.split(';').filter(stmt => stmt.trim());
-            for (const stmt of statements) {
-                await runMigrationSafe(stmt);
-            }
+          const statements = migrationSql.split(';').filter(stmt => stmt.trim());
+          for (const stmt of statements) {
+            await runMigrationSafe(stmt);
+          }
         } else {
-            await runMigrationSafe(migrationSql);
+          // For PostgreSQL, we need to handle CREATE INDEX CONCURRENTLY differently
+          // as it cannot run inside a transaction block
+          const statements = migrationSql.split(';').filter(stmt => stmt.trim());
+          
+          for (const stmt of statements) {
+            const trimmedStmt = stmt.trim();
+            
+            // Check if this is a CREATE INDEX CONCURRENTLY command
+            if (/^CREATE\s+INDEX\s+CONCURRENTLY/i.test(trimmedStmt)) {
+              console.log(`Executing CREATE INDEX CONCURRENTLY command outside transaction: ${trimmedStmt.substring(0, 100)}...`);
+              try {
+                await pool.query(trimmedStmt);
+                console.log(`✅ CREATE INDEX CONCURRENTLY executed successfully`);
+              } catch (error) {
+                if (!error.message.includes('already exists')) {
+                  throw error;
+                }
+                console.warn(`Index already exists: ${error.message}`);
+              }
+            } else {
+              // Regular SQL statement, execute with transaction safety
+              await runMigrationSafe(trimmedStmt);
+            }
+          }
         }
 
         // Record migration completion
