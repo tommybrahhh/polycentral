@@ -9,6 +9,38 @@ const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [points, setPoints] = useState(0);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showTestButton, setShowTestButton] = useState(true); // Show test button for development
+
+  // Function to create a test event
+  const createTestEvent = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert('Please log in first');
+        return;
+      }
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/events/test`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        alert('Test event created successfully!');
+        // Refresh events
+        fetchEvents();
+      }
+    } catch (error) {
+      console.error('Error creating test event:', error);
+      alert('Failed to create test event: ' + (error.response?.data?.error || error.message));
+    }
+  };
 
   // This function checks if a wallet is connected when the app loads
   const checkIfWalletIsConnected = async () => {
@@ -98,16 +130,36 @@ const App = () => {
           </button>
           
           {/* --- Wallet Button Logic --- */}
-          <div className="wallet-container">
-            {!currentAccount ? (
-              <button onClick={connectWallet} className="wallet-btn">
-                Connect Wallet
-              </button>
-            ) : (
-              <p className="wallet-address">
-                Connected: {`${currentAccount.substring(0, 6)}...${currentAccount.substring(currentAccount.length - 4)}`}
-              </p>
-            )}
+         <div className="wallet-container">
+           {!currentAccount ? (
+             <button onClick={connectWallet} className="wallet-btn">
+               Connect Wallet
+             </button>
+           ) : (
+             <p className="wallet-address">
+               Connected: {`${currentAccount.substring(0, 6)}...${currentAccount.substring(currentAccount.length - 4)}`}
+             </p>
+           )}
+           
+           {/* Test Button for Development */}
+           {showTestButton && (
+             <button
+               onClick={createTestEvent}
+               className="test-btn"
+               style={{
+                 backgroundColor: '#ff6b6b',
+                 color: 'white',
+                 padding: '8px 15px',
+                 border: 'none',
+                 borderRadius: '5px',
+                 cursor: 'pointer',
+                 marginLeft: '10px',
+                 fontWeight: 'bold'
+               }}
+             >
+               🧪 Create Test Event
+             </button>
+           )}
             <div className="points-display">
               🪙 {points} Points
               <button
@@ -355,20 +407,27 @@ const TournamentCard = ({ tournament }) => {
       </div>
       <p className="description">{tournament.description}</p>
       
+      {/* Display initial Bitcoin price */}
+      {tournament.initial_price && (
+        <div className="price-info">
+          <strong>Starting Price:</strong> ${tournament.initial_price.toLocaleString()}
+        </div>
+      )}
+      
       <div className="bet-options">
         <button
           className="bet-btn yes"
-          onClick={() => handleBet('Yes')}
+          onClick={() => handleBet('Higher')}
           disabled={isExpired || betStatus === 'success'}
         >
-          Yes
+          Higher
         </button>
         <button
           className="bet-btn no"
-          onClick={() => handleBet('No')}
+          onClick={() => handleBet('Lower')}
           disabled={isExpired || betStatus === 'success'}
         >
-          No
+          Lower
         </button>
       </div>
       
@@ -377,6 +436,14 @@ const TournamentCard = ({ tournament }) => {
       )}
       {betStatus === 'error' && (
         <div className="bet-status error">Failed to place bet. Try again.</div>
+      )}
+      
+      {/* Display resolution status */}
+      {tournament.status === 'resolved' && (
+        <div className="resolution-info">
+          <strong>Result:</strong> {tournament.correct_answer} -
+          Final Price: ${tournament.final_price?.toLocaleString()}
+        </div>
       )}
     </div>
   );
@@ -425,3 +492,18 @@ const PredictionsInterface = () => {
 };
 
 export default App;
+/**
+ * Test Event Button
+ * 
+ * Purpose: This button is for development and testing purposes only.
+ * It allows immediate creation of a prediction event without waiting
+ * for the daily midnight UTC trigger.
+ * 
+ * Why it exists: 
+ * - Enables immediate testing of the event lifecycle
+ * - Helps verify frontend display and countdown functionality
+ * - Allows testing without waiting 24 hours for natural event cycle
+ * 
+ * Production note: This button should be hidden or removed in production
+ * as events are automatically created daily at midnight UTC.
+ */

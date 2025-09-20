@@ -404,8 +404,8 @@ async function resolveEvent(eventId) {
       [historicalPrice, event.id]
     );
     
-    // Resolve predictions
-    const outcome = historicalPrice > event.initial_price ? 'Up' : 'Down';
+    // Determine outcome based on price comparison
+    const outcome = historicalPrice > event.initial_price ? 'Higher' : 'Lower';
     
     // Award points to winners
     const result = await pool.query(
@@ -453,6 +453,25 @@ cron.schedule('0 0 * * *', async () => {
     console.log(`Created new Bitcoin prediction event with initial price: $${price}`);
   } catch (error) {
     console.error('Event creation failed:', error);
+  }
+});
+
+// --- Manual Event Creation Endpoint ---
+// This endpoint is for testing purposes only
+// It allows immediate creation of a prediction event without waiting for the daily trigger
+app.post('/api/events/test', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('Creating test event...');
+    const price = await coingecko.getCurrentPrice('bitcoin');
+    
+    // Create event in database
+    await createEvent(price);
+    console.log(`Created test event with initial price: $${price}`);
+    
+    res.json({ success: true, message: "Test event created successfully" });
+  } catch (error) {
+    console.error('Test event creation failed:', error);
+    res.status(500).json({ error: 'Failed to create test event' });
   }
 });
 
@@ -526,11 +545,14 @@ async function resolveEvents() {
         await client.query('BEGIN');
         
         // Update event status and correct answer
+        // Note: The correctAnswer logic with 98000 threshold seems incorrect for our use case
+        // We should determine the outcome based on price comparison
+        const outcome = finalPrice > event.initial_price ? 'Higher' : 'Lower';
         await pool.query(
           `UPDATE events SET
            correct_answer = $1, status = 'resolved'
            WHERE id = $2`,
-          [correctAnswer, event.id]
+          [outcome, event.id]
         );
         
         // Award points to winners
@@ -747,9 +769,9 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     const eventId = req.params.id;
     const { userId, prediction } = req.body;
     
-    // Validate prediction
-    if (prediction !== 'Yes' && prediction !== 'No') {
-        return res.status(400).json({ error: 'Prediction must be "Yes" or "No"' });
+    // Validate prediction - updated to use "Higher" and "Lower" options
+    if (prediction !== 'Higher' && prediction !== 'Lower') {
+        return res.status(400).json({ error: 'Prediction must be "Higher" or "Lower"' });
     }
 
     const client = await pool.connect();
@@ -812,7 +834,7 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
 // GET active events
 app.get('/api/events/active', async (req, res) => {
   try {
-    // Query active events
+    // Query active events with initial price
     const { rows } = await pool.query(
       `SELECT
         id,
@@ -822,10 +844,14 @@ app.get('/api/events/active', async (req, res) => {
         entry_fee,
         start_time,
         prediction_window AS end_time,
+        initial_price,
+        final_price,
+        correct_answer,
+        resolution_status,
         (SELECT COUNT(*) FROM participants WHERE event_id = events.id) AS current_participants,
         (SELECT entry_fee * COUNT(*) FROM participants WHERE event_id = events.id) AS prize_pool
       FROM events
-      WHERE status = 'active'`
+      WHERE status = 'active' OR resolution_status = 'pending'`
     );
 
     // Calculate time remaining and format response
@@ -833,11 +859,13 @@ app.get('/api/events/active', async (req, res) => {
     const activeEvents = rows.map(event => {
       const endTime = new Date(event.end_time);
       const timeRemaining = Math.floor((endTime - now) / 1000); // seconds
+      const isExpired = timeRemaining <= 0;
       
       return {
         ...event,
         end_time: endTime.toISOString(),
-        time_remaining: timeRemaining > 0 ? timeRemaining : 0
+        time_remaining: isExpired ? 0 : timeRemaining,
+        status: isExpired && event.status === 'active' ? 'expired' : event.status
       };
     });
 
