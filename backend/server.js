@@ -456,25 +456,6 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
-// --- Manual Event Creation Endpoint ---
-// This endpoint is for testing purposes only
-// It allows immediate creation of a prediction event without waiting for the daily trigger
-app.post('/api/events/test', authenticateAdmin, async (req, res) => {
-  try {
-    console.log('Creating test event...');
-    const price = await coingecko.getCurrentPrice('bitcoin');
-    
-    // Create event in database
-    await createEvent(price);
-    console.log(`Created test event with initial price: $${price}`);
-    
-    res.json({ success: true, message: "Test event created successfully" });
-  } catch (error) {
-    console.error('Test event creation failed:', error);
-    res.status(500).json({ error: 'Failed to create test event' });
-  }
-});
-
 // --- Event Resolution Function ---
 async function resolveEvents() {
   let client;
@@ -596,6 +577,26 @@ cron.schedule('59 23 * * *', resolveEvents);
 
 // Middleware to authenticate admin API key
 const authenticateAdmin = (req, res, next) => {
+    
+// --- Manual Event Creation Endpoint ---
+// This endpoint is for testing purposes only
+// It allows immediate creation of a prediction event without waiting for the daily trigger
+app.post('/api/events/test', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('Creating test event...');
+    const price = await coingecko.getCurrentPrice('bitcoin');
+    
+    // Create event in database
+    await createEvent(price);
+    console.log(`Created test event with initial price: $${price}`);
+    
+    res.json({ success: true, message: "Test event created successfully" });
+  } catch (error) {
+    console.error('Test event creation failed:', error);
+    res.status(500).json({ error: 'Failed to create test event' });
+  }
+});
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (!token || token !== process.env.ADMIN_API_KEY) {
