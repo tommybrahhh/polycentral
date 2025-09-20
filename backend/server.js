@@ -296,9 +296,9 @@ async function createEvent(initialPrice) {
   const title = `${process.env.CRYPTO_ID || 'bitcoin'} Price Prediction ${eventDate}`;
   
   await pool.query(
-    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime]
+    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global']
   );
 }
 
