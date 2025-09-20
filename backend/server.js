@@ -35,19 +35,27 @@ const PORT = process.env.PORT || 3001;
 
 // --- Middleware Setup ---
 app.use(helmet());
-const raw = process.env.CORS_ORIGIN || '';
+// Set allowed origins for CORS - include both your frontend domains
+const raw = process.env.CORS_ORIGIN || 'https://polyc-seven.vercel.app,http://localhost:5173';
 const allowedOrigins = raw.split(',').map(o => o.trim()).filter(Boolean);
 app.use(cors({
     origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl requests)
         if (!origin) return callback(null, true);
+        
+        // Check if the origin is in our allowed list
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
             console.error(`CORS ERROR: ${msg}. Allowed origins: ${allowedOrigins.join(', ')}`);
             return callback(new Error(msg), false);
         }
+        
+        // Origin is allowed
         return callback(null, true);
     },
-    credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization']
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use((req, res, next) => {
     const start = Date.now();
