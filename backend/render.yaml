@@ -21,6 +21,8 @@ services:
         generateValue: true
       - key: ADMIN_API_KEY
         generateValue: true
+      - key: COINGECKO_API_KEY
+        value: CG-dzCqFQBvWE5iKBYBLH8xSnPz
       - key: CRYPTO_ID
         value: bitcoin
       - key: DEFAULT_CRYPTO_SYMBOL
