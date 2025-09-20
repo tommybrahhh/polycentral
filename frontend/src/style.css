@@ -322,27 +322,27 @@
 .predictions-container {
   padding: 20px;
 }
-/* ===== TOURNAMENT STYLES ===== */
-.tournament-card {
+/* ===== EVENT STYLES ===== */
+.event-card {
   background: #1e1e1e;
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
 }
 
-.tournament-header {
+.event-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
 }
 
-.tournament-header h3 {
+.event-header h3 {
   margin: 0;
   color: #fff;
 }
 
-.tournament-meta {
+.event-meta {
   display: flex;
   gap: 15px;
 }
@@ -418,11 +418,11 @@
   color: #ff6b6b;
 }
 
-.tournaments-container {
+.events-container {
   width: 100%;
 }
 
-.tournaments-list {
+.events-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 20px;

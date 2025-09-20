@@ -37,7 +37,7 @@
    RATE_LIMIT_MAX_REQUESTS=100
    LOG_LEVEL=info
    
-   # Tournament feature variables (if used)
+   # Event feature variables (if used)
    COINGECKO_API_KEY=your_api_key
    ADMIN_API_KEY=your_secure_key
    ```
@@ -45,16 +45,16 @@
 4. Set start command: `npm start`
 5. Enable auto-deploy on push
 
-### Tournament Feature Setup
+### Event Feature Setup
 
 - **Database requirements**:
   Ensure PostgreSQL has latest schema from `sql/postgres/init_tables.sql`
 
 ### Automated Resolution
 
-- Scheduled job runs hourly to resolve expired tournaments
-- Verify in logs: `"Checking for expired tournaments..."`
-- To test manually: `POST /tournaments/resolve` with Admin API key
+- Scheduled job runs every 30 minutes to resolve expired events
+- Verify in logs: `"Checking for unresolved events..."`
+- To test manually: `POST /api/events/resolve` with Admin API key
 
 ### Troubleshooting
 

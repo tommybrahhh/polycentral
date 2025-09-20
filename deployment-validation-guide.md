@@ -1,7 +1,7 @@
 # Deployment Validation Guide: GitHub to Render & Vercel
 
 ## Overview
-This guide provides comprehensive testing procedures for validating the authentication and tournament fixes when deploying to Render and Vercel via GitHub.
+This guide provides comprehensive testing procedures for validating the authentication and event fixes when deploying to Render and Vercel via GitHub.
 
 ## Deployment Architecture
 
@@ -31,9 +31,9 @@ Before deploying, ensure all fixes are properly implemented:
 - [ ] `loadUserData` function updated
 - [ ] Initialization logic enhanced
 
-#### Tournament Options Fixes:
+#### Event Options Fixes:
 - [ ] `openTournamentModal` function enhanced
-- [ ] Tournament options parsing logic improved
+- [ ] Event options parsing logic improved
 - [ ] Error handling for parsing failures added
 - [ ] Fallback options implemented
 
@@ -101,7 +101,7 @@ services:
 2. **Database Migration**:
    ```sql
    -- Ensure database schema is up to date
-   -- Check that tournaments table has correct structure
+   -- Check that events table has correct structure
    -- Verify users table has all required fields
    ```
 
@@ -202,23 +202,23 @@ const testScenarios = {
       expected: "Points increased by 500"
     }
   },
-  tournaments: {
+  events: {
     optionsDisplay: {
       steps: [
         "Login with valid user",
-        "Navigate to tournaments",
-        "Click enter tournament",
+        "Navigate to events",
+        "Click enter event",
         "Verify options display"
       ],
       expected: "Prediction options visible"
     },
-    tournamentEntry: {
+    eventEntry: {
       steps: [
         "Select prediction option",
-        "Click enter tournament",
+        "Click enter event",
         "Check confirmation message"
       ],
-      expected: "Successfully entered tournament"
+      expected: "Successfully entered event"
     }
   }
 };
@@ -242,11 +242,11 @@ function runValidation(platform) {
 - [ ] Session persists across page refreshes
 - [ ] Logout functionality works
 
-#### Tournament Testing:
-- [ ] Tournament list loads on both platforms
-- [ ] Tournament options display correctly
+#### Event Testing:
+- [ ] Event list loads on both platforms
+- [ ] Event options display correctly
 - [ ] Prediction selection works
-- [ ] Tournament submission works
+- [ ] Event submission works
 - [ ] Points are deducted correctly
 - [ ] Confirmation message appears
 
@@ -510,7 +510,7 @@ if (!jwtConfig.secret) {
 - [ ] Check for any errors in production
 - [ ] Verify user registrations work
 - [ ] Test authentication flow
-- [ ] Test tournament functionality
+- [ ] Test event functionality
 - [ ] Monitor performance metrics
 
-This comprehensive guide ensures that the authentication and tournament fixes are properly validated when deploying to both Render and Vercel platforms via GitHub.
+This comprehensive guide ensures that the authentication and event fixes are properly validated when deploying to both Render and Vercel platforms via GitHub.

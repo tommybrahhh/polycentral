@@ -228,7 +228,7 @@ const EventsInterface = () => {
     try {
       // IMPORTANT: You might need to provide the full URL in development
       // e.g., axios.get('http://localhost:3001/api/events')
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/tournaments/active`);
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -238,7 +238,7 @@ const EventsInterface = () => {
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/tournaments`, newEvent);
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/events`, newEvent);
       setShowCreateModal(false);
       fetchEvents();
     } catch (error) {
@@ -349,9 +349,9 @@ const EventsInterface = () => {
   );
 };
 
-// Tournament Card Component
-const TournamentCard = ({ tournament }) => {
-  const [timeRemaining, setTimeRemaining] = useState(tournament.time_remaining);
+// Event Card Component
+const EventCard = ({ event }) => {
+  const [timeRemaining, setTimeRemaining] = useState(event.time_remaining);
   const [isExpired, setIsExpired] = useState(timeRemaining <= 0);
   const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
 
@@ -390,7 +390,7 @@ const TournamentCard = ({ tournament }) => {
       if (!token) throw new Error('User not authenticated');
       
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/tournaments/${tournament.id}/bet`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
         { prediction },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -405,22 +405,22 @@ const TournamentCard = ({ tournament }) => {
   };
 
   return (
-    <div className="tournament-card">
-      <div className="tournament-header">
-        <h3>{tournament.title}</h3>
-        <div className="tournament-meta">
-          <span className="entry-fee">🎫 ${tournament.entry_fee}</span>
+    <div className="event-card">
+      <div className="event-header">
+        <h3>{event.title}</h3>
+        <div className="event-meta">
+          <span className="entry-fee">🎫 ${event.entry_fee}</span>
           <span className="time-remaining">
             {isExpired ? '⏱️ Expired' : `⏱️ ${formatTime(timeRemaining)}`}
           </span>
         </div>
       </div>
-      <p className="description">{tournament.description}</p>
+      <p className="description">{event.description}</p>
       
       {/* Display initial Bitcoin price */}
-      {tournament.initial_price && (
+      {event.initial_price && (
         <div className="price-info">
-          <strong>Starting Price:</strong> ${tournament.initial_price.toLocaleString()}
+          <strong>Starting Price:</strong> ${event.initial_price.toLocaleString()}
         </div>
       )}
       
@@ -449,47 +449,47 @@ const TournamentCard = ({ tournament }) => {
       )}
       
       {/* Display resolution status */}
-      {tournament.status === 'resolved' && (
+      {event.status === 'resolved' && (
         <div className="resolution-info">
-          <strong>Result:</strong> {tournament.correct_answer} -
-          Final Price: ${tournament.final_price?.toLocaleString()}
+          <strong>Result:</strong> {event.correct_answer} -
+          Final Price: ${event.final_price?.toLocaleString()}
         </div>
       )}
     </div>
   );
 };
 
-// Tournament List Component
-const TournamentList = () => {
-  const [tournaments, setTournaments] = useState([]);
+// Event List Component
+const EventList = () => {
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchTournaments = async () => {
+    const fetchEvents = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/tournaments/active`);
-        setTournaments(response.data);
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+        setEvents(response.data);
         setLoading(false);
       } catch (err) {
-        console.error('Failed to fetch tournaments:', err);
-        setError('Failed to load tournaments');
+        console.error('Failed to fetch events:', err);
+        setError('Failed to load events');
         setLoading(false);
       }
     };
 
-    fetchTournaments();
+    fetchEvents();
   }, []);
 
-  if (loading) return <div className="loading">Loading tournaments...</div>;
+  if (loading) return <div className="loading">Loading events...</div>;
   if (error) return <div className="error">{error}</div>;
 
   return (
-    <div className="tournaments-container">
-      <h2>Active Tournaments</h2>
-      <div className="tournaments-list">
-        {tournaments.map(tournament => (
-          <TournamentCard key={tournament.id} tournament={tournament} />
+    <div className="events-container">
+      <h2>Active Events</h2>
+      <div className="events-list">
+        {events.map(event => (
+          <EventCard key={event.id} event={event} />
         ))}
       </div>
     </div>
@@ -498,7 +498,7 @@ const TournamentList = () => {
 
 // Updated Predictions Interface
 const PredictionsInterface = () => {
-  return <TournamentList />;
+  return <EventList />;
 };
 
 export default App;

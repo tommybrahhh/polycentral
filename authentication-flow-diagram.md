@@ -62,7 +62,7 @@ sequenceDiagram
     participant B as Backend
     participant G as JWT Middleware
     
-    U->>F: Clicks action (claim coins/enter tournament)
+    U->>F: Clicks action (claim coins/enter event)
     F->>C: Get token
     C->>F: Return JWT token
     F->>B: POST /api/endpoint with Bearer token
@@ -91,7 +91,7 @@ graph LR
 - Token expiration
 - Invalid token encoding
 
-### 2. Tournament Options Display Issues
+### 2. Event Options Display Issues
 ```mermaid
 graph LR
     A[Tournament Data] --> B[Backend]
@@ -127,7 +127,7 @@ stateDiagram-v2
     Cleared --> [*]: User must re-authenticate
 ```
 
-### Tournament Data Flow
+### Event Data Flow
 ```mermaid
 flowchart TD
     A[Database Tournament] --> B[Backend Query]
@@ -156,7 +156,7 @@ graph TD
     F --> G[Test Authentication Flow]
 ```
 
-### 2. Tournament Options Fixes
+### 2. Event Options Fixes
 ```mermaid
 graph TD
     A[Enhanced Options Parsing] --> B[Detect Tournament Type]
@@ -180,7 +180,7 @@ graph TD
     F --> G[Response Handling]
 ```
 
-### 2. Tournament Testing
+### 2. Event Testing
 ```mermaid
 graph TD
     A[Load Tournaments] --> B[Parse Tournament Data]

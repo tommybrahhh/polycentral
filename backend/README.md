@@ -24,15 +24,15 @@
    ```
 
 ## Cron Job Schedules
-- **Tournament Resolution**: Runs every 24 hours after tournament creation
-  - Checks for expired tournaments
+- **Event Resolution**: Runs every 30 minutes to check for expired events
+  - Checks for expired events
   - Resolves predictions using CoinGecko API
   - Processes payouts
 
 ## Event Lifecycle
-1. **Prediction Submission**: Users submit predictions before tournament lock
-2. **Tournament Lock**: Event locks at specified end time
-3. **Resolution**: 
+1. **Prediction Submission**: Users submit predictions before event lock
+2. **Event Lock**: Event locks at specified end time
+3. **Resolution**:
    - System fetches final price from CoinGecko API
    - Compares predictions to actual price
    - Determines winners

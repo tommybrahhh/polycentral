@@ -1,10 +1,10 @@
-# Authentication & Tournament Options Fix Plan
+# Authentication & Event Options Fix Plan
 
 ## Problem Analysis
 
 ### Current Issues:
-1. **Authentication Errors**: Both free coins claiming and tournament entry are failing with "Invalid token" errors
-2. **Tournament Options Display**: Users can't see prediction options in tournaments
+1. **Authentication Errors**: Both free coins claiming and event entry are failing with "Invalid token" errors
+2. **Event Options Display**: Users can't see prediction options in events
 
 ### Root Cause Investigation:
 
@@ -17,9 +17,9 @@
   4. Token expiration not being handled properly
 
 #### Tournament Options Issues:
-- Tournament options are not being displayed correctly
+- Event options are not being displayed correctly
 - The backend stores options as JSON string but frontend expects array
-- Tournament type parsing logic may be incorrect
+- Event type parsing logic may be incorrect
 
 ## Solution Implementation Plan
 
@@ -41,28 +41,28 @@
 - Check token validation logic
 - Ensure proper CORS configuration
 
-### Phase 2: Tournament Options Fix
+### Phase 2: Event Options Fix
 
-#### Step 1: Fix Tournament Options Parsing
-- Update `openTournamentModal` function to properly parse tournament options
-- Handle different tournament types correctly
+#### Step 1: Fix Event Options Parsing
+- Update `openTournamentModal` function to properly parse event options
+- Handle different event types correctly
 - Ensure options are displayed as radio buttons
 
-#### Step 2: Tournament Entry Flow
-- Fix the tournament entry API call
+#### Step 2: Event Entry Flow
+- Fix the event entry API call
 - Ensure proper prediction submission
-- Add error handling for tournament participation
+- Add error handling for event participation
 
 ### Phase 3: Testing & Validation
 
 #### Step 1: Unit Testing
 - Test token storage and retrieval
-- Verify tournament options parsing
+- Verify event options parsing
 - Test API endpoint calls
 
 #### Step 2: Integration Testing
 - Test complete user registration flow
-- Verify tournament participation
+- Verify event participation
 - Test free coins claiming
 
 #### Step 3: End-to-End Testing
@@ -228,17 +228,17 @@ window.enterTournament = async function(tournamentId) {
     }
     
     try {
-        console.log('Attempting to enter tournament:', tournamentId);
+        console.log('Attempting to enter event:', tournamentId);
         console.log('Selected prediction:', prediction);
         
-        const response = await makeAuthenticatedRequest(`${API_BASE_URL}/tournaments/${tournamentId}/enter`, {
+        const response = await makeAuthenticatedRequest(`${API_BASE_URL}/events/${tournamentId}/enter`, {
             method: 'POST',
             body: JSON.stringify({ prediction })
         });
         
-        console.log('Tournament entry response:', response);
+        console.log('Event entry response:', response);
         
-        alert('Successfully entered tournament! Good luck!');
+        alert('Successfully entered event! Good luck!');
         closeModal();
         
         // Refresh user data and tournaments
@@ -261,7 +261,7 @@ window.enterTournament = async function(tournamentId) {
 ### 2. Integration Tests:
 - User registration and login flow
 - Token storage and retrieval
-- Tournament participation
+- Event participation
 - Free coins claiming
 
 ### 3. End-to-End Tests:
@@ -295,14 +295,14 @@ After implementing this plan:
    - Tournament entry works without authentication errors
    - Token handling is more robust
 
-2. **Tournament Options Display Fixed**:
+2. **Event Options Display Fixed**:
    - Prediction options are properly displayed
-   - Users can select predictions for tournaments
-   - Tournament entry flow works correctly
+   - Users can select predictions for events
+   - Event entry flow works correctly
 
 3. **Improved User Experience**:
    - Clear error messages for authentication issues
    - Better feedback during API calls
    - More reliable session management
 
-This comprehensive plan addresses both the authentication issues and the tournament options display problems while providing a robust foundation for future enhancements.
+This comprehensive plan addresses both the authentication issues and the event options display problems while providing a robust foundation for future enhancements.
