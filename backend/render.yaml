@@ -26,4 +26,4 @@ services:
       - key: DEFAULT_CRYPTO_SYMBOL
         value: btc
       - key: CORS_ORIGIN
-        value: https://polyc-seven.vercel.app,http://localhost:5173
+        value: https://polyc-seven.vercel.app,https://polycentral-front.vercel.app,http://localhost:5173
