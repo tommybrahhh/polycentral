@@ -1,131 +1,419 @@
 # Event Functionality Documentation
 
 ## Overview
-This document describes the event functionality implemented in the prediction app. The system automatically creates Bitcoin price prediction events daily, allows users to make predictions, and automatically resolves events after 24 hours.
+This document describes the event functionality implemented in the Polycentral application, which allows users to predict whether the price of Bitcoin will be higher or lower than the current price at a specific time.
 
-## System Architecture
-```mermaid
-graph TD
-    A[Daily Event Creation at 00:00 UTC] --> B[Fetch Bitcoin Price from CoinGecko]
-    B --> C[Create Event with Initial Price]
-    C --> D[Store in PostgreSQL Database]
-    D --> E[Frontend Displays Event with Countdown]
-    E --> F[Users Make Predictions: Higher/Lower]
-    F --> G[Countdown to 23:59:59 UTC]
-    G --> H[Event Automatically Closes]
-    H --> I[Fetch Final Bitcoin Price]
-    I --> J[Determine Winner: Higher/Lower]
-    J --> K[Update Database with Results]
-    K --> L[Display Results to Users]
-    L --> M[Show Notification Message]
-    
-    N[Test Button in Frontend] --> O[Call Manual Event Creation API]
-    O --> P[Create Test Event Immediately]
-    P --> E
-```
+## Backend Event System
 
-## Core Features
+### Event Creation
+Events are automatically created daily at midnight UTC using a cron job. The system uses the CoinGecko API to get the current Bitcoin price and creates an event with this price as the baseline.
 
-### 1. Automatic Event Creation
-- **Timing**: Events are created daily at 00:00 UTC
-- **Price Source**: Bitcoin price is fetched from CoinGecko API
-- **Duration**: 24-hour prediction window (until 23:59:59 UTC)
-- **Title Format**: "Bitcoin Price Prediction [Date]"
-
-### 2. Event Resolution
-- **Timing**: Events automatically close at 23:59:59 UTC
-- **Price Comparison**: Final Bitcoin price is compared with initial price
-- **Outcome Determination**:
-  - If final price > initial price: "Higher" is the winning prediction
-  - If final price < initial price: "Lower" is the winning prediction
-- **Winner Reward**: Points are awarded to users who made correct predictions
-
-### 3. Frontend Display
-- **Countdown Timer**: Real-time countdown to event closure
-- **Price Display**: Shows the initial Bitcoin price at event creation
-- **Prediction Options**: "Higher" and "Lower" buttons for user predictions
-- **Status Indicators**: Shows event status (active, expired, resolved)
-
-### 4. Test Functionality
-- **Test Button**: "Create Test Event" button in the frontend
-- **Purpose**: Allows immediate creation of test events without waiting for daily trigger
-- **Usage**: For development and testing purposes only
-- **API Endpoint**: `POST /api/events/test` (requires admin authentication)
-
-## API Endpoints
-
-### Backend Endpoints
-- `GET /api/events/active`: Returns all active events with countdown timer
-- `POST /api/events/test`: Creates a test event immediately (admin only)
-- `POST /api/events/:id/bet`: Allows users to place predictions on events
-
-### Data Structure
-```json
-{
-  "id": 1,
-  "title": "Bitcoin Price Prediction 2025-09-20",
-  "description": "Will Bitcoin price be higher or lower than $65,000?",
-  "initial_price": 65000,
-  "final_price": 67500,
-  "correct_answer": "Higher",
-  "start_time": "2025-09-20T00:00:00Z",
-  "end_time": "2025-09-20T23:59:59Z",
-  "status": "resolved",
-  "time_remaining": 0,
-  "current_participants": 42,
-  "prize_pool": 4200
+```javascript
+// server.js
+async function createDailyEvent() {
+  try {
+    console.log('Creating daily Bitcoin prediction event...');
+    const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
+    await createEvent(currentPrice);
+    console.log(`Created new Bitcoin event with initial price: $${currentPrice}`);
+  } catch (error) {
+    console.error('Error creating daily event:', error);
+  }
 }
+
+// Cron job runs daily at midnight UTC
+cron.schedule('0 0 * * *', createDailyEvent);
 ```
 
-## Implementation Details
+### Manual Event Creation (Testing)
+For development and testing purposes, an admin can manually create an event:
 
-### Backend
-- **Event Creation**: Handled by cron job running at 00:00 UTC daily
-- **Event Resolution**: Checked every 30 minutes for expired events
-- **Database**: PostgreSQL with events table storing all event data
-- **Price API**: CoinGecko API for current and historical Bitcoin prices
+```javascript
+// POST /api/events/test
+app.post('/api/events/test', authenticateAdmin, async (req, res) => {
+  try {
+    const price = await coingecko.getCurrentPrice('bitcoin');
+    await createEvent(price);
+    res.json({ success: true, message: "Test event created successfully" });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create test event' });
+  }
+});
+```
 
-### Frontend
-- **Countdown Timer**: Real-time countdown using React useEffect and setInterval
-- **Event Display**: Grid layout showing all active events
-- **Prediction Interface**: "Higher" and "Lower" buttons with visual feedback
-- **Test Button**: Red button labeled "🧪 Create Test Event" for immediate testing
+### Event Resolution
+Events are automatically resolved after 23:59:59 of their creation day. The system compares the final Bitcoin price with the initial price to determine the outcome.
 
-## Testing and Verification
+```javascript
+// server.js
+async function resolvePendingEvents() {
+  try {
+    const now = new Date();
+    const { rows: events } = await pool.query(
+      `SELECT id, end_time, initial_price FROM events
+       WHERE end_time < $1 AND resolution_status = 'pending'`,
+      [now]
+    );
 
-### Manual Testing Steps
-1. Deploy the application to Vercel (frontend) and Render (backend)
-2. Click the "Create Test Event" button to create an immediate test event
-3. Verify the event appears with:
-   - Correct initial Bitcoin price
-   - Working countdown timer
-   - "Higher" and "Lower" prediction options
-4. Make a prediction and verify it's recorded
-5. Wait 24 hours or manually trigger resolution to verify automatic closure
+    for (const event of events) {
+      try {
+        const finalPrice = await coingecko.getHistoricalPrice(process.env.CRYPTO_ID || 'bitcoin', event.end_time);
+        
+        // Update event with final price
+        await pool.query(
+          `UPDATE events
+           SET final_price = $1, resolution_status = 'resolved'
+           WHERE id = $2`,
+          [finalPrice, event.id]
+        );
 
-### Production Notes
-- The "Create Test Event" button should be hidden or removed in production
-- Events are automatically created daily at 00:00 UTC
-- The system is designed to handle timezone differences (all times in UTC)
-- Database backups should be configured to prevent data loss
+        // Determine outcome
+        const outcome = finalPrice > event.initial_price ? 'Higher' : 'Lower';
+        
+        // Award points to winners
+        const result = await pool.query(
+          `UPDATE users SET points = points + events.entry_fee
+           FROM participants
+           JOIN events ON participants.event_id = events.id
+           WHERE participants.event_id = $1
+           AND participants.prediction = $2`,
+          [event.id, outcome]
+        );
+      } catch (error) {
+        console.error(`Failed to resolve event ${event.id}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Error in resolvePendingEvents:', error);
+  }
+}
+
+// Cron job runs every 30 minutes to check for expired events
+cron.schedule('*/30 * * * *', resolvePendingEvents);
+```
+
+### API Endpoints
+
+#### GET /api/events/active
+Returns all active events with their details and time remaining.
+
+```javascript
+app.get('/api/events/active', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+        id,
+        title,
+        description,
+        options,
+        entry_fee,
+        start_time,
+        prediction_window AS end_time,
+        initial_price,
+        final_price,
+        correct_answer,
+        resolution_status,
+        (SELECT COUNT(*) FROM participants WHERE event_id = events.id) AS current_participants,
+        (SELECT entry_fee * COUNT(*) FROM participants WHERE event_id = events.id) AS prize_pool
+      FROM events
+      WHERE status = 'active' OR resolution_status = 'pending'`
+    );
+
+    // Calculate time remaining
+    const now = new Date();
+    const activeEvents = rows.map(event => {
+      const endTime = new Date(event.end_time);
+      const timeRemaining = Math.floor((endTime - now) / 1000); // seconds
+      const isExpired = timeRemaining <= 0;
+      
+      return {
+        ...event,
+        end_time: endTime.toISOString(),
+        time_remaining: isExpired ? 0 : timeRemaining,
+        status: isExpired && event.status === 'active' ? 'expired' : event.status
+      };
+    });
+
+    res.json(activeEvents);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+```
+
+#### POST /api/events/:id/bet
+Allows users to place a bet on an event with "Higher" or "Lower" prediction.
+
+```javascript
+app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
+  const eventId = req.params.id;
+  const { userId, prediction } = req.body;
+  
+  // Validate prediction
+  if (prediction !== 'Higher' && prediction !== 'Lower') {
+    return res.status(400).json({ error: 'Prediction must be "Higher" or "Lower"' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Check event exists
+    const eventQuery = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventQuery.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    const event = eventQuery.rows[0];
+    
+    // Check user has sufficient points
+    const userQuery = await client.query('SELECT points FROM users WHERE id = $1', [userId]);
+    if (userQuery.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = userQuery.rows[0];
+    if (user.points < event.entry_fee) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Insufficient points' });
+    }
+
+    // Insert bet into participants table
+    const { rows: [newBet] } = await client.query(
+        `INSERT INTO participants (event_id, user_id, prediction, amount)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [eventId, userId, prediction, event.entry_fee]
+    );
+
+    // Deduct the entry fee from the user's points
+    await client.query(
+        'UPDATE users SET points = points - $1 WHERE id = $2',
+        [event.entry_fee, userId]
+    );
+    
+    await client.query('COMMIT');
+    res.status(201).json(newBet);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Server error' });
+  } finally {
+    client.release();
+  }
+});
+```
+
+## Frontend Implementation
+
+### Event Card Component
+Displays an event with its details and allows users to place bets.
+
+```jsx
+// Event Card Component
+const EventCard = ({ event }) => {
+  const [timeRemaining, setTimeRemaining] = useState(event.time_remaining);
+  const [isExpired, setIsExpired] = useState(timeRemaining <= 0);
+  const [betStatus, setBetStatus] = useState(null);
+
+  useEffect(() => {
+    if (isExpired) return;
+    
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setIsExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isExpired]);
+
+  const formatTime = (seconds) => {
+    if (seconds <= 0) return 'Expired';
+    
+    const days = Math.floor(seconds / (3600 * 24));
+    const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return `${days}d ${hours}h ${minutes}m ${secs}s remaining`;
+  };
+
+  const handleBet = async (prediction) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('User not authenticated');
+      
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
+        { prediction },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setBetStatus('success');
+      setTimeout(() => setBetStatus(null), 3000);
+    } catch (error) {
+      console.error('Betting failed:', error);
+      setBetStatus('error');
+      setTimeout(() => setBetStatus(null), 3000);
+    }
+  };
+
+  return (
+    <div className="event-card">
+      <div className="event-header">
+        <h3>{event.title}</h3>
+        <div className="event-meta">
+          <span className="entry-fee">🎫 ${event.entry_fee}</span>
+          <span className="time-remaining">
+            {isExpired ? '⏱️ Expired' : `⏱️ ${formatTime(timeRemaining)}`}
+          </span>
+        </div>
+      </div>
+      <p className="description">{event.description}</p>
+      
+      {event.initial_price && (
+        <div className="price-info">
+          <strong>Starting Price:</strong> ${event.initial_price.toLocaleString()}
+        </div>
+      )}
+      
+      <div className="bet-options">
+        <button
+          className="bet-btn yes"
+          onClick={() => handleBet('Higher')}
+          disabled={isExpired || betStatus === 'success'}
+        >
+          Higher
+        </button>
+        <button
+          className="bet-btn no"
+          onClick={() => handleBet('Lower')}
+          disabled={isExpired || betStatus === 'success'}
+        >
+          Lower
+        </button>
+      </div>
+      
+      {betStatus === 'success' && (
+        <div className="bet-status success">Bet placed successfully!</div>
+      )}
+      {betStatus === 'error' && (
+        <div className="bet-status error">Failed to place bet. Try again.</div>
+      )}
+      
+      {event.status === 'resolved' && (
+        <div className="resolution-info">
+          <strong>Result:</strong> {event.correct_answer} -
+          Final Price: ${event.final_price?.toLocaleString()}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### Event List Component
+Displays all active events.
+
+```jsx
+// Event List Component
+const EventList = () => {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+        setEvents(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch events:', err);
+        setError('Failed to load events');
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  if (loading) return <div className="loading">Loading events...</div>;
+  if (error) return <div className="error">{error}</div>;
+
+  return (
+    <div className="events-container">
+      <h2>Active Events</h2>
+      <div className="events-list">
+        {events.map(event => (
+          <EventCard key={event.id} event={event} />
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+## Environment Configuration
+
+### Required Environment Variables
+The following environment variables must be configured in the Render dashboard:
+
+```
+# Application Settings
+NODE_ENV=production
+PORT=3001
+
+# Authentication
+JWT_SECRET=your_jwt_secret_here
+BCRYPT_SALT_ROUNDS=12
+
+# Frontend Configuration
+FRONTEND_URL=https://polyc-seven.vercel.app
+CORS_ORIGIN=https://polyc-seven.vercel.app,http://localhost:5173
+
+# Database Configuration
+DB_TYPE=postgres
+DATABASE_URL=your_postgres_connection_string
+
+# Admin Authentication
+ADMIN_API_KEY=your_secure_admin_key
+
+# Cryptocurrency Settings
+CRYPTO_ID=bitcoin
+DEFAULT_CRYPTO_SYMBOL=btc
+
+# CoinGecko API
+COINGECKO_API_KEY=your_coingecko_api_key_here
+```
+
+## Deployment Notes
+
+1. The backend is deployed on Render and the frontend on Vercel.
+2. The backend API is available at: https://polycentral-backend.onrender.com
+3. The frontend is available at: https://polyc-seven.vercel.app
+4. Environment variables must be set in the Render dashboard, not in .env files.
+5. After changing environment variables, the service will automatically restart.
 
 ## Troubleshooting
 
-### Common Issues
-- **Event not creating**: Verify cron job is running and CoinGecko API key is valid
-- **Countdown not updating**: Check frontend JavaScript console for errors
-- **Predictions not saving**: Verify database connection and user authentication
-- **Price data missing**: Check CoinGecko API rate limits and network connectivity
+### CORS Issues
+If you encounter CORS errors:
+1. Verify that CORS_ORIGIN in the Render dashboard includes both the production and development frontend URLs
+2. Ensure FRONTEND_URL is set to the correct production URL
+3. Check that the environment variables are properly set in the Render dashboard
 
-### Monitoring
-- Check server logs for event creation and resolution messages
-- Monitor database for event records and participant data
-- Verify frontend console for any JavaScript errors
-- Check API response times and error rates
-
-## Future Enhancements
-- Add email/SMS notifications for event closure
-- Implement leaderboards for top predictors
-- Add historical event statistics and charts
-- Support multiple cryptocurrencies beyond Bitcoin
-- Add social sharing features for events
+### Event Creation Issues
+If events are not being created:
+1. Verify that the COINGECKO_API_KEY is valid and properly set
+2. Check the server logs for any errors related to the cron job
+3. Ensure the database connection is working properly
