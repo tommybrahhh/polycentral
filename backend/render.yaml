@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: polycentral-backend
+    runtime: node
+    region: oregon
+    plan: free
+    env: nodejs
+    rootDirectory: backend
+    buildCommand: "npm install"
+    startCommand: "node server.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: your-postgres-database-name
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: CRYPTO_ID
+        value: bitcoin
+      - key: DEFAULT_CRYPTO_SYMBOL
+        value: btc
+      - key: CORS_ORIGIN
+        value: https://polyc-seven.vercel.app
