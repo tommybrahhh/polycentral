@@ -761,9 +761,37 @@ async function startServer() {
     await pool.query('SELECT 1');
     console.log('✅ Database connection successful');
     
-    app.listen(PORT, async () => {
+    const server = app.listen(PORT, async () => {
         console.log(`\n🚀 Server listening on port ${PORT}`);
+        console.log(`Environment variables:`, {
+            PORT: process.env.PORT,
+            NODE_ENV: process.env.NODE_ENV,
+            RENDER: process.env.RENDER,
+            DB_TYPE: process.env.DB_TYPE,
+            DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
+        });
         await createInitialEvent(); // Create initial event after startup
+    });
+
+    server.on('error', (error) => {
+        console.error('❌ Server error:', error);
+        if (error.code === 'EADDRINUSE') {
+            console.log(`Port ${PORT} is already in use. Trying alternative port...`);
+            // Try alternative ports
+            const alternativePorts = [8080, 8000, 5000];
+            for (const altPort of alternativePorts) {
+                console.log(`Trying port ${altPort}...`);
+                try {
+                    server.listen(altPort);
+                    break;
+                } catch (err) {
+                    if (err.code !== 'EADDRINUSE') {
+                        console.error('Unexpected error:', err);
+                        break;
+                    }
+                }
+            }
+        }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
