@@ -763,16 +763,28 @@ async function startServer() {
     console.log('✅ Database connection successful');
     
     const server = app.listen(PORT, async () => {
-        console.log(`\n🚀 Server listening on port ${PORT}`);
-        console.log(`Environment variables:`, {
-            PORT: process.env.PORT,
-            NODE_ENV: process.env.NODE_ENV,
-            RENDER: process.env.RENDER,
-            DB_TYPE: process.env.DB_TYPE,
-            DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
+            console.log(`\n🚀 Server listening on port ${PORT}`);
+            console.log(`Environment variables:`, {
+                PORT: process.env.PORT,
+                NODE_ENV: process.env.NODE_ENV,
+                RENDER: process.env.RENDER,
+                DB_TYPE: process.env.DB_TYPE,
+                DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
+            });
+            console.log('✅ Server started successfully');
+            await createInitialEvent(); // Create initial event after startup
         });
-        await createInitialEvent(); // Create initial event after startup
-    });
+    
+        // Add additional error logging
+        process.on('unhandledRejection', (reason, promise) => {
+            console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+            // Application specific logging, throwing an error, or other logic here
+        });
+    
+        process.on('uncaughtException', (error) => {
+            console.error('Uncaught Exception:', error);
+            // Application specific logging, throwing an error, or other logic here
+        });
 
     server.on('error', (error) => {
         console.error('❌ Server error:', error);
