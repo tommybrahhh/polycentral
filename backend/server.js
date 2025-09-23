@@ -94,7 +94,21 @@ let pool;
 
 if (dbType === 'postgres') {
   const { Pool } = require('pg');
+  
+  // Try to connect with the main DATABASE_URL first
   pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  
+  // Add error handling for connection issues
+  pool.on('error', async (err) => {
+    console.error('PostgreSQL connection error:', err);
+    
+    // If connection fails, try with the public URL
+    if (process.env.DATABASE_PUBLIC_URL && err.code === 'ECONNREFUSED') {
+      console.log('Trying to connect with public database URL...');
+      pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+    }
+  });
+  
   console.log('💾 PostgreSQL database connected');
 } else {
   const sqlite3 = require('sqlite3').verbose();
