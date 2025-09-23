@@ -420,6 +420,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
+app.get('/', (req, res) => res.json({ status: 'OK' }));
 
 app.post('/api/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
