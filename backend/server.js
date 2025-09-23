@@ -31,7 +31,7 @@ const cron = require('node-cron');
 const coingecko = require('./lib/coingecko');
 const app = express();
 app.set('trust proxy', 1);
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 
 // --- Middleware Setup ---
 app.use(helmet());
