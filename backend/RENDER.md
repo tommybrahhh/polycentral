@@ -1,8 +1,8 @@
-## Render Deployment Guide
+## Railway Deployment Guide
 
 ### Credential Management Best Practices
 
-1. **Never commit credentials**: Environment variables containing secrets must be stored in Render's environment variables section, not in code
+1. **Never commit credentials**: Environment variables containing secrets must be stored in Railway's environment variables section, not in code
 2. **Rotation procedure**:
    - Rotate credentials via Render dashboard
    - Update environment variables immediately
@@ -21,7 +21,7 @@
 
 ### Deployment Steps
 1. Connect your GitHub repository
-2. Set required environment variables in Render dashboard:
+2. Set required environment variables in Railway dashboard:
    ```env
    # Required core variables
    NODE_ENV=production
@@ -44,6 +44,7 @@
 3. Set build command: `npm install`
 4. Set start command: `npm start`
 5. Enable auto-deploy on push
+6. Set port to 8080 in Railway settings
 
 ### Event Feature Setup
 
@@ -60,5 +61,6 @@
 
 - If resolution fails, check logs for Coingecko API errors
 - Ensure server timezone is UTC
+- If server is not responding, verify it's binding to 0.0.0.0 instead of localhost
 <!-- Deployment trigger commit - $(date) -->
 <!-- Redeployment trigger - $(date) -->
