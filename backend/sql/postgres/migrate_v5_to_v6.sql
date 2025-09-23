@@ -1,13 +1,6 @@
 -- Add location column to events table if it doesn't exist
--- Using a simpler approach without dollar quoting
+-- Using ALTER TABLE ... IF NOT EXISTS (PostgreSQL 9.6+)
 
--- Check if column exists and add it if not
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'events' AND column_name = 'location'
-    ) THEN
-        ALTER TABLE events ADD COLUMN location TEXT DEFAULT 'Global';
-    END IF;
-END $$;
+-- This is a simpler approach that doesn't require dollar quoting
+-- It will only add the column if it doesn't already exist
+ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS location TEXT DEFAULT 'Global';
