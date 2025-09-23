@@ -273,7 +273,8 @@ async function runMigrations() {
                 console.warn(`Index already exists: ${error.message}`);
               }
             } else {
-              // Regular SQL statement, execute with transaction safety
+              // For all other statements, execute with transaction safety
+              // This includes PL/pgSQL functions with $$ blocks
               await runMigrationSafe(trimmedStmt);
             }
           }
