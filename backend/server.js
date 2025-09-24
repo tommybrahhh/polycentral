@@ -3,8 +3,8 @@
 
 const path = require('path');
 
-// Robust production detection (Render sets RENDER=true)
-const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
+// Robust production detection (Render sets RENDER=true, Railway sets RAILWAY_ENVIRONMENT_NAME=production)
+const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_NAME === 'production';
 
 // Log environment information
 console.log(`🚀 Starting in ${isProduction ? 'PRODUCTION' : 'development'} mode`);
