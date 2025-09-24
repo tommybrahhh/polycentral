@@ -398,8 +398,8 @@ COINGECKO_API_KEY=your_coingecko_api_key_here
 
 ## Deployment Notes
 
-1. The backend is deployed on Render and the frontend on Vercel.
-2. The backend API is available at: https://polycentral-backend.onrender.com
+1. The backend is deployed on Railway and the frontend on Vercel.
+2. The backend API is available at: https://polycentral-production.up.railway.app
 3. The frontend is available at: https://polyc-seven.vercel.app
 4. Environment variables must be set in the Render dashboard, not in .env files.
 5. After changing environment variables, the service will automatically restart.

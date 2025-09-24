@@ -3,7 +3,7 @@
     "driver": "pg",
     "user": "polycentral_db_user",
     "password": "9FvJxhgA784lGJvr29VDIc8jz27zBTmc",
-    "host": "dpg-d30qu1ffte5s73eoi120-a.oregon-postgres.render.com",
+    "host": "metro.proxy.rlwy.net",
     "database": "polycentral_db",
     "ssl": true
   },

@@ -62,7 +62,7 @@ npx serve -s . -l 3000
 
 #### 1. Render Service Configuration
 ```yaml
-# render.yaml (example configuration)
+# railway.yaml (example configuration)
 services:
   - type: web
     name: predictions-backend
@@ -77,7 +77,7 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        value: your-render-database-url
+        value: your-railway-database-url
 
   - type: web
     name: predictions-frontend
@@ -86,7 +86,7 @@ services:
     staticPublishPath: ./frontend/build
     envVars:
       - key: API_BASE_URL
-        value: https://predictions-backend.onrender.com/api
+        value: https://polycentral-production.up.railway.app/api
 ```
 
 #### 2. Render-Specific Validation Steps
@@ -109,7 +109,7 @@ services:
    ```javascript
    // In backend/server.js, ensure CORS is configured for Render
    app.use(cors({
-     origin: ['https://predictions-frontend.onrender.com'],
+     origin: ['https://polyc-seven.vercel.app'],
      credentials: true
    }));
    ```
@@ -343,7 +343,7 @@ gh pr create --title "Auth and Tournament Fixes" --body "Implementation of authe
    JWT_SECRET=your-secure-jwt-secret
    DATABASE_URL=file:./predictions.db
    NODE_ENV=production
-   CORS_ORIGIN=https://your-frontend.onrender.com
+   CORS_ORIGIN=https://polyc-seven.vercel.app
    ```
 
 3. **Database Setup**:
@@ -376,7 +376,7 @@ gh pr create --title "Auth and Tournament Fixes" --body "Implementation of authe
 # Compare results between platforms
 
 # Test script example
-node tests/validation.js --platform=render
+node tests/validation.js --platform=railway
 node tests/validation.js --platform=vercel
 ```
 
@@ -442,7 +442,7 @@ app.get('/api/health', (req, res) => {
 ```javascript
 // Platform-specific CORS configuration
 const allowedOrigins = {
-  render: ['https://your-frontend.onrender.com'],
+  railway: ['https://polyc-seven.vercel.app'],
   vercel: ['https://your-frontend.vercel.app'],
   local: ['http://localhost:3000']
 };
