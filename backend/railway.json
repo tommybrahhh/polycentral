@@ -3,7 +3,7 @@
     "builder": "dockerfile"
   },
   "deploy": {
-    "domain": "polycentral-backend.up.railway.app",
+    "domain": "polycentral-production.up.railway.app",
     "port": 8080
   }
 }

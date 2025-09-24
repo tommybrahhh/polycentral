@@ -6,11 +6,11 @@ This document provides complete context and instructions for deploying and maint
 - Main repository: https://github.com/tommybrahhh/polycentral
 - Frontend: `/frontend` directory
 - Backend: `/backend` directory
-- Database: PostgreSQL on Render
+- Database: PostgreSQL on Railway
 
 ## Deployment Architecture
 ```
-Frontend (Vercel) → Backend (Render) → Database (Render PostgreSQL)
+Frontend (Vercel) → Backend (Railway) → Database (Railway PostgreSQL)
        ↑                                  ↓
   Users (Browser)                   CoinGecko API
 ```
@@ -26,25 +26,23 @@ Frontend (Vercel) → Backend (Render) → Database (Render PostgreSQL)
    - Output Directory: `dist`
 5. Add environment variable:
    - Key: `VITE_API_BASE_URL`
-   - Value: `https://polycentral-backend.onrender.com` (your Render backend URL)
+   - Value: `https://polycentral-production.up.railway.app` (your Railway backend URL)
 6. Click "Deploy"
 
 Frontend URL: https://polyc-seven.vercel.app
 
-## Backend Deployment (Render)
-1. Go to https://render.com and sign in
-2. Click "New +" and select "Web Service"
+## Backend Deployment (Railway)
+1. Go to https://railway.app and sign in
+2. Click "New Project" and select "Deploy from GitHub"
 3. Connect repository: `tommybrahhh/polycentral`
 4. Configure settings:
-   - Name: `polycentral-backend`
-   - Region: `oregon`
+   - Name: `polycentral-production`
    - Branch: `master`
    - Root Directory: `backend`
-   - Runtime: `Node`
+   - Runtime: `Node.js`
    - Build Command: `npm install`
    - Start Command: `node server.js`
-5. Link your PostgreSQL database
-6. The `render.yaml` file will automatically configure environment variables
+5. The `railway.json` file will automatically configure environment variables
 
 ## Environment Variables
 The following environment variables are required:
@@ -52,8 +50,8 @@ The following environment variables are required:
 | Variable | Value | Purpose |
 |---------|-------|--------|
 | `NODE_ENV` | `production` | Sets application environment |
-| `PORT` | `3001` | Port for the Node.js server |
-| `DATABASE_URL` | `postgresql://polycentral_db_user:9FvJxhgA784lGJvr29VDIc8jz27zBTmc@dpg-d30qu1ffte5s73eoi120-a.oregon-postgres.render.com/polycentral_db` | PostgreSQL connection string |
+| `PORT` | `8080` | Port for the Node.js server |
+| `DATABASE_URL` | `postgresql://postgres:MBeAkwZQLdPGhXzUTcclEYNFufdwcnnd@metro.proxy.rlwy.net:56048/railway` | PostgreSQL connection string |
 | `JWT_SECRET` | [Auto-generated] | Secret key for JWT authentication |
 | `ADMIN_API_KEY` | [Auto-generated] | API key for admin endpoints |
 | `COINGECKO_API_KEY` | `CG-dzCqFQBvWE5iKBYBLH8xSnPz` | CoinGecko API key for price data |
