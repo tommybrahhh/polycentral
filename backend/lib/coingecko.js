@@ -37,21 +37,34 @@ module.exports = {
     });
   },
 
-  async getHistoricalPrice(cryptoId, date) {
-    return withRetry(async () => {
-      const formattedDate = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
-      const response = await axios.get(`${API_URL}/coins/${cryptoId}/history`, {
-        params: { date: formattedDate },
-        headers: {
-          'x-cg-demo-api-key': API_KEY
-        }
-      });
+  async getHistoricalPrice(coinId, date) {
+    // The CoinGecko API requires the date to be in DD-MM-YYYY format.
+    // This function takes the incoming JavaScript Date object and formats it correctly.
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // .getMonth() is 0-based, so we add 1
+    const year = date.getFullYear();
+    const formattedDate = `${day}-${month}-${year}`;
+
+    // Construct the URL with the correctly formatted date.
+    const url = `https://api.coingecko.com/api/v3/coins/${coinId}/history?date=${formattedDate}&localization=false`;
+    
+    // The BASE_URL and headers variables are assumed to be defined elsewhere in this file.
+    // If they are not, replace the URL above with the full, hardcoded URL.
+
+    try {
+      const response = await axios.get(url, { headers });
       
-      if (!response.data.market_data?.current_price?.usd) {
-        throw new Error('No historical price data');
+      // Defensive check: Ensure the expected data structure exists before accessing it.
+      if (response.data && response.data.market_data && response.data.market_data.current_price && response.data.market_data.current_price.usd) {
+        return response.data.market_data.current_price.usd;
+      } else {
+        // Handle cases where the API returns a success status but no price data is available.
+        throw new Error(`No price data found in CoinGecko response for ${coinId} on ${formattedDate}`);
       }
-      
-      return response.data.market_data.current_price.usd;
-    });
+    } catch (error) {
+      // Re-throw the original error. This allows the calling function in `server.js`
+      // to catch and log it with its more detailed error handling logic.
+      throw error;
+    }
   }
 };
