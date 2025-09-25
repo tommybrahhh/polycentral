@@ -383,7 +383,16 @@ async function resolvePendingEvents() {
         
         console.log(`Awarded points to ${result.rowCount} winners for event ${event.id}`);
       } catch (error) {
-        console.error(`Failed to resolve event ${event.id}:`, error);
+        // --- START OF NEW, MORE DETAILED LOGGING ---
+        if (error.response) {
+            // This means the CoinGecko server responded with an error (like 429)
+            console.error(`Failed to resolve event ${event.id}. API Error: Status ${error.response.status} - ${error.response.statusText}. Data:`, error.response.data);
+            // We'll skip this event for now and let the cron job try again later.
+        } else {
+            // This is for other errors, like a network failure
+            console.error(`Failed to resolve event ${event.id} with a non-API error:`, error.message);
+        }
+        // --- END OF NEW LOGGING ---
       }
     }
   } catch (error) {
@@ -738,7 +747,8 @@ async function createDailyEvent() {
 
 // Schedule cron jobs
 cron.schedule('0 0 * * *', createDailyEvent);
-cron.schedule('*/30 * * * *', resolvePendingEvents);
+cron.schedule('0 * * * *', resolvePendingEvents); // This means "at minute 0 of every hour"
+
 
 // --- Admin Manual Event Creation Endpoint ---
 // This endpoint allows admin to manually trigger event creation
