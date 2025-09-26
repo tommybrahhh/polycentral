@@ -52,7 +52,7 @@ const LoginForm = ({ onClose }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
+          identifier: formData.email,
           password: formData.password
         })
       });
