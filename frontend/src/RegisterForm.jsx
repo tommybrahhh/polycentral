@@ -107,7 +107,11 @@ const RegisterForm = ({ onClose }) => {
       if (response.ok) {
         const data = await response.json();
         console.log('Registration successful', data);
-        navigate('/login');
+        // Store the auth token in localStorage
+        localStorage.setItem('auth_token', data.token);
+        // Update app state to reflect logged-in user
+        // The App component will handle this via context or state
+        navigate('/events');
       } else {
         const errorData = await response.json();
         
