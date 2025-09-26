@@ -3,12 +3,14 @@ import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './style.css';
 import RegisterForm from './RegisterForm';
+import LoginForm from './LoginForm';
 
 // Main App Component
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [points, setPoints] = useState(0);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTestButton, setShowTestButton] = useState(true); // Show test button for development
 
   // This function checks if a wallet is connected when the app loads
@@ -100,9 +102,7 @@ const App = () => {
           <button
             className="nav-link"
             onClick={() => {
-              // In a real app, this would open a login modal
-              // For now, we'll use the register modal for both
-              setShowRegisterModal(true);
+              setShowLoginModal(true);
             }}
           >
             Login
@@ -190,6 +190,9 @@ const App = () => {
       {showRegisterModal && (
         <RegisterForm onClose={() => setShowRegisterModal(false)} />
       )}
+      {showLoginModal && (
+        <LoginForm onClose={() => setShowLoginModal(false)} />
+      )}
     </Router>
   );
 };
@@ -233,15 +236,9 @@ const EventsInterface = () => {
     }
   };
 
-  return (
-    <div className="events-container">
-      <div className="header">
-        <h2>Manage Events</h2>
-        <button onClick={() => setShowCreateModal(true)} className="create-btn">
-          + New Event
-        </button>
-      </div>
-
+  
+        return (
+      <div className="events-container">
       {showCreateModal && (
         <div className="modal-overlay">
           <div className="modal">
