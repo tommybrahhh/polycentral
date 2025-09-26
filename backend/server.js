@@ -660,6 +660,7 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
 // GET active events
 app.get('/api/events/active', async (req, res) => {
   try {
+    console.log('Fetching active events...');
     // Query active events with initial price
     const { rows } = await pool.query(
       `SELECT
@@ -698,6 +699,12 @@ app.get('/api/events/active', async (req, res) => {
     res.json(activeEvents);
   } catch (error) {
     console.error('❌ Error fetching active events:', error);
+    console.error('SQL Query:', error.sql);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: error.message,
+      sql: error.sql
+    });
     // Log detailed SQL error for debugging
     console.error('SQL Error Details:', error.message, error.stack);
     res.status(500).json({
@@ -727,7 +734,18 @@ app.use((err, req, res, next) => {
 });
 
 app.use((req, res) => {
-    res.status(404).json({ error: 'Endpoint not found' });
+    console.log('404 - Endpoint not found:', req.method, req.originalUrl);
+    res.status(404).json({
+      error: 'Endpoint not found',
+      path: req.originalUrl,
+      availableRoutes: [
+        '/api/health',
+        '/api/events/active',
+        '/api/events',
+        '/api/auth/register',
+        '/api/auth/login'
+      ]
+    });
 });
 
 // --- Initial Event Creation Function ---
