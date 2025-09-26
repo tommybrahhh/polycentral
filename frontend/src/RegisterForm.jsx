@@ -117,7 +117,7 @@ const RegisterForm = ({ onClose }) => {
           if (errorData.message.includes('already exists')) {
             errorMessage = 'Email already registered. Please use a different email.';
           } else if (errorData.message.includes('password')) {
-            errorMessage = 'Invalid password. Must be at least 6 characters.';
+            errorMessage = 'Invalid password. ' + errorData.message;
           }
         }
         
@@ -195,15 +195,25 @@ const RegisterForm = ({ onClose }) => {
           
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              aria-invalid={!!errors.password}
-              aria-describedby="password-error"
-            />
+            <div className="password-input-container">
+              <input
+                type={formData.showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                aria-invalid={!!errors.password}
+                aria-describedby="password-error"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setFormData(prev => ({ ...prev, showPassword: !prev.showPassword }))}
+                aria-label={formData.showPassword ? "Hide password" : "Show password"}
+              >
+                {formData.showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
             {errors.password && <div id="password-error" className="error">{errors.password}</div>}
           </div>
           
