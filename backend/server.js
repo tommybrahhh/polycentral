@@ -449,7 +449,7 @@ app.get('/', (req, res) => res.json({ status: 'OK' }));
 app.post('/api/auth/register', async (req, res) => {
   console.log('Registration request received:', req.body);
   const { username, email, password } = req.body;
-  if (!username || !email || !password) {
+  if (!username || !username.trim() || !email || !password) {
     console.log('Missing required fields:', { username: !!username, email: !!email, password: !!password });
     return res.status(400).json({ error: 'Username, email, and password are required' });
   }
@@ -462,7 +462,7 @@ app.post('/api/auth/register', async (req, res) => {
   // Check for existing username or email
   try {
     const existingUser = await pool.query(
-      'SELECT * FROM users WHERE username = $1 OR email = $2',
+      'SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR email = $2',
       [username, email]
     );
     if (existingUser.rows.length > 0) {
@@ -477,9 +477,11 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     const { rows: [newUser] } = await pool.query(
-      `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, points`,
+      `INSERT INTO users (username, email, password_hash) VALUES (LOWER($1), $2, $3) RETURNING id, username, email, points`,
       [username, email, passwordHash]
     );
+    // Ensure username is returned in original case for the response
+    newUser.username = username;
     const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: newUser });
   } catch (error) {
