@@ -48,8 +48,10 @@ module.exports = {
     // Construct the URL with the correctly formatted date.
     const url = `https://api.coingecko.com/api/v3/coins/${coinId}/history?date=${formattedDate}&localization=false`;
     
-    // The BASE_URL and headers variables are assumed to be defined elsewhere in this file.
-    // If they are not, replace the URL above with the full, hardcoded URL.
+    // Create headers object with API key
+    const headers = {
+      'x-cg-demo-api-key': API_KEY
+    };
 
     try {
       const response = await axios.get(url, { headers });
