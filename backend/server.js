@@ -122,12 +122,22 @@ if (dbType === 'postgres') {
   pool = {
     query: (text, params) => {
       return new Promise((resolve, reject) => {
-        db.all(text, params, (err, rows) => {
+        // SQLite uses '?' instead of '$1, $2', so we convert them
+        const sqliteQuery = text.replace(/\$\d+/g, '?');
+        db.all(sqliteQuery, params, (err, rows) => {
           if (err) reject(err);
           else resolve({ rows });
         });
       });
-    }
+    },
+    // Add a mock .connect() method to support transactions in SQLite
+    connect: () => Promise.resolve({
+        query: async (text, params) => {
+            if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') return { rows: [] };
+            return pool.query(text, params);
+        },
+        release: () => {}
+    })
   };
   console.log('💾 SQLite database connected');
 }
@@ -657,6 +667,43 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
 // Other routes...
 app.get('/api/user/stats', authenticateToken, async (req, res) => { /* ... */ });
 app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => { /* ... */ });
+// GET user prediction history
+app.get('/api/user/history', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    const { rows } = await pool.query(
+      `SELECT
+         e.id,
+         e.title,
+         e.initial_price,
+         e.final_price,
+         e.resolution_status,
+         e.start_time,
+         e.end_time,
+         p.prediction,
+         CASE
+           WHEN e.resolution_status = 'resolved' THEN
+             CASE
+               WHEN (e.final_price > e.initial_price AND p.prediction = 'Higher') OR (e.final_price < e.initial_price AND p.prediction = 'Lower') THEN 'win'
+               ELSE 'loss'
+             END
+           ELSE 'pending'
+         END as result,
+         e.entry_fee
+       FROM participants p
+       JOIN events e ON p.event_id = e.id
+       WHERE p.user_id = $1
+       ORDER BY e.start_time DESC`,
+      [userId]
+    );
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching user prediction history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 // GET active events
 app.get('/api/events/active', async (req, res) => {
   try {
@@ -699,16 +746,8 @@ app.get('/api/events/active', async (req, res) => {
     res.json(activeEvents);
   } catch (error) {
     console.error('❌ Error fetching active events:', error);
-    console.error('SQL Query:', error.sql);
     res.status(500).json({
-      error: 'Internal server error',
-      details: error.message,
-      sql: error.sql
-    });
-    // Log detailed SQL error for debugging
-    console.error('SQL Error Details:', error.message, error.stack);
-    res.status(500).json({
-      error: 'Internal server error',
+      error: 'Internal server error while fetching active events',
       details: error.message
     });
   }
@@ -718,7 +757,7 @@ app.get('/api/events', async (req, res) => { /* ... */ });
 // For testing: manually trigger event resolution
 app.post('/api/events/resolve', authenticateAdmin, async (req, res) => {
     try {
-        await resolveEvents();
+        await resolvePendingEvents();
         res.json({ success: true, message: "Resolution job triggered" });
     } catch (error) {
         console.error('Error in manual event resolution:', error);
@@ -751,9 +790,10 @@ app.use((req, res) => {
 // --- Initial Event Creation Function ---
 async function createInitialEvent() {
   try {
-    const existing = await pool.query(
-      "SELECT * FROM events WHERE start_time > NOW() - INTERVAL '1 day'"
-    );
+    const query = dbType === 'postgres'
+      ? "SELECT 1 FROM events WHERE start_time > NOW() - INTERVAL '1 day' LIMIT 1"
+      : "SELECT 1 FROM events WHERE start_time > datetime('now', '-1 day') LIMIT 1";
+    const existing = await pool.query(query);
     if (existing.rows.length === 0) {
       const price = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
       await createEvent(price);
