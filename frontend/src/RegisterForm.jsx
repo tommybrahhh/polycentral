@@ -7,7 +7,9 @@ const RegisterForm = ({ onClose }) => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    showPassword: false,
+    showConfirmPassword: false
   });
   
   const [errors, setErrors] = useState({});
@@ -21,6 +23,11 @@ const RegisterForm = ({ onClose }) => {
     // Clear error when user types
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    
+    // Clear password error when user types
+    if (name === 'password' && errors.password) {
+      setErrors(prev => ({ ...prev, password: '' }));
     }
   };
 
@@ -39,8 +46,33 @@ const RegisterForm = ({ onClose }) => {
     
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(formData.password)) {
-      newErrors.password = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character';
+    } else {
+      const requirements = {
+        length: formData.password.length >= 8,
+        lowercase: /[a-z]/.test(formData.password),
+        uppercase: /[A-Z]/.test(formData.password),
+        number: /\d/.test(formData.password),
+        special: /[@$!%*?&]/.test(formData.password)
+      };
+      
+      const missing = Object.entries(requirements)
+        .filter(([key, met]) => !met)
+        .map(([key]) => key);
+        
+      if (missing.length > 0) {
+        const missingText = missing.map(req => {
+          switch (req) {
+            case 'length': return 'at least 8 characters';
+            case 'lowercase': return 'a lowercase letter';
+            case 'uppercase': return 'an uppercase letter';
+            case 'number': return 'a number';
+            case 'special': return 'a special character (@, $, !, %, *, ?, &)';
+            default: return req;
+          }
+        }).join(', ');
+        
+        newErrors.password = `Password must contain ${missingText}`;
+      }
     }
     
     if (formData.password !== formData.confirmPassword) {
