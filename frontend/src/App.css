@@ -43,23 +43,31 @@
 
 /* Modal Overlay Styles */
 .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  z-index: 1000;
 }
 
 .modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
   width: 90%;
   max-width: 500px;
-  margin: 0 auto;
-  border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .modal-header {
-  padding: 24px 24px 16px;
+  padding: 0 0 16px;
   border-bottom: 1px solid #eee;
+  margin: 0;
 }
 
 .modal-header h2 {
@@ -91,9 +99,10 @@
 }
 
 .register-form {
-  padding: 24px;
+  padding: 0;
 }
 
+/* Form Styles */
 .form-group {
   margin-bottom: 20px;
 }
@@ -159,46 +168,6 @@
   border-radius: 8px;
   margin-bottom: 16px;
   border: 1px solid #f5c6cb;
-}
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-}
-
-.register-form {
-  display: flex;
-  flex-direction: column;
 }
 
 /* Password Input Styles */

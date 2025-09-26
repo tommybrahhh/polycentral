@@ -117,7 +117,7 @@ const RegisterForm = ({ onClose }) => {
           if (errorData.message.includes('already exists')) {
             errorMessage = 'Email already registered. Please use a different email.';
           } else if (errorData.message.includes('password')) {
-            errorMessage = 'Invalid password. ' + errorData.message;
+            errorMessage = errorData.message;
           }
         }
         
