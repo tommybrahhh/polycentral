@@ -453,10 +453,14 @@ app.post('/api/auth/register', async (req, res) => {
     console.log('Missing required fields:', { username: !!username, email: !!email, password: !!password });
     return res.status(400).json({ error: 'Username, email, and password are required' });
   }
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  // Make password validation more flexible - only require minimum length and character diversity
+  // Allow any special characters and focus on preventing weak passwords rather than enforcing specific ones
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
   if (!passwordRegex.test(password)) {
     console.log('Password does not meet requirements:', password);
-    return res.status(400).json({ error: 'Password not strong enough.' });
+    return res.status(400).json({
+      error: 'Password must contain at least 8 characters, including uppercase, lowercase, and numeric characters. Special characters are allowed but not required.'
+    });
   }
 
   // Check for existing username or email
