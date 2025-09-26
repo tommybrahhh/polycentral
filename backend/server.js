@@ -432,10 +432,17 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
 app.get('/', (req, res) => res.json({ status: 'OK' }));
 
 app.post('/api/auth/register', async (req, res) => {
+  console.log('Registration request received:', req.body);
   const { username, email, password } = req.body;
-  if (!username || !email || !password) return res.status(400).json({ error: 'Username, email, and password are required' });
+  if (!username || !email || !password) {
+    console.log('Missing required fields:', { username: !!username, email: !!email, password: !!password });
+    return res.status(400).json({ error: 'Username, email, and password are required' });
+  }
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  if (!passwordRegex.test(password)) return res.status(400).json({ error: 'Password not strong enough.' });
+  if (!passwordRegex.test(password)) {
+    console.log('Password does not meet requirements:', password);
+    return res.status(400).json({ error: 'Password not strong enough.' });
+  }
 
   // Check for existing username or email
   try {
