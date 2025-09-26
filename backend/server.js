@@ -21,6 +21,29 @@ console.log(`- RENDER: ${process.env.RENDER || 'not set'}`);
 console.log(`- NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
 console.log(`- DB_TYPE: ${process.env.DB_TYPE || 'not set'}`);
 console.log(`- DATABASE_URL: ${process.env.DATABASE_URL ? 'set' : 'not set'}`);
+
+// --- Database Type Detection ---
+function getDatabaseType() {
+  // Check DB_TYPE environment variable
+  if (process.env.DB_TYPE) {
+    return process.env.DB_TYPE;
+  }
+  // If DATABASE_URL is set and starts with 'postgres', use PostgreSQL
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres')) {
+    return 'postgres';
+  }
+  // Enforce PostgreSQL in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('PostgreSQL configuration required in production');
+  }
+  console.warn('Using SQLite for development only');
+  return 'sqlite';
+}
+
+// Now that environment variables are loaded, determine database type
+const dbType = getDatabaseType();
+
+// Continue with the rest of the setup
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -70,26 +93,8 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// --- Database Type Detection ---
-function getDatabaseType() {
-  // Check DB_TYPE environment variable
-  if (process.env.DB_TYPE) {
-    return process.env.DB_TYPE;
-  }
-  // If DATABASE_URL is set and starts with 'postgres', use PostgreSQL
-  if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres')) {
-    return 'postgres';
-  }
-  // Enforce PostgreSQL in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('PostgreSQL configuration required in production');
-  }
-  console.warn('Using SQLite for development only');
-  return 'sqlite';
-}
 // --- Database Setup ---
 const fs = require('fs').promises;
-const dbType = getDatabaseType();
 let pool;
 
 if (dbType === 'postgres') {
