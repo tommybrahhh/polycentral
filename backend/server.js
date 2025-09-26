@@ -59,7 +59,7 @@ const PORT = process.env.PORT || 8080;
 // --- Middleware Setup ---
 app.use(helmet());
 // Set allowed origins for CORS - include both your frontend domains
-const raw = process.env.CORS_ORIGIN || 'https://polyc-seven.vercel.app,http://localhost:5173';
+const raw = process.env.CORS_ORIGIN || 'https://polyc-e9xss6xg8-tommybrahhhs-projects.vercel.app,https://polyc-seven.vercel.app,http://localhost:5173';
 const allowedOrigins = raw.split(',').map(o => o.trim()).filter(Boolean);
 app.use(cors({
     origin: function (origin, callback) {
