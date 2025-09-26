@@ -39,8 +39,8 @@ const RegisterForm = ({ onClose }) => {
     
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(formData.password)) {
+      newErrors.password = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character';
     }
     
     if (formData.password !== formData.confirmPassword) {
