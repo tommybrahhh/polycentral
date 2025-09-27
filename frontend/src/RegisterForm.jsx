@@ -109,6 +109,10 @@ const RegisterForm = ({ onClose }) => {
         console.log('Registration successful', data);
         // Store the auth token in localStorage
         localStorage.setItem('auth_token', data.token);
+        
+        // Store user info in localStorage
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
         // Update app state to reflect logged-in user
         // The App component will handle this via context or state
         navigate('/events');

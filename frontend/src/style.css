@@ -445,3 +445,98 @@
 .error {
   color: #ff6b6b;
 }
+/* User Status Styles */
+.user-status {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.username {
+  font-weight: bold;
+  color: #333;
+  font-size: 14px;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.auth-button {
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Points Display */
+.points-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.claim-btn {
+  background: linear-gradient(45deg, #00cc66, #00b359);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 60px;
+}
+
+.claim-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 204, 102, 0.3);
+}
+
+.claim-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.claim-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 204, 102, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .user-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .user-info {
+    align-items: flex-start;
+  }
+  
+  .points-display {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

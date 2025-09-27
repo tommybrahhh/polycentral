@@ -62,7 +62,11 @@ const LoginForm = ({ onClose }) => {
         console.log('Login successful', data);
         // Store the auth token in localStorage
         localStorage.setItem('auth_token', data.token);
-        // Close the modal
+        
+        // Store user info in localStorage
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Update app state
         if (onClose) onClose();
       } else {
         const errorData = await response.json();

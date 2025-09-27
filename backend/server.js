@@ -671,8 +671,67 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
 });
 
 // Other routes...
-app.get('/api/user/stats', authenticateToken, async (req, res) => { /* ... */ });
-app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => { /* ... */ });
+// Claim free points endpoint
+app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has already claimed points today
+    const { rows: claimCheck } = await pool.query(
+      `SELECT last_claimed FROM users WHERE id = $1`,
+      [req.userId]
+    );
+
+    if (claimCheck.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const lastClaimed = claimCheck[0].last_claimed;
+    const now = new Date();
+    
+    // Check if user has claimed within the last 24 hours
+    if (lastClaimed) {
+      const hoursSinceLastClaim = (now - new Date(lastClaimed)) / (1000 * 60 * 60);
+      if (hoursSinceLastClaim < 24) {
+        return res.status(400).json({
+          error: 'You can only claim free points once every 24 hours',
+          hoursRemaining: Math.ceil(24 - hoursSinceLastClaim)
+        });
+      }
+    }
+
+    // Begin transaction for data consistency
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Award 250 points to the user
+      const pointsToAward = 250;
+      const { rows: [updatedUser] } = await client.query(
+        `UPDATE users
+         SET points = points + $1, last_claimed = NOW()
+         WHERE id = $2
+         RETURNING id, username, points`,
+        [pointsToAward, req.userId]
+      );
+
+      await client.query('COMMIT');
+      
+      res.json({
+        message: 'Successfully claimed free points!',
+        points: pointsToAward,
+        newTotal: updatedUser.points
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error claiming free points:', error);
+    res.status(500).json({ error: 'Failed to claim points' });
+  }
+});
+
 // GET user prediction history
 app.get('/api/user/history', authenticateToken, async (req, res) => {
   try {

@@ -9,6 +9,7 @@ import LoginForm from './LoginForm';
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [points, setPoints] = useState(0);
+  const [username, setUsername] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTestButton, setShowTestButton] = useState(true); // Show test button for development
@@ -64,6 +65,14 @@ const App = () => {
   // This runs our function when the page loads.
   // It also sets up a listener for account changes.
   useEffect(() => {
+    // Check for stored user data
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUsername(userData.username);
+      setPoints(userData.points);
+    }
+    
     checkIfWalletIsConnected();
 
     const handleAccountsChanged = (accounts) => {
@@ -93,91 +102,50 @@ const App = () => {
         <nav className="main-nav">
           <Link to="/events" className="nav-link">Events</Link>
           <Link to="/predictions" className="nav-link">Predictions</Link>
-          <button
-            className="nav-link"
-            onClick={() => setShowRegisterModal(true)}
-          >
-            Register
-          </button>
-          <button
-            className="nav-link"
-            onClick={() => {
-              setShowLoginModal(true);
-            }}
-          >
-            Login
-          </button>
-          
-          {/* --- Wallet Button Logic --- */}
-         <div className="wallet-container">
-           {!currentAccount ? (
-             <button onClick={connectWallet} className="wallet-btn">
-               Connect Wallet
-             </button>
+          {/* --- User Status Display --- */}
+         <div className="user-status">
+           {username ? (
+             <div className="user-info">
+               <span className="username">Hello, {username}!</span>
+               <div className="points-display">
+                 🪙 {points} Points
+                 <button
+                   className="claim-btn"
+                   onClick={async () => {
+                     try {
+                       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/claim-free-points`, {}, {
+                         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+                       });
+                       setPoints(response.data.newTotal);
+                       alert(response.data.message);
+                     } catch (error) {
+                       console.error('Claim failed:', error);
+                       alert('Failed to claim points: ' + (error.response?.data?.message || error.message));
+                     }
+                   }}
+                   title="Claim daily points"
+                 >
+                   + Claim
+                 </button>
+               </div>
+             </div>
            ) : (
-             <p className="wallet-address">
-               Connected: {`${currentAccount.substring(0, 6)}...${currentAccount.substring(currentAccount.length - 4)}`}
-             </p>
+             <div className="auth-buttons">
+               <button
+                 className="nav-link auth-button"
+                 onClick={() => setShowRegisterModal(true)}
+               >
+                 Register
+               </button>
+               <button
+                 className="nav-link auth-button"
+                 onClick={() => setShowLoginModal(true)}
+               >
+                 Login
+               </button>
+             </div>
            )}
-           
-            <div className="points-display">
-              🪙 {points} Points
-              <button
-                className="claim-btn"
-                onClick={async () => {
-                  try {
-                    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/claim-free-points`, {}, {
-                      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
-                    });
-                    setPoints(p => p + response.data.points);
-                  } catch (error) {
-                    console.error('Claim failed:', error);
-                    alert('Failed to claim points: ' + (error.response?.data?.message || error.message));
-                  }
-                }}
-                title="Claim daily points"
-              >
-                + Claim
-              </button>
-              
-              {/* Admin button to manually create event */}
-              {currentAccount && (
-                <button
-                  onClick={async () => {
-                    if (!window.confirm('Are you sure you want to create a new event?')) return;
-                    try {
-                      const token = localStorage.getItem('auth_token');
-                      const response = await axios.post(
-                        `${import.meta.env.VITE_API_BASE_URL}/api/admin/events/create`,
-                        {},
-                        {
-                          headers: { Authorization: `Bearer ${token}` }
-                        }
-                      );
-                      alert(response.data.message);
-                      // Refresh events
-                      fetchEvents();
-                    } catch (error) {
-                      console.error('Error creating event:', error);
-                      alert('Failed to create event: ' + (error.response?.data?.error || error.message));
-                    }
-                  }}
-                  style={{
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    padding: '8px 15px',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    marginLeft: '10px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  + Create Event
-                </button>
-              )}
-            </div>
-          </div>
+         </div>
         </nav>
 
         <Routes>
