@@ -1,12 +1,13 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--spacing-xl);
   text-align: center;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   justify-content: flex-start;
+  background-color: var(--color-background);
 }
 
 .logo {
@@ -52,7 +53,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--color-overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -61,14 +62,14 @@
 }
 
 .modal-content {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--color-surface);
   backdrop-filter: blur(10px);
-  padding: 30px;
-  border-radius: 16px;
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-xl);
   width: 90%;
   max-width: 450px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
 }
 
 .modal-header {
@@ -79,17 +80,17 @@
 
 .modal-header h2 {
   margin: 0;
-  color: #333;
-  font-size: 24px;
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
   font-weight: 600;
 }
 
 .close-btn {
   position: absolute;
-  right: 16px;
-  top: 16px;
-  background: #f1f1f1;
-  border: none;
+  right: var(--spacing-md);
+  top: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -98,11 +99,12 @@
   justify-content: center;
   font-size: 20px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: #e0e0e0;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
 }
 
 .register-form {
@@ -125,19 +127,19 @@
 .form-group input {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  font-size: 16px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
   transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
-  background: white;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.2);
+  background: var(--color-surface);
 }
 
 .form-group input.error {
@@ -153,37 +155,37 @@
 .submit-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(45deg, #007bff, #0056b3);
+  background: linear-gradient(45deg, var(--color-primary), #00264d);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: linear-gradient(45deg, #0056b3, #004085);
+  background: linear-gradient(45deg, #00264d, #001a33);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 .submit-btn:disabled {
-  background: #6c757d;
+  background: #666;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
 .error-message {
-  background: #f8d7da;
-  color: #721c24;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border: 1px solid #f5c6cb;
+  background: rgba(213, 0, 0, 0.1);
+  color: var(--color-error);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid rgba(213, 0, 0, 0.2);
 }
 
 /* Password Input Styles */

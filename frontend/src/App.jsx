@@ -108,7 +108,9 @@ const App = () => {
              <div className="user-info">
                <span className="username">Hello, {username}!</span>
                <div className="points-display">
-                 🪙 {points} Points
+                 <div className="points-balance">
+                   🪙 <span className="points-amount">{points}</span> Points
+                 </div>
                  <button
                    className="claim-btn"
                    onClick={async () => {
@@ -116,7 +118,35 @@ const App = () => {
                        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/claim-free-points`, {}, {
                          headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
                        });
-                       setPoints(response.data.newTotal);
+                       // Animate the points change
+                       const oldPoints = points;
+                       const newPoints = response.data.newTotal;
+                       
+                       // Create a smooth animation from old to new points
+                       const duration = 1000; // 1 second animation
+                       const startTime = Date.now();
+                       
+                       const animatePoints = () => {
+                         const currentTime = Date.now();
+                         const elapsed = currentTime - startTime;
+                         const progress = Math.min(elapsed / duration, 1);
+                         
+                         // Easing function for smooth animation
+                         const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                         const currentPoints = Math.floor(oldPoints + (newPoints - oldPoints) * easeOutCubic);
+                         
+                         setPoints(currentPoints);
+                         
+                         if (progress < 1) {
+                           requestAnimationFrame(animatePoints);
+                         } else {
+                           // Ensure we end with the exact new points value
+                           setPoints(newPoints);
+                         }
+                       };
+                       
+                       requestAnimationFrame(animatePoints);
+                       
                        alert(response.data.message);
                      } catch (error) {
                        console.error('Claim failed:', error);
@@ -125,7 +155,7 @@ const App = () => {
                    }}
                    title="Claim daily points"
                  >
-                   + Claim
+                   <span className="claim-icon">🎁</span> Claim
                  </button>
                </div>
                <button
@@ -351,7 +381,11 @@ const EventCard = ({ event }) => {
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     
-    return `${days}d ${hours}h ${minutes}m ${secs}s remaining`;
+    return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  };
+
+  const getTimePercentage = (totalTime, currentTime) => {
+    return Math.max(0, Math.min(100, ((totalTime - currentTime) / totalTime) * 100));
   };
 
   const handleBet = async (prediction) => {
@@ -360,6 +394,15 @@ const EventCard = ({ event }) => {
       const token = localStorage.getItem('auth_token');
       if (!token) throw new Error('User not authenticated');
       
+      // Add button press animation
+      const button = document.activeElement;
+      if (button) {
+        button.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          if (button) button.style.transform = '';
+        }, 150);
+      }
+      
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
         { prediction },
@@ -367,13 +410,38 @@ const EventCard = ({ event }) => {
       );
       
       setBetStatus('success');
+      
+      // Add celebration effect for successful bet
+      const eventCard = document.querySelector('.event-card');
+      if (eventCard) {
+        eventCard.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+          eventCard.style.transform = '';
+        }, 200);
+      }
+      
       setTimeout(() => setBetStatus(null), 3000);
     } catch (error) {
       console.error('Betting failed:', error);
       setBetStatus('error');
+      
+      // Add shake effect for error
+      const eventCard = document.querySelector('.event-card');
+      if (eventCard) {
+        eventCard.style.animation = 'shake 0.5s ease';
+        setTimeout(() => {
+          eventCard.style.animation = '';
+        }, 500);
+      }
+      
       setTimeout(() => setBetStatus(null), 3000);
     }
   };
+
+  // Calculate total time for countdown percentage
+  const totalTime = event.end_time ? (new Date(event.end_time) - new Date(event.start_time)) / 1000 : 86400; // Default 24 hours
+  const currentTime = timeRemaining;
+  const timePercentage = getTimePercentage(totalTime, currentTime);
 
   return (
     <div className="event-card">
@@ -381,17 +449,36 @@ const EventCard = ({ event }) => {
         <h3>{event.title}</h3>
         <div className="event-meta">
           <span className="entry-fee">🎫 ${event.entry_fee}</span>
-          <span className="time-remaining">
-            {isExpired ? '⏱️ Expired' : `⏱️ ${formatTime(timeRemaining)}`}
-          </span>
+          <div className="time-remaining-container">
+            <span className="time-remaining">
+              {isExpired ? '⏱️ Expired' : `⏱️ ${formatTime(timeRemaining)}`}
+            </span>
+            <div className="countdown-progress">
+              <div
+                className="countdown-progress-bar"
+                style={{ width: `${timePercentage}%` }}
+              ></div>
+            </div>
+          </div>
         </div>
       </div>
       <p className="description">{event.description}</p>
       
-      {/* Display initial Bitcoin price */}
+      {/* Display current cryptocurrency price */}
       {event.initial_price && (
-        <div className="price-info">
-          <strong>Starting Price:</strong> ${event.initial_price.toLocaleString()}
+        <div className="price-display">
+          <div className="current-price">
+            ${event.initial_price.toLocaleString()}
+          </div>
+          <div className="price-change">
+            {event.price_change === 'up' ? (
+              <span className="price-up">↑</span>
+            ) : event.price_change === 'down' ? (
+              <span className="price-down">↓</span>
+            ) : (
+              <span className="price-neutral">→</span>
+            )}
+          </div>
         </div>
       )}
       
@@ -401,6 +488,7 @@ const EventCard = ({ event }) => {
           onClick={() => handleBet('Higher')}
           disabled={isExpired || betStatus === 'success'}
         >
+          <span className="bet-icon">📈</span>
           Higher
         </button>
         <button
@@ -408,6 +496,7 @@ const EventCard = ({ event }) => {
           onClick={() => handleBet('Lower')}
           disabled={isExpired || betStatus === 'success'}
         >
+          <span className="bet-icon">📉</span>
           Lower
         </button>
       </div>
