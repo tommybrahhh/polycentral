@@ -185,6 +185,9 @@ async function initializeDatabase() {
     // Run database migrations BEFORE creating sample data
     await runMigrations();
 
+    // Ensure participants table has correct column names
+    await ensureParticipantsTableIntegrity();
+
     // Skip sample data in production - removed entirely to prevent errors
     console.log('⏭️ Skipping sample data creation in production');
     
@@ -223,6 +226,84 @@ async function runMigrationSafe(sql) {
     if (!error.message.includes('already exists') && error.code !== '42710') {
       throw error;
     }
+// Ensure participants table has the correct column structure
+async function ensureParticipantsTableIntegrity() {
+  const dbType = getDatabaseType();
+  try {
+    console.log('🔧 Checking participants table column integrity...');
+    
+    // Query to check column names - different for PostgreSQL and SQLite
+    let columnsQuery;
+    if (dbType === 'postgres') {
+      columnsQuery = `
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'participants' 
+        AND column_name IN ('amount', 'points_paid')
+      `;
+    } else {
+      // SQLite
+      columnsQuery = `
+        PRAGMA table_info(participants)
+      `;
+    }
+    
+    const result = await pool.query(columnsQuery);
+    const columns = dbType === 'postgres' 
+      ? result.rows.map(row => row.column_name) 
+      : result.rows.filter(row => ['amount', 'points_paid'].includes(row.name)).map(row => row.name);
+    
+    const hasAmount = columns.includes('amount');
+    const hasPointsPaid = columns.includes('points_paid');
+    
+    if (hasAmount && !hasPointsPaid) {
+      console.log('✅ Participants table has correct column: amount');
+      return;
+    }
+    
+    if (!hasAmount && hasPointsPaid) {
+      // Rename points_paid to amount
+      const renameQuery = dbType === 'postgres'
+        ? 'ALTER TABLE participants RENAME COLUMN points_paid TO amount'
+        : `
+          CREATE TABLE participants_new AS SELECT id, event_id, user_id, prediction, points_paid as amount, created_at FROM participants;
+          DROP TABLE participants;
+          ALTER TABLE participants_new RENAME TO participants;
+        `;
+      
+      await pool.query(renameQuery);
+      console.log('✅ Renamed points_paid column to amount in participants table');
+      return;
+    }
+    
+    if (hasAmount && hasPointsPaid) {
+      // Both columns exist, drop the old one
+      const dropQuery = dbType === 'postgres'
+        ? 'ALTER TABLE participants DROP COLUMN points_paid'
+        : 'ALTER TABLE participants DROP COLUMN points_paid'; // SQLite 3.35.0+ supports DROP COLUMN
+      
+      try {
+        await pool.query(dropQuery);
+        console.log('✅ Removed deprecated points_paid column from participants table');
+      } catch (error) {
+        console.warn('⚠️ Could not drop points_paid column, may need manual cleanup:', error.message);
+      }
+      return;
+    }
+    
+    // Neither column exists - create amount column
+    const addColumnQuery = dbType === 'postgres'
+      ? 'ALTER TABLE participants ADD COLUMN IF NOT EXISTS amount INTEGER NOT NULL DEFAULT 0'
+      : 'ALTER TABLE participants ADD COLUMN amount INTEGER NOT NULL DEFAULT 0';
+    
+    await pool.query(addColumnQuery);
+    console.log('✅ Added amount column to participants table');
+    
+  } catch (error) {
+    console.error('❌ Error checking participants table integrity:', error);
+    // Don't throw - this is a best-effort fix, not critical to startup
+  }
+}
     console.warn(`Migration item already exists: ${error.message}`);
   }
 }
