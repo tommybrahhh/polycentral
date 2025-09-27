@@ -612,7 +612,8 @@ app.post('/api/events', authenticateToken, async (req, res) => {
 // Endpoint for placing a bet on an event
 app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     const eventId = req.params.id;
-    const { userId, prediction } = req.body;
+    const { prediction } = req.body;
+    const userId = req.userId;
     
     // Validate prediction - updated to use "Higher" and "Lower" options
     if (prediction !== 'Higher' && prediction !== 'Lower') {
