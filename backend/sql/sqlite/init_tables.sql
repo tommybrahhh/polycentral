@@ -48,6 +48,6 @@ CREATE TABLE IF NOT EXISTS participants (
     event_id INTEGER REFERENCES events(id),
     user_id INTEGER REFERENCES users(id),
     prediction TEXT NOT NULL,
-    points_paid INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
