@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     points INTEGER DEFAULT 1000,
     total_events INTEGER DEFAULT 0,
     won_events INTEGER DEFAULT 0,
-    last_claim_date TIMESTAMP,
-    last_login_date TIMESTAMP,
+    last_claim_date TEXT,
+    last_login_date TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
