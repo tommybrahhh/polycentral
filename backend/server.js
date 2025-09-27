@@ -328,6 +328,7 @@ async function runMigrations() {
 async function createEvent(initialPrice) {
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+  const entryFee = 0; // Free participation for daily event
 
   // Generate formatted title with date and crypto symbol
   const eventDate = new Date().toISOString().split('T')[0];
@@ -341,9 +342,9 @@ async function createEvent(initialPrice) {
   const eventTypeId = typeQuery.rows[0].id;
 
   await pool.query(
-    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending')`,
-    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId]
+    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending', $8, true)`,
+    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee]
   );
 }
 
@@ -481,7 +482,7 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     const { rows: [newUser] } = await pool.query(
-      `INSERT INTO users (username, email, password_hash) VALUES (LOWER($1), $2, $3) RETURNING id, username, email, points`,
+      `INSERT INTO users (username, email, password_hash, last_login_date) VALUES (LOWER($1), $2, $3, NOW()) RETURNING id, username, email, points`,
       [username, email, passwordHash]
     );
     // Ensure username is returned in original case for the response
@@ -510,6 +511,8 @@ app.post('/api/auth/login', async (req, res) => {
         const { rows: [user] } = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $1', [identifier]);
         if (!user || !(await bcrypt.compare(password, user.password_hash))) return res.status(401).json({ error: 'Invalid credentials' });
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Update last login date on successful login
+        await pool.query('UPDATE users SET last_login_date = NOW() WHERE id = $1', [user.id]);
         res.json({ token, user: { id: user.id, username: user.username, email: user.email, points: user.points } });
     } catch (error) {
         console.error('❌ Login error:', error);
@@ -676,7 +679,7 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
   try {
     // Check if user has already claimed points today
     const { rows: claimCheck } = await pool.query(
-      `SELECT last_claimed FROM users WHERE id = $1`,
+      `SELECT last_claimed, last_login_date FROM users WHERE id = $1`,
       [req.userId]
     );
 
@@ -707,7 +710,7 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
       const pointsToAward = 250;
       const { rows: [updatedUser] } = await client.query(
         `UPDATE users
-         SET points = points + $1, last_claimed = NOW()
+         SET points = points + $1, last_claimed = NOW(), last_login_date = NOW()
          WHERE id = $2
          RETURNING id, username, points`,
         [pointsToAward, req.userId]

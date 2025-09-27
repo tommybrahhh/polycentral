@@ -204,6 +204,12 @@ const EventsInterface = () => {
     }
   };
 
+  // Get the latest event (most recent by end_time)
+  const getLatestEvent = () => {
+    if (!events || events.length === 0) return null;
+    return [...events].sort((a, b) => new Date(b.end_time) - new Date(a.end_time))[0];
+  };
+
   
         return (
       <div className="events-container">
@@ -406,6 +412,37 @@ const EventCard = ({ event }) => {
           <strong>Result:</strong> {event.correct_answer} -
           Final Price: ${event.final_price?.toLocaleString()}
         </div>
+      )}
+      
+      {/* Claim button for daily free participation */}
+      {event.is_daily && !event.participated && (
+        <button
+          className="claim-btn"
+          onClick={async () => {
+            try {
+              const token = localStorage.getItem('auth_token');
+              if (!token) throw new Error('User not authenticated');
+              
+              const response = await axios.post(
+                `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
+                { prediction: 'Higher' }, // Default prediction for free participation
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              
+              // Update event to show participation
+              event.participated = true;
+              setEvents([...events]);
+              setBetStatus('success');
+              setTimeout(() => setBetStatus(null), 3000);
+            } catch (error) {
+              console.error('Claim failed:', error);
+              setBetStatus('error');
+              setTimeout(() => setBetStatus(null), 3000);
+            }
+          }}
+        >
+          🎁 Claim Free Participation
+        </button>
       )}
     </div>
   );
