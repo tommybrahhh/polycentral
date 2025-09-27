@@ -701,33 +701,53 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
       }
     }
 
-    // Begin transaction for data consistency
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    // For SQLite, we can't use client.query('BEGIN')/('COMMIT')/('ROLLBACK')
+    // Instead, we'll use the pool.query directly since our SQLite pool mock handles transactions
+    if (dbType === 'postgres') {
+      // Use transaction for PostgreSQL
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
 
-      // Award 250 points to the user
+        // Award 250 points to the user
+        const pointsToAward = 250;
+        const { rows: [updatedUser] } = await client.query(
+          `UPDATE users
+           SET points = points + $1, last_claimed = NOW(), last_login_date = NOW()
+           WHERE id = $2
+           RETURNING id, username, points`,
+          [pointsToAward, req.userId]
+        );
+
+        await client.query('COMMIT');
+        
+        res.json({
+          message: 'Successfully claimed free points!',
+          points: pointsToAward,
+          newTotal: updatedUser.points
+        });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      // For SQLite, use direct query (our SQLite mock handles the transaction internally)
       const pointsToAward = 250;
-      const { rows: [updatedUser] } = await client.query(
+      const { rows: [updatedUser] } = await pool.query(
         `UPDATE users
          SET points = points + $1, last_claimed = NOW(), last_login_date = NOW()
          WHERE id = $2
          RETURNING id, username, points`,
         [pointsToAward, req.userId]
       );
-
-      await client.query('COMMIT');
       
       res.json({
         message: 'Successfully claimed free points!',
         points: pointsToAward,
         newTotal: updatedUser.points
       });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
     }
   } catch (error) {
     console.error('Error claiming free points:', error);

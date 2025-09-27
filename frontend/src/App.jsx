@@ -128,6 +128,19 @@ const App = () => {
                    + Claim
                  </button>
                </div>
+               <button
+                 className="nav-link auth-button logout-btn"
+                 onClick={() => {
+                   // Clear authentication data
+                   localStorage.removeItem('auth_token');
+                   localStorage.removeItem('user');
+                   setUsername('');
+                   setPoints(0);
+                   alert('Successfully logged out');
+                 }}
+               >
+                 Logout
+               </button>
              </div>
            ) : (
              <div className="auth-buttons">
