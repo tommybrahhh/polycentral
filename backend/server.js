@@ -754,6 +754,16 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
             [event.entry_fee, eventId]
         );
         
+        // Update current_participants count
+        await client.query(
+            `UPDATE events
+             SET current_participants = (
+               SELECT COUNT(*) FROM participants WHERE event_id = $1
+             )
+             WHERE id = $1`,
+            [eventId]
+        );
+        
         await client.query('COMMIT');
         res.status(201).json(newBet);
     } catch (error) {
