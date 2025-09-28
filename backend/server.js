@@ -67,11 +67,24 @@ app.use(cors({
         if (!origin) return callback(null, true);
         
         // Check if the origin is in our allowed list
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-            console.error(`CORS ERROR: ${msg}. Allowed origins: ${allowedOrigins.join(', ')}`);
-            return callback(new Error(msg), false);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            return callback(null, true);
         }
+        
+        // Check for Vercel preview deployments (wildcard matching)
+        if (origin && origin.endsWith('.vercel.app')) {
+            // Extract the subdomain
+            const subdomain = origin.replace('https://', '').replace('.vercel.app', '');
+            // Check if it's a preview deployment (contains the project name and random string)
+            if (subdomain.includes('polyc-') && subdomain.includes('-tommybrahhhs-projects')) {
+                return callback(null, true);
+            }
+        }
+        
+        // If we reach here, origin is not allowed
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+        console.error(`CORS ERROR: ${msg}. Allowed origins: ${allowedOrigins.join(', ')}`);
+        return callback(new Error(msg), false);
         
         // Origin is allowed
         return callback(null, true);
