@@ -898,6 +898,15 @@ app.get('/api/events/active', async (req, res) => {
       FROM events
       WHERE status = 'active' OR resolution_status = 'pending'`
     );
+    
+    // Recalculate prize pool based on actual participant amounts
+    for (const event of rows) {
+      const participants = await pool.query(
+        'SELECT SUM(amount) as total_amount FROM participants WHERE event_id = $1',
+        [event.id]
+      );
+      event.prize_pool = participants.rows[0].total_amount || 0;
+    }
 
     // Calculate time remaining and format response
     const now = new Date();

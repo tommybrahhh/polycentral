@@ -493,7 +493,7 @@ const handleBet = async (prediction) => {
         <h3>{event.title}</h3>
         <div className="event-meta">
           <div className="event-cost-info">
-            <span className="entry-fee">🎫 Entry: ${event.entry_fee.toLocaleString()}</span>
+            <span className="entry-fee">🎫 Min. Entry: 250 points</span>
             <span className="prize-pool">💰 Pot: ${event.prize_pool?.toLocaleString() || 0}</span>
           </div>
           <div className="time-remaining-container">
