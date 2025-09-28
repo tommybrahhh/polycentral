@@ -147,6 +147,13 @@ async function initializeDatabase() {
   const dbType = getDatabaseType();
   try {
     console.log(`🛠️ Initializing database (${dbType}) tables and constraints...`);
+    // Log current schema version
+    try {
+      const { rows } = await pool.query('SELECT * FROM schema_versions ORDER BY applied_at DESC');
+      console.log('Current schema versions:', rows);
+    } catch (error) {
+      console.log('schema_versions table does not exist yet');
+    }
     
     // Load and execute schema initialization
     const initSql = await fs.readFile(
@@ -411,6 +418,7 @@ async function createEvent(initialPrice) {
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
   const entryFee = 0; // Free participation for daily event
+  console.log('Creating event with initial price:', initialPrice);
 
   // Generate formatted title with date and crypto symbol
   const eventDate = new Date().toISOString().split('T')[0];
@@ -1033,6 +1041,7 @@ async function createInitialEvent() {
     const existing = await pool.query(query);
     if (existing.rows.length === 0) {
       const price = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
+      console.log('Initial event creation triggered with price:', price);
       await createEvent(price);
     }
   } catch (error) {
@@ -1045,6 +1054,7 @@ async function createDailyEvent() {
   try {
     console.log('Creating daily Bitcoin prediction event...');
     const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
+    console.log('Daily event creation triggered with price:', currentPrice);
     await createEvent(currentPrice);
     console.log(`Created new Bitcoin event with initial price: $${currentPrice}`);
   } catch (error) {
