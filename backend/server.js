@@ -226,6 +226,10 @@ async function runMigrationSafe(sql) {
     if (!error.message.includes('already exists') && error.code !== '42710') {
       throw error;
     }
+    console.warn(`Migration item already exists: ${error.message}`);
+  }
+}
+
 // Ensure participants table has the correct column structure
 async function ensureParticipantsTableIntegrity() {
   const dbType = getDatabaseType();
@@ -302,9 +306,6 @@ async function ensureParticipantsTableIntegrity() {
   } catch (error) {
     console.error('❌ Error checking participants table integrity:', error);
     // Don't throw - this is a best-effort fix, not critical to startup
-  }
-}
-    console.warn(`Migration item already exists: ${error.message}`);
   }
 }
 
