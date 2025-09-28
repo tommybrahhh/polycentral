@@ -278,11 +278,36 @@ const EventsInterface = () => {
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/events`, newEvent);
+      // Transform the newEvent data to match the backend API requirements
+      const eventData = {
+        title: newEvent.title,
+        description: newEvent.description,
+        options: ['Higher', 'Lower'], // Default options for crypto price prediction
+        entry_fee: 250, // Default entry fee
+        start_time: newEvent.start_time,
+        end_time: newEvent.end_time,
+        location: newEvent.location,
+        capacity: newEvent.capacity
+      };
+      
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/events`, eventData, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
       setShowCreateModal(false);
       fetchEvents();
     } catch (error) {
       console.error('Error creating event:', error);
+      
+      // Show error toast
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-error show';
+      toast.textContent = error.response?.data?.error || 'Failed to create event. Try again.';
+      document.body.appendChild(toast);
+      
+      // Remove toast after 3 seconds
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
     }
   };
 
@@ -443,23 +468,29 @@ const EventsInterface = () => {
 const PredictionDetail = ({ event }) => {
   const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
   const [userPoints, setUserPoints] = useState(0);
-  const [betAmount, setBetAmount] = useState(250); // Default minimum bet
+  const [isEventActive, setIsEventActive] = useState(true);
 
   // Load user points from localStorage
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUserPoints(userData.points || 0);
-  }, []);
+    
+    // Check if event is still active
+    const now = new Date();
+    const endTime = new Date(event.end_time);
+    setIsEventActive(now < endTime && event.status === 'active');
+  }, [event]);
 
-  // Validate if user has enough points for the bet
   const canPlaceBet = () => {
-    return userPoints >= betAmount;
+    return isEventActive && userPoints >= event.entry_fee;
   };
 
-  // Get error message if user doesn't have enough points
   const getErrorMessage = () => {
-    if (betAmount > userPoints) {
-      return `Insufficient points. You need ${betAmount - userPoints} more points.`;
+    if (!isEventActive) {
+      return 'This event has ended. No more bets can be placed.';
+    }
+    if (event.entry_fee > userPoints) {
+      return `Insufficient points. You need ${event.entry_fee - userPoints} more points.`;
     }
     return '';
   };
@@ -489,7 +520,7 @@ const PredictionDetail = ({ event }) => {
       
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
-        { prediction, amount: betAmount },
+        { prediction }, // Don't send amount - it's determined by the event
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -497,7 +528,7 @@ const PredictionDetail = ({ event }) => {
       
       // Update user points after successful bet
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      userData.points = userData.points - betAmount;
+      userData.points = userData.points - event.entry_fee;
       localStorage.setItem('user', JSON.stringify(userData));
       setUserPoints(userData.points);
       
@@ -538,7 +569,7 @@ const PredictionDetail = ({ event }) => {
       // Show error toast
       const toast = document.createElement('div');
       toast.className = 'toast toast-error show';
-      toast.textContent = 'Failed to place bet. Try again.';
+      toast.textContent = error.response?.data?.error || 'Failed to place bet. Try again.';
       document.body.appendChild(toast);
       
       // Remove toast after 3 seconds
@@ -562,8 +593,8 @@ const PredictionDetail = ({ event }) => {
             <div className="price-value">${event.current_price?.toLocaleString() || 'N/A'}</div>
           </div>
           <div className="price-column">
-            <div className="price-label">Target Price</div>
-            <div className="price-value">${event.target_price?.toLocaleString() || 'N/A'}</div>
+            <div className="price-label">Initial Price</div>
+            <div className="price-value">${event.initial_price?.toLocaleString() || 'N/A'}</div>
           </div>
         </div>
         

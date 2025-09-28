@@ -459,7 +459,7 @@ async function resolvePendingEvents() {
     
     // Find events ready for resolution
     const { rows: events } = await pool.query(
-      `SELECT id, end_time, initial_price FROM events
+      `SELECT id, end_time, initial_price, entry_fee FROM events
        WHERE end_time < $1 AND resolution_status = 'pending'`,
       [now]
     );
@@ -488,19 +488,33 @@ async function resolvePendingEvents() {
         // Determine outcome based on price comparison
         const outcome = finalPrice > event.initial_price ? 'Higher' : 'Lower';
         
-        // Award points to winners
-        const result = await pool.query(
-          `UPDATE users SET points = points + (
-             SELECT entry_fee FROM events WHERE id = $1
-           )
-           WHERE id IN (
-             SELECT user_id FROM participants
-             WHERE event_id = $1 AND prediction = $2
-           )`,
+        // Calculate prize pool and number of winners
+        const { rows: [prizeData] } = await pool.query(
+          `SELECT
+             SUM(amount) as total_prize_pool,
+             COUNT(*) as winner_count
+           FROM participants
+           WHERE event_id = $1 AND prediction = $2`,
           [event.id, outcome]
         );
         
-        console.log(`Awarded points to ${result.rowCount} winners for event ${event.id}`);
+        if (prizeData.winner_count > 0 && prizeData.total_prize_pool > 0) {
+          // Award proportional share of prize pool to each winner
+          const prizePerWinner = Math.floor(prizeData.total_prize_pool / prizeData.winner_count);
+          
+          const result = await pool.query(
+            `UPDATE users SET points = points + $1
+             WHERE id IN (
+               SELECT user_id FROM participants
+               WHERE event_id = $2 AND prediction = $3
+             )`,
+            [prizePerWinner, event.id, outcome]
+          );
+          
+          console.log(`Awarded ${prizePerWinner} points to ${result.rowCount} winners for event ${event.id}`);
+        } else {
+          console.log(`No winners for event ${event.id}`);
+        }
       } catch (error) {
         // --- START OF NEW, MORE DETAILED LOGGING ---
         if (error.response) {
@@ -623,15 +637,22 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// New event creation endpoint with simplified parameters
+// New event creation endpoint that accepts all parameters used by the frontend
 app.post('/api/events', authenticateToken, async (req, res) => {
-    const { title, description, options, entry_fee } = req.body;
+    const { title, description, options, entry_fee, start_time, end_time, location, capacity } = req.body;
     if (!title || !description || !options || !entry_fee) {
-        return res.status(400).json({ error: 'All fields are required: title, description, options, entry_fee' });
+        return res.status(400).json({ error: 'Required fields: title, description, options, entry_fee' });
     }
     
-    // Calculate end time: 3 days from now
-    const endTime = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+    // Use current time if start_time not provided
+    const startTime = start_time ? new Date(start_time) : new Date();
+    // Default to 24 hours from start if end_time not provided
+    const endTime = end_time ? new Date(end_time) : new Date(startTime.getTime() + 24 * 60 * 60 * 1000);
+    
+    // Validate that end time is after start time
+    if (endTime <= startTime) {
+        return res.status(400).json({ error: 'End time must be after start time' });
+    }
     
     try {
         // Check for existing event with same title
@@ -649,6 +670,9 @@ app.post('/api/events', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: "Event type 'prediction' not found" });
         }
         const eventTypeId = typeQuery.rows[0].id;
+
+        // Get current price for the cryptocurrency
+        const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
 
         // Pre-flight table check with database-specific queries
         let tableExists;
@@ -674,31 +698,34 @@ app.post('/api/events', authenticateToken, async (req, res) => {
           description,
           options: JSON.stringify(options),
           entry_fee,
+          startTime,
           endTime,
-          eventTypeId
+          location,
+          capacity,
+          eventTypeId,
+          currentPrice
         });
 
         try {
-          // Create new event with default status
+          // Create new event with all parameters
           const { rows: [newEvent] } = await pool.query(
             `INSERT INTO events (
-                title, description, options, entry_fee, end_time, status, event_type_id
-            ) VALUES ($1, $2, $3, $4, $5, 'active', $6)
+                title, description, options, entry_fee, start_time, end_time,
+                location, max_participants, current_participants, prize_pool,
+                status, event_type_id, crypto_symbol, initial_price
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 'active', $9, $10, $11)
             RETURNING *`,
             [
-                title,
-                description,
-                JSON.stringify(options),
-                entry_fee,
-                endTime,
-                eventTypeId
+                title, description, JSON.stringify(options), entry_fee,
+                startTime, endTime, location || 'Global', capacity || 100, eventTypeId,
+                process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', currentPrice
             ]
           );
           console.debug('Event creation successful', newEvent);
           res.status(201).json(newEvent);
         } catch (error) {
           console.error(`Event creation failed: ${error.message}`, {
-            query: `INSERT INTO events (title, description, options, entry_fee, end_time, status, event_type_id) VALUES ('${title}', '${description}', '${JSON.stringify(options)}', ${entry_fee}, '${endTime}', 'active', ${eventTypeId})`,
+            query: `INSERT INTO events (title, description, options, entry_fee, start_time, end_time, location, max_participants, current_participants, prize_pool, status, event_type_id, crypto_symbol, initial_price) VALUES ('${title}', '${description}', '${JSON.stringify(options)}', ${entry_fee}, '${startTime}', '${endTime}', '${location || 'Global'}', ${capacity || 100}, 0, 0, 'active', ${eventTypeId}, '${process.env.DEFAULT_CRYPTO_SYMBOL || 'btc'}', ${currentPrice})`,
             errorDetails: error
           });
           res.status(500).json({ error: 'Event creation failed' });
@@ -820,11 +847,13 @@ app.get('/api/events/:id', async (req, res) => {
     }
     
     const eventId = parseInt(id);
+    
+    // Get event data with participant counts and prize pool
     const { rows } = await pool.query(
       `SELECT
         e.*,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        (SELECT SUM(amount) FROM participants WHERE event_id = e.id) AS prize_pool,
+        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
         (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = $1) AS user_prediction
       FROM events e
       WHERE e.id = $2`,
@@ -835,7 +864,18 @@ app.get('/api/events/:id', async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
     
-    res.json(rows[0]);
+    // Add current price from CoinGecko if event is active
+    const event = rows[0];
+    if (event.status === 'active' || event.resolution_status === 'pending') {
+      try {
+        event.current_price = await coingecko.getCurrentPrice(event.crypto_symbol || 'bitcoin');
+      } catch (error) {
+        console.error('Failed to fetch current price:', error);
+        event.current_price = null;
+      }
+    }
+    
+    res.json(event);
   } catch (error) {
     console.error('Error fetching event details:', error);
     res.status(500).json({ error: 'Internal server error' });
