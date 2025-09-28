@@ -793,6 +793,13 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
 app.get('/api/events/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Validate that id is a number
+    if (isNaN(id) || !Number.isInteger(parseFloat(id))) {
+      return res.status(400).json({ error: 'Invalid event ID format' });
+    }
+    
+    const eventId = parseInt(id);
     const { rows } = await pool.query(
       `SELECT
         e.*,
@@ -801,7 +808,7 @@ app.get('/api/events/:id', async (req, res) => {
         (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = $1) AS user_prediction
       FROM events e
       WHERE e.id = $2`,
-      [req.userId, id]
+      [req.userId, eventId]
     );
     
     if (rows.length === 0) {
