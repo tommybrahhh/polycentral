@@ -238,6 +238,15 @@ const App = () => {
   );
 };
 
+// Helper function to determine if an event is closing soon (within 1 hour)
+const isEventClosingSoon = (event) => {
+  const now = new Date();
+  const endTime = new Date(event.end_time);
+  const timeDiff = endTime - now; // difference in milliseconds
+  const oneHour = 60 * 60 * 1000; // one hour in milliseconds
+  return timeDiff > 0 && timeDiff <= oneHour;
+};
+
 // Events Interface Component (No changes needed here)
 const EventsInterface = () => {
   const [events, setEvents] = React.useState([]);
