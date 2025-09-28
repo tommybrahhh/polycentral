@@ -99,8 +99,10 @@ const App = () => {
     <Router>
       <div className="app-container">
         <nav className="main-nav">
-          <Link to="/events" className="nav-link">Events</Link>
-          <Link to="/predictions" className="nav-link">Predictions</Link>
+          <div className="nav-links">
+            <Link to="/events" className="nav-link">Events</Link>
+            <Link to="/predictions" className="nav-link">Predictions</Link>
+          </div>
           {/* --- User Status Display --- */}
           <div className="user-status">
             {username ? (
@@ -383,7 +385,14 @@ const EventsInterface = () => {
               <div className="event-meta">
                 <div className="event-info">
                   <span className="participants">👥 {event.current_participants} participants</span>
-                  <span className="status-dot status-active"></span>
+                  <div className={`status-indicator ${isEventClosingSoon(event) ? 'status-closing' : 'status-active'}`}>
+                    <span className="status-dot"></span>
+                    • {isEventClosingSoon(event) ? 'Closing Soon' : 'Active'}
+                  </div>
+                </div>
+                <div className="prediction-sentiment-bar">
+                  <div className="sentiment-fill higher" style={{ width: '70%' }}></div>
+                  <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
                 </div>
                 <div className="event-time">
                   <span className="icon">⏰</span>
@@ -537,12 +546,16 @@ const PredictionDetail = ({ event }) => {
       <div className="card-body">
         <h2 className="event-title">{event.title}</h2>
         
-        {/* Target Price Display */}
-        <div className="target-price-container">
-          <div className="target-price">
-            ${event.target_price?.toLocaleString() || 'N/A'}
+        {/* Price Display */}
+        <div className="price-display">
+          <div className="price-column">
+            <div className="price-label">Current Price</div>
+            <div className="price-value">${event.current_price?.toLocaleString() || 'N/A'}</div>
           </div>
-          <div className="target-price-label">Target Price</div>
+          <div className="price-column">
+            <div className="price-label">Target Price</div>
+            <div className="price-value">${event.target_price?.toLocaleString() || 'N/A'}</div>
+          </div>
         </div>
         
         {/* Chart Visualization */}
@@ -586,7 +599,7 @@ const PredictionDetail = ({ event }) => {
         </div>
         
         {/* Prediction Buttons */}
-        <div className="prediction-buttons">
+        <div className="prediction-buttons-container">
           <button
             className="prediction-button higher"
             onClick={() => handleBet('Higher')}
@@ -630,11 +643,15 @@ const EventList = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('active');
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+        const endpoint = activeTab === 'active'
+          ? '/api/events/active'
+          : '/api/events/history';
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`);
         setEvents(response.data);
         setLoading(false);
       } catch (err) {
@@ -645,14 +662,27 @@ const EventList = () => {
     };
 
     fetchEvents();
-  }, []);
+  }, [activeTab]);
 
   if (loading) return <div className="loading">Loading events...</div>;
   if (error) return <div className="form-error">{error}</div>;
 
   return (
     <div className="events-container">
-      <h2>Active Events</h2>
+      <div className="tabs">
+        <button
+          className={`tab ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => setActiveTab('active')}
+        >
+          Active Events
+        </button>
+        <button
+          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          Prediction History
+        </button>
+      </div>
       <div className="events-list">
         {events.map(event => (
           <EventCard key={event.id} event={event} />
