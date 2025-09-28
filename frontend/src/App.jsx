@@ -352,91 +352,135 @@ const EventsInterface = () => {
 
 // Event Card Component
 const EventCard = ({ event }) => {
-  const [timeRemaining, setTimeRemaining] = useState(event.time_remaining);
-  const [isExpired, setIsExpired] = useState(timeRemaining <= 0);
-  const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
+const [timeRemaining, setTimeRemaining] = useState(event.time_remaining);
+const [isExpired, setIsExpired] = useState(timeRemaining <= 0);
+const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
+const [betAmount, setBetAmount] = useState(250); // Default minimum bet
+const [userPoints, setUserPoints] = useState(0);
 
-  useEffect(() => {
-    if (isExpired) return;
-    
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setIsExpired(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+// Load user points from localStorage
+useEffect(() => {
+  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  setUserPoints(userData.points || 0);
+}, []);
 
-    return () => clearInterval(timer);
-  }, [isExpired]);
+// Handle bet amount changes
+const handleBetAmountChange = (increment) => {
+  const newAmount = increment ? betAmount + 100 : betAmount - 100;
+  // Ensure minimum bet of 250 and don't exceed user's points
+  if (newAmount >= 250 && newAmount <= userPoints) {
+    setBetAmount(newAmount);
+  }
+};
 
-  const formatTime = (seconds) => {
-    if (seconds <= 0) return 'Expired';
-    
-    const days = Math.floor(seconds / (3600 * 24));
-    const hours = Math.floor((seconds % (3600 * 24)) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    return `${days}d ${hours}h ${minutes}m ${secs}s`;
-  };
+// Validate if user has enough points for the bet
+const canPlaceBet = () => {
+  return userPoints >= betAmount;
+};
 
-  const getTimePercentage = (totalTime, currentTime) => {
-    return Math.max(0, Math.min(100, ((totalTime - currentTime) / totalTime) * 100));
-  };
+// Get error message if user doesn't have enough points
+const getErrorMessage = () => {
+  if (betAmount > userPoints) {
+    return `Insufficient points. You need ${betAmount - userPoints} more points.`;
+  }
+  return '';
+};
 
-  const handleBet = async (prediction) => {
-    try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem('auth_token');
-      if (!token) throw new Error('User not authenticated');
-      
-      // Add button press animation
-      const button = document.activeElement;
-      if (button) {
-        button.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-          if (button) button.style.transform = '';
-        }, 150);
+useEffect(() => {
+  if (isExpired) return;
+  
+  const timer = setInterval(() => {
+    setTimeRemaining(prev => {
+      if (prev <= 1) {
+        clearInterval(timer);
+        setIsExpired(true);
+        return 0;
       }
-      
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
-        { prediction },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      setBetStatus('success');
-      
-      // Add celebration effect for successful bet
-      const eventCard = document.querySelector('.event-card');
-      if (eventCard) {
-        eventCard.style.transform = 'scale(1.02)';
-        setTimeout(() => {
-          eventCard.style.transform = '';
-        }, 200);
-      }
-      
-      setTimeout(() => setBetStatus(null), 3000);
-    } catch (error) {
-      console.error('Betting failed:', error);
+      return prev - 1;
+    });
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, [isExpired]);
+
+const formatTime = (seconds) => {
+  if (seconds <= 0) return 'Expired';
+  
+  const days = Math.floor(seconds / (3600 * 24));
+  const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  return `${days}d ${hours}h ${minutes}m ${secs}s`;
+};
+
+const getTimePercentage = (totalTime, currentTime) => {
+  return Math.max(0, Math.min(100, ((totalTime - currentTime) / totalTime) * 100));
+};
+
+// Update handleBet function to use selected bet amount
+const handleBet = async (prediction) => {
+  try {
+    // Get auth token from localStorage
+    const token = localStorage.getItem('auth_token');
+    if (!token) throw new Error('User not authenticated');
+    
+    // Check if user has enough points for the bet
+    if (!canPlaceBet()) {
       setBetStatus('error');
-      
-      // Add shake effect for error
-      const eventCard = document.querySelector('.event-card');
-      if (eventCard) {
-        eventCard.style.animation = 'shake 0.5s ease';
-        setTimeout(() => {
-          eventCard.style.animation = '';
-        }, 500);
-      }
-      
       setTimeout(() => setBetStatus(null), 3000);
+      return;
     }
-  };
+    
+    // Add button press animation
+    const button = document.activeElement;
+    if (button) {
+      button.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        if (button) button.style.transform = '';
+      }, 150);
+    }
+    
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
+      { prediction, amount: betAmount },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    
+    setBetStatus('success');
+    
+    // Update user points after successful bet
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    userData.points = userData.points - betAmount;
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUserPoints(userData.points);
+    
+    // Add celebration effect for successful bet
+    const eventCard = document.querySelector('.event-card');
+    if (eventCard) {
+      eventCard.style.transform = 'scale(1.02)';
+      setTimeout(() => {
+        eventCard.style.transform = '';
+      }, 200);
+    }
+    
+    setTimeout(() => setBetStatus(null), 3000);
+  } catch (error) {
+    console.error('Betting failed:', error);
+    setBetStatus('error');
+    
+    // Add shake effect for error
+    const eventCard = document.querySelector('.event-card');
+    if (eventCard) {
+      eventCard.style.animation = 'shake 0.5s ease';
+      setTimeout(() => {
+        eventCard.style.animation = '';
+      }, 500);
+    }
+    
+    setTimeout(() => setBetStatus(null), 3000);
+  }
+};
 
   // Calculate total time for countdown percentage
   const totalTime = event.end_time ? (new Date(event.end_time) - new Date(event.start_time)) / 1000 : 86400; // Default 24 hours
@@ -486,10 +530,33 @@ const EventCard = ({ event }) => {
       )}
       
       <div className="bet-options">
+        <div className="bet-amount-selector">
+          <button
+            className="amount-btn minus"
+            onClick={() => handleBetAmountChange(false)}
+            disabled={betAmount <= 250}
+          >
+            -
+          </button>
+          <span className="bet-amount">
+            {betAmount.toLocaleString()} points
+          </span>
+          <button
+            className="amount-btn plus"
+            onClick={() => handleBetAmountChange(true)}
+            disabled={!canPlaceBet(betAmount + 100)}
+          >
+            +
+          </button>
+        </div>
+        <div className="user-points-info">
+          You have {userPoints.toLocaleString()} points
+          {getErrorMessage() && <div className="error-message">{getErrorMessage()}</div>}
+        </div>
         <button
           className="bet-btn yes"
           onClick={() => handleBet('Higher')}
-          disabled={isExpired || betStatus === 'success'}
+          disabled={isExpired || betStatus === 'success' || !canPlaceBet()}
         >
           <span className="bet-icon">📈</span>
           Higher
@@ -497,7 +564,7 @@ const EventCard = ({ event }) => {
         <button
           className="bet-btn no"
           onClick={() => handleBet('Lower')}
-          disabled={isExpired || betStatus === 'success'}
+          disabled={isExpired || betStatus === 'success' || !canPlaceBet()}
         >
           <span className="bet-icon">📉</span>
           Lower

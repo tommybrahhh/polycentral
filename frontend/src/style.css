@@ -726,3 +726,66 @@
     margin-top: var(--spacing-sm);
   }
 }
+/* Bet amount selector styles */
+.bet-amount-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.amount-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background-color: #007bff;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.amount-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+  transform: scale(1.05);
+}
+
+.amount-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.amount-btn.minus {
+  background-color: #dc3545;
+}
+
+.amount-btn.minus:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.bet-amount {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.user-points-info {
+  text-align: center;
+  margin: 5px 0 15px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+}
