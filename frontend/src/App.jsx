@@ -569,7 +569,7 @@ const PredictionDetail = ({ event }) => {
         <div className="metadata-bar">
           <div className="metadata-item">
             <span className="icon">🎫</span>
-            Min. Entry: 250 points
+            Entry Fee: {event.entry_fee} points
           </div>
           <div className="metadata-item">
             <span className="icon">💰</span>
@@ -723,7 +723,7 @@ const PredictionsInterface = () => {
                 </div>
                 <div className="detail">
                   <span className="icon">🎫</span>
-                  Min. Entry: 250 points
+                  Entry Fee: {event.entry_fee} points
                 </div>
               </div>
               <div className="sparkline-container">
