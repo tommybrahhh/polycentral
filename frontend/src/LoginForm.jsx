@@ -45,7 +45,7 @@ const LoginForm = ({ onClose }) => {
     try {
       // Use Vite environment variable for API base URL
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-        
+      
       const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -87,33 +87,47 @@ const LoginForm = ({ onClose }) => {
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div className="modal-overlay" onClick={handleClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Log In</h2>
-          <button className="close-btn" onClick={handleClose}>
-            &times;
+          <button className="close-btn" onClick={handleClose} aria-label="Close modal">
+            ×
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="login-form">
-          {errors.submit && <div className="error-message">{errors.submit}</div>}
+        <form onSubmit={handleSubmit} className="form">
+          {errors.submit && (
+            <div className="form-error" role="alert">
+              {errors.submit}
+            </div>
+          )}
           
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email" className="form-label">
+              Email
+            </label>
             <input
               type="email"
               id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
+              className={`form-input ${errors.email ? 'error' : ''}`}
               aria-invalid={!!errors.email}
-              aria-describedby="email-error"
+              aria-describedby={errors.email ? "email-error" : undefined}
+              required
             />
-            {errors.email && <div id="email-error" className="error">{errors.email}</div>}
+            {errors.email && (
+              <div id="email-error" className="form-error">
+                {errors.email}
+              </div>
+            )}
           </div>
           
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password" className="form-label">
+              Password
+            </label>
             <div className="password-input-container">
               <input
                 type={formData.showPassword ? "text" : "password"}
@@ -121,27 +135,38 @@ const LoginForm = ({ onClose }) => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                className={`form-input ${errors.password ? 'error' : ''}`}
                 aria-invalid={!!errors.password}
-                aria-describedby="password-error"
+                aria-describedby={errors.password ? "password-error" : undefined}
+                required
               />
               <button
                 type="button"
-                className="password-toggle"
+                className="button button-icon"
                 onClick={() => setFormData(prev => ({ ...prev, showPassword: !prev.showPassword }))}
                 aria-label={formData.showPassword ? "Hide password" : "Show password"}
               >
                 {formData.showPassword ? "🙈" : "👁️"}
               </button>
             </div>
-            {errors.password && <div id="password-error" className="error">{errors.password}</div>}
+            {errors.password && (
+              <div id="password-error" className="form-error">
+                {errors.password}
+              </div>
+            )}
           </div>
           
           <button
             type="submit"
-            className="submit-btn"
+            className="button button-primary"
             disabled={submitting}
           >
-            {submitting ? 'Logging in...' : 'Log In'}
+            {submitting ? (
+              <>
+                <span className="loading-spinner" aria-hidden="true"></span>
+                <span className="sr-only">Logging in...</span>
+              </>
+            ) : 'Log In'}
           </button>
         </form>
       </div>

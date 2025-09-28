@@ -91,7 +91,7 @@ const RegisterForm = ({ onClose }) => {
     try {
       // Use Vite environment variable for API base URL
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-        
+      
       const response = await fetch(`${apiBaseUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -162,47 +162,69 @@ const RegisterForm = ({ onClose }) => {
   if (!showModal) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div className="modal-overlay" onClick={handleClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Create Account</h2>
-          <button className="close-btn" onClick={handleClose}>
-            &times;
+          <button className="close-btn" onClick={handleClose} aria-label="Close modal">
+            ×
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="register-form">
-          {errors.submit && <div className="error-message">{errors.submit}</div>}
+        <form onSubmit={handleSubmit} className="form">
+          {errors.submit && (
+            <div className="form-error" role="alert">
+              {errors.submit}
+            </div>
+          )}
           
           <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username" className="form-label">
+              Username
+            </label>
             <input
               type="text"
               id="username"
               name="username"
               value={formData.username}
               onChange={handleChange}
+              className={`form-input ${errors.username ? 'error' : ''}`}
               aria-invalid={!!errors.username}
-              aria-describedby="username-error"
+              aria-describedby={errors.username ? "username-error" : undefined}
+              required
             />
-            {errors.username && <div id="username-error" className="error">{errors.username}</div>}
+            {errors.username && (
+              <div id="username-error" className="form-error">
+                {errors.username}
+              </div>
+            )}
           </div>
           
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email" className="form-label">
+              Email
+            </label>
             <input
               type="email"
               id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
+              className={`form-input ${errors.email ? 'error' : ''}`}
               aria-invalid={!!errors.email}
-              aria-describedby="email-error"
+              aria-describedby={errors.email ? "email-error" : undefined}
+              required
             />
-            {errors.email && <div id="email-error" className="error">{errors.email}</div>}
+            {errors.email && (
+              <div id="email-error" className="form-error">
+                {errors.email}
+              </div>
+            )}
           </div>
           
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password" className="form-label">
+              Password
+            </label>
             <div className="password-input-container">
               <input
                 type={formData.showPassword ? "text" : "password"}
@@ -210,43 +232,60 @@ const RegisterForm = ({ onClose }) => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                className={`form-input ${errors.password ? 'error' : ''}`}
                 aria-invalid={!!errors.password}
-                aria-describedby="password-error"
+                aria-describedby={errors.password ? "password-error" : undefined}
+                required
               />
               <button
                 type="button"
-                className="password-toggle"
+                className="button button-icon"
                 onClick={() => setFormData(prev => ({ ...prev, showPassword: !prev.showPassword }))}
                 aria-label={formData.showPassword ? "Hide password" : "Show password"}
               >
                 {formData.showPassword ? "🙈" : "👁️"}
               </button>
             </div>
-            {errors.password && <div id="password-error" className="error">{errors.password}</div>}
+            {errors.password && (
+              <div id="password-error" className="form-error">
+                {errors.password}
+              </div>
+            )}
           </div>
           
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+            <label htmlFor="confirmPassword" className="form-label">
+              Confirm Password
+            </label>
             <input
               type="password"
               id="confirmPassword"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
+              className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
               aria-invalid={!!errors.confirmPassword}
-              aria-describedby="confirmPassword-error"
+              aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
+              required
             />
             {errors.confirmPassword && (
-              <div id="confirmPassword-error" className="error">{errors.confirmPassword}</div>
+              <div id="confirmPassword-error" className="form-error">
+                {errors.confirmPassword}
+              </div>
             )}
           </div>
           
           <button
             type="submit"
-            className="submit-btn"
+            className="button button-primary"
             disabled={submitting}
           >
-            {submitting ? 'Registering...' : 'Create Account'}
+            {submitting ? (
+              <>
+                <span className="loading-spinner" aria-hidden="true"></span>
+                <span className="sr-only">Registering...</span>
+              </>
+            ) : 'Create Account'}
           </button>
         </form>
       </div>
