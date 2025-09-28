@@ -945,34 +945,25 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
 app.get('/api/events/active', async (req, res) => {
   try {
     console.log('Fetching active events...');
-    // Query active events with initial price
+    // Query active events with initial price and correct prize pool calculation
     const { rows } = await pool.query(
       `SELECT
-        id,
-        title,
-        description,
-        options,
-        entry_fee,
-        start_time,
-        end_time,
-        initial_price,
-        final_price,
-        correct_answer,
-        resolution_status,
-        (SELECT COUNT(*) FROM participants WHERE event_id = events.id) AS current_participants,
-        (SELECT entry_fee * COUNT(*) FROM participants WHERE event_id = events.id) AS prize_pool
-      FROM events
-      WHERE status = 'active' OR resolution_status = 'pending'`
+        e.id,
+        e.title,
+        e.description,
+        e.options,
+        e.entry_fee,
+        e.start_time,
+        e.end_time,
+        e.initial_price,
+        e.final_price,
+        e.correct_answer,
+        e.resolution_status,
+        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
+        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
+      FROM events e
+      WHERE e.status = 'active' OR e.resolution_status = 'pending'`
     );
-    
-    // Recalculate prize pool based on actual participant amounts
-    for (const event of rows) {
-      const participants = await pool.query(
-        'SELECT SUM(amount) as total_amount FROM participants WHERE event_id = $1',
-        [event.id]
-      );
-      event.prize_pool = participants.rows[0].total_amount || 0;
-    }
 
     // Calculate time remaining and format response
     const now = new Date();
