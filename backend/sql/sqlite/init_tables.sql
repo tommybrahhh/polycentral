@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS events (
     max_participants INTEGER NOT NULL DEFAULT 100,
     current_participants INTEGER NOT NULL DEFAULT 0,
     prize_pool INTEGER NOT NULL DEFAULT 0,
+    total_bets INTEGER NOT NULL DEFAULT 0,
     start_time TIMESTAMP,
     end_time TIMESTAMP,
     status TEXT DEFAULT 'pending',

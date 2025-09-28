@@ -745,6 +745,15 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
             [event.entry_fee, userId]
         );
         
+        // Update event's prize pool and total bets
+        await client.query(
+            `UPDATE events
+             SET prize_pool = prize_pool + $1,
+                 total_bets = total_bets + 1
+             WHERE id = $2`,
+            [event.entry_fee, eventId]
+        );
+        
         await client.query('COMMIT');
         res.status(201).json(newBet);
     } catch (error) {
