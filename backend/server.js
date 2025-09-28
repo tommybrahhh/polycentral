@@ -425,7 +425,7 @@ async function createEvent(initialPrice) {
 
   await pool.query(
     `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending', $8, true)`,
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending', $8)`,
     [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee]
   );
 }
