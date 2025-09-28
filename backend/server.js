@@ -714,6 +714,14 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         }
         const event = eventQuery.rows[0];
         
+        // Check if event is still active
+        const now = new Date();
+        const endTime = new Date(event.end_time);
+        if (now >= endTime) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Event has ended' });
+        }
+        
         // Check user has sufficient points
         const userQuery = await client.query('SELECT points FROM users WHERE id = $1', [userId]);
         if (userQuery.rows.length === 0) {
@@ -721,14 +729,20 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Helper function to format date for CoinGecko API
-        function formatDate(date) {
-          return date.toISOString().split('T')[0];
-        }
         const user = userQuery.rows[0];
         if (user.points < event.entry_fee) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Insufficient points' });
+        }
+
+        // Check if user has already bet on this event
+        const existingBet = await client.query(
+            'SELECT * FROM participants WHERE event_id = $1 AND user_id = $2',
+            [eventId, userId]
+        );
+        if (existingBet.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'You have already placed a bet on this event' });
         }
 
         // Insert bet into participants table
@@ -773,6 +787,32 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+// GET event details
+app.get('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      `SELECT
+        e.*,
+        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
+        (SELECT SUM(amount) FROM participants WHERE event_id = e.id) AS prize_pool,
+        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = $1) AS user_prediction
+      FROM events e
+      WHERE e.id = $2`,
+      [req.userId, id]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error fetching event details:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Other routes...
