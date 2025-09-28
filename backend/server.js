@@ -780,13 +780,12 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
             [event.entry_fee, userId]
         );
         
-        // Update event's prize pool and total bets
+        // Remove prize_pool update as it's now calculated from participants table
         await client.query(
             `UPDATE events
-             SET prize_pool = prize_pool + $1,
-                 total_bets = total_bets + 1
+             SET total_bets = total_bets + 1
              WHERE id = $2`,
-            [event.entry_fee, eventId]
+            [eventId]
         );
         
         // Update current_participants count
@@ -983,7 +982,8 @@ app.get('/api/events/active', async (req, res) => {
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
       FROM events e
-      WHERE e.status = 'active' OR e.resolution_status = 'pending'`
+      WHERE e.status = 'active' OR e.resolution_status = 'pending'
+      GROUP BY e.id`
     );
 
     // Calculate time remaining and format response
@@ -1077,7 +1077,7 @@ async function createDailyEvent() {
 
 // Schedule cron jobs
 cron.schedule('0 0 * * *', createDailyEvent);
-cron.schedule('0 * * * *', resolvePendingEvents); // This means "at minute 0 of every hour"
+cron.schedule('0 0 * * *', resolvePendingEvents); // This means "at minute 0 of every hour"
 
 
 // --- Admin Manual Event Creation Endpoint ---
