@@ -375,276 +375,237 @@ const EventsInterface = () => {
       )}
 
       <div className="events-list">
-        {events.map(event => (
-          <div key={event.id} className="card">
-            <div className="card-header">
-              <div className="event-header">
-                <h3>{event.title}</h3>
-                <span className="participants">👥 {event.current_participants} participants</span>
-              </div>
-            </div>
-            <div className="card-body">
-              <p className="description">{event.description}</p>
-              <div className="event-details">
-                <div className="detail">
+      {events.map(event => (
+        <div key={event.id} className="card">
+          <div className="card-header">
+            <div className="event-header">
+              <h3 className="event-title">{event.title}</h3>
+              <div className="event-meta">
+                <div className="event-info">
+                  <span className="participants">👥 {event.current_participants} participants</span>
+                  <span className="status-dot status-active"></span>
+                </div>
+                <div className="event-time">
                   <span className="icon">⏰</span>
                   Ends at: {new Date(event.end_time).toLocaleString()}
                 </div>
               </div>
             </div>
           </div>
-        ))}
-      </div>
+          <div className="card-body">
+            <p className="description">{event.description}</p>
+            <div className="event-details">
+              <div className="detail">
+                <span className="icon">💰</span>
+                Pot: ${event.prize_pool?.toLocaleString() || 0}
+              </div>
+              <div className="detail">
+                <span className="icon">🎫</span>
+                Min. Entry: 250 points
+              </div>
+            </div>
+            <div className="sparkline-container">
+              <svg className="sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
+                <path d="M0,15 L10,12 L20,14 L30,10 L40,12 L50,8 L60,10 L70,6 L80,8 L90,7 L100,9"
+                      stroke="var(--aero-primary-accent)"
+                      strokeWidth="2"
+                      fill="none"
+                      filter="drop-shadow(0 0 4px rgba(255, 140, 0, 0.5))" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
     </div>
   );
 };
 
-// Event Card Component
-const EventCard = ({ event }) => {
-const [timeRemaining, setTimeRemaining] = useState(event.time_remaining);
-const [isExpired, setIsExpired] = useState(timeRemaining <= 0);
-const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
-const [betAmount, setBetAmount] = useState(250); // Default minimum bet
-const [userPoints, setUserPoints] = useState(0);
+// Prediction Detail Screen Component
+const PredictionDetail = ({ event }) => {
+  const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
+  const [userPoints, setUserPoints] = useState(0);
+  const [betAmount, setBetAmount] = useState(250); // Default minimum bet
 
-// Load user points from localStorage
-useEffect(() => {
-  const userData = JSON.parse(localStorage.getItem('user') || '{}');
-  setUserPoints(userData.points || 0);
-}, []);
-
-// Handle bet amount changes
-const handleBetAmountChange = (increment) => {
-  const newAmount = increment ? betAmount + 100 : betAmount - 100;
-  // Ensure minimum bet of 250 and don't exceed user's points
-  if (newAmount >= 250 && newAmount <= userPoints) {
-    setBetAmount(newAmount);
-  }
-};
-
-// Validate if user has enough points for the bet
-const canPlaceBet = () => {
-  return userPoints >= betAmount;
-};
-
-// Get error message if user doesn't have enough points
-const getErrorMessage = () => {
-  if (betAmount > userPoints) {
-    return `Insufficient points. You need ${betAmount - userPoints} more points.`;
-  }
-  return '';
-};
-
-useEffect(() => {
-  if (isExpired) return;
-  
-  const timer = setInterval(() => {
-    setTimeRemaining(prev => {
-      if (prev <= 1) {
-        clearInterval(timer);
-        setIsExpired(true);
-        return 0;
-      }
-      return prev - 1;
-    });
-  }, 1000);
-
-  return () => clearInterval(timer);
-}, [isExpired]);
-
-const formatTime = (seconds) => {
-  if (seconds <= 0) return 'Expired';
-  
-  const days = Math.floor(seconds / (3600 * 24));
-  const hours = Math.floor((seconds % (3600 * 24)) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  
-  return `${days}d ${hours}h ${minutes}m ${secs}s`;
-};
-
-const getTimePercentage = (totalTime, currentTime) => {
-  return Math.max(0, Math.min(100, ((totalTime - currentTime) / totalTime) * 100));
-};
-
-// Update handleBet function to use selected bet amount
-const handleBet = async (prediction) => {
-  try {
-    // Get auth token from localStorage
-    const token = localStorage.getItem('auth_token');
-    if (!token) throw new Error('User not authenticated');
-    
-    // Check if user has enough points for the bet
-    if (!canPlaceBet()) {
-      setBetStatus('error');
-      setTimeout(() => setBetStatus(null), 3000);
-      return;
-    }
-    
-    // Add button press animation
-    const button = document.activeElement;
-    if (button) {
-      button.style.transform = 'scale(0.95)';
-      setTimeout(() => {
-        if (button) button.style.transform = '';
-      }, 150);
-    }
-    
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
-      { prediction, amount: betAmount },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    
-    setBetStatus('success');
-    
-    // Update user points after successful bet
+  // Load user points from localStorage
+  useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    userData.points = userData.points - betAmount;
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUserPoints(userData.points);
-    
-    // Add celebration effect for successful bet
-    const eventCard = document.querySelector('.card');
-    if (eventCard) {
-      eventCard.style.transform = 'scale(1.02)';
-      setTimeout(() => {
-        eventCard.style.transform = '';
-      }, 200);
-    }
-    
-    // Show success toast
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-success show';
-    toast.textContent = 'Bet placed successfully!';
-    document.body.appendChild(toast);
-    
-    // Remove toast after 3 seconds
-    setTimeout(() => {
-      toast.remove();
-    }, 3000);
-    
-    setTimeout(() => setBetStatus(null), 3000);
-  } catch (error) {
-    console.error('Betting failed:', error);
-    setBetStatus('error');
-    
-    // Add shake effect for error
-    const eventCard = document.querySelector('.card');
-    if (eventCard) {
-      eventCard.style.animation = 'shake 0.5s ease';
-      setTimeout(() => {
-        eventCard.style.animation = '';
-      }, 500);
-    }
-    
-    // Show error toast
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-error show';
-    toast.textContent = 'Failed to place bet. Try again.';
-    document.body.appendChild(toast);
-    
-    // Remove toast after 3 seconds
-    setTimeout(() => {
-      toast.remove();
-    }, 3000);
-    
-    setTimeout(() => setBetStatus(null), 3000);
-  }
-};
+    setUserPoints(userData.points || 0);
+  }, []);
 
-  // Calculate total time for countdown percentage
-  const totalTime = event.end_time ? (new Date(event.end_time) - new Date(event.start_time)) / 1000 : 86400; // Default 24 hours
-  const currentTime = timeRemaining;
-  const timePercentage = getTimePercentage(totalTime, currentTime);
+  // Validate if user has enough points for the bet
+  const canPlaceBet = () => {
+    return userPoints >= betAmount;
+  };
+
+  // Get error message if user doesn't have enough points
+  const getErrorMessage = () => {
+    if (betAmount > userPoints) {
+      return `Insufficient points. You need ${betAmount - userPoints} more points.`;
+    }
+    return '';
+  };
+
+  // Update handleBet function to use selected bet amount
+  const handleBet = async (prediction) => {
+    try {
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('User not authenticated');
+      
+      // Check if user has enough points for the bet
+      if (!canPlaceBet()) {
+        setBetStatus('error');
+        setTimeout(() => setBetStatus(null), 3000);
+        return;
+      }
+      
+      // Add button press animation
+      const button = document.activeElement;
+      if (button) {
+        button.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          if (button) button.style.transform = '';
+        }, 150);
+      }
+      
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
+        { prediction, amount: betAmount },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setBetStatus('success');
+      
+      // Update user points after successful bet
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      userData.points = userData.points - betAmount;
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUserPoints(userData.points);
+      
+      // Add celebration effect for successful bet
+      const eventCard = document.querySelector('.card');
+      if (eventCard) {
+        eventCard.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+          eventCard.style.transform = '';
+        }, 200);
+      }
+      
+      // Show success toast
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-success show';
+      toast.textContent = 'Bet placed successfully!';
+      document.body.appendChild(toast);
+      
+      // Remove toast after 3 seconds
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+      
+      setTimeout(() => setBetStatus(null), 3000);
+    } catch (error) {
+      console.error('Betting failed:', error);
+      setBetStatus('error');
+      
+      // Add shake effect for error
+      const eventCard = document.querySelector('.card');
+      if (eventCard) {
+        eventCard.style.animation = 'shake 0.5s ease';
+        setTimeout(() => {
+          eventCard.style.animation = '';
+        }, 500);
+      }
+      
+      // Show error toast
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-error show';
+      toast.textContent = 'Failed to place bet. Try again.';
+      document.body.appendChild(toast);
+      
+      // Remove toast after 3 seconds
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+      
+      setTimeout(() => setBetStatus(null), 3000);
+    }
+  };
 
   return (
     <div className="card">
-      <div className="card-header">
-        <div className="event-header">
-          <h3>{event.title}</h3>
-          <div className="event-meta">
-            <div className="event-cost-info">
-              <span className="entry-fee">🎫 Min. Entry: 250 points</span>
-              <span className="prize-pool">💰 Pot: ${event.prize_pool?.toLocaleString() || 0}</span>
-            </div>
-            <div className="time-remaining-container">
-              <span className="time-remaining">
-                {isExpired ? '⏱️ Expired' : `⏱️ ${formatTime(timeRemaining)}`}
-              </span>
-              <div className="countdown-progress">
-                <div
-                  className="countdown-progress-bar"
-                  style={{ width: `${timePercentage}%` }}
-                ></div>
-              </div>
-            </div>
+      <div className="card-body">
+        <h2 className="event-title">{event.title}</h2>
+        
+        {/* Target Price Display */}
+        <div className="target-price-container">
+          <div className="target-price">
+            ${event.target_price?.toLocaleString() || 'N/A'}
+          </div>
+          <div className="target-price-label">Target Price</div>
+        </div>
+        
+        {/* Chart Visualization */}
+        <div className="chart-container">
+          <svg className="chart" viewBox="0 0 100 40" preserveAspectRatio="none">
+            <path d="M0,30 L20,25 L40,35 L60,20 L80,25 L100,15"
+                  stroke="var(--aero-primary-accent)"
+                  strokeWidth="3"
+                  fill="none"
+                  filter="url(#glow)" />
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+          </svg>
+        </div>
+        
+        {/* Metadata Bar */}
+        <div className="metadata-bar">
+          <div className="metadata-item">
+            <span className="icon">🎫</span>
+            Min. Entry: 250 points
+          </div>
+          <div className="metadata-item">
+            <span className="icon">💰</span>
+            Pot: ${event.prize_pool?.toLocaleString() || 0}
           </div>
         </div>
-      </div>
-      <div className="card-body">
-        <p className="description">{event.description}</p>
         
-        {/* Display current cryptocurrency price */}
-        {event.initial_price && (
-          <div className="price-display">
-            <div className="current-price">
-              ${event.initial_price.toLocaleString()}
-            </div>
-            <div className="price-change">
-              {event.price_change === 'up' ? (
-                <span className="price-up">↑</span>
-              ) : event.price_change === 'down' ? (
-                <span className="price-down">↓</span>
-              ) : (
-                <span className="price-neutral">→</span>
-              )}
-            </div>
-          </div>
-        )}
+        {/* User Balance Information */}
+        <div className="user-info-display">
+          Your Balance: {userPoints.toLocaleString()} points /
+          <span className={userPoints >= 250 ? '' : 'insufficient-points'}>
+            Entry: 250 points
+          </span>
+        </div>
         
-        <div className="bet-options">
-          <div className="bet-amount-selector">
-            <button
-              className="button button-secondary"
-              onClick={() => handleBetAmountChange(false)}
-              disabled={betAmount <= 250}
-            >
-              -
-            </button>
-            <span className="bet-amount">
-              {betAmount.toLocaleString()} points
-            </span>
-            <button
-              className="button button-secondary"
-              onClick={() => handleBetAmountChange(true)}
-              disabled={!canPlaceBet(betAmount + 100)}
-            >
-              +
-            </button>
-          </div>
-          <div className="user-points-info">
-            You have {userPoints.toLocaleString()} points
-            {getErrorMessage() && <div className="form-error">{getErrorMessage()}</div>}
-          </div>
+        {/* Prediction Buttons */}
+        <div className="prediction-buttons">
           <button
-            className="button button-success"
+            className="prediction-button higher"
             onClick={() => handleBet('Higher')}
-            disabled={isExpired || betStatus === 'success' || !canPlaceBet()}
+            disabled={!canPlaceBet() || betStatus === 'success'}
           >
-            <span className="bet-icon">📈</span>
+            <span className="arrow-icon">↑</span>
             Higher
           </button>
           <button
-            className="button button-error"
+            className="prediction-button lower"
             onClick={() => handleBet('Lower')}
-            disabled={isExpired || betStatus === 'success' || !canPlaceBet()}
+            disabled={!canPlaceBet() || betStatus === 'success'}
           >
-            <span className="bet-icon">📉</span>
+            <span className="arrow-icon">↓</span>
             Lower
           </button>
         </div>
         
+        {/* Status Messages */}
         {betStatus === 'success' && (
           <div className="form-success">Bet placed successfully!</div>
         )}
@@ -652,43 +613,12 @@ const handleBet = async (prediction) => {
           <div className="form-error">Failed to place bet. Try again.</div>
         )}
         
-        {/* Display resolution status */}
+        {/* Resolution Status */}
         {event.status === 'resolved' && (
           <div className="resolution-info">
             <strong>Result:</strong> {event.correct_answer} -
             Final Price: ${event.final_price?.toLocaleString()}
           </div>
-        )}
-        
-        {/* Claim button for daily free participation */}
-        {event.is_daily && !event.participated && (
-          <button
-            className="button button-success"
-            onClick={async () => {
-              try {
-                const token = localStorage.getItem('auth_token');
-                if (!token) throw new Error('User not authenticated');
-                
-                const response = await axios.post(
-                  `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
-                  { prediction: 'Higher' }, // Default prediction for free participation
-                  { headers: { Authorization: `Bearer ${token}` } }
-                );
-                
-                // Update event to show participation
-                event.participated = true;
-                setEvents([...events]);
-                setBetStatus('success');
-                setTimeout(() => setBetStatus(null), 3000);
-              } catch (error) {
-                console.error('Claim failed:', error);
-                setBetStatus('error');
-                setTimeout(() => setBetStatus(null), 3000);
-              }
-            }}
-          >
-            🎁 Claim Free Participation
-          </button>
         )}
       </div>
     </div>
@@ -734,7 +664,99 @@ const EventList = () => {
 
 // Updated Predictions Interface
 const PredictionsInterface = () => {
-  return <EventList />;
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+        setEvents(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch events:', err);
+        setError('Failed to load events');
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  if (loading) return <div className="loading">Loading events...</div>;
+  if (error) return <div className="form-error">{error}</div>;
+
+  return (
+    <div className="events-container">
+      <h2>Active Events</h2>
+      <div className="events-list">
+        {events.map(event => (
+          <div
+            key={event.id}
+            className="card"
+            onClick={() => setSelectedEvent(event)}
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="card-header">
+              <div className="event-header">
+                <h3 className="event-title">{event.title}</h3>
+                <div className="event-meta">
+                  <div className="event-info">
+                    <span className="participants">👥 {event.current_participants} participants</span>
+                    <span className="status-dot status-active"></span>
+                  </div>
+                  <div className="event-time">
+                    <span className="icon">⏰</span>
+                    Ends at: {new Date(event.end_time).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="card-body">
+              <p className="description">{event.description}</p>
+              <div className="event-details">
+                <div className="detail">
+                  <span className="icon">💰</span>
+                  Pot: ${event.prize_pool?.toLocaleString() || 0}
+                </div>
+                <div className="detail">
+                  <span className="icon">🎫</span>
+                  Min. Entry: 250 points
+                </div>
+              </div>
+              <div className="sparkline-container">
+                <svg className="sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
+                  <path d="M0,15 L10,12 L20,14 L30,10 L40,12 L50,8 L60,10 L70,6 L80,8 L90,7 L100,9"
+                        stroke="var(--aero-primary-accent)"
+                        strokeWidth="2"
+                        fill="none"
+                        filter="drop-shadow(0 0 4px rgba(255, 140, 0, 0.5))" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Prediction Detail Modal */}
+      {selectedEvent && (
+        <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <button className="close-btn" onClick={() => setSelectedEvent(null)} aria-label="Close modal">
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <PredictionDetail event={selectedEvent} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default App;
