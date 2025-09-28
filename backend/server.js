@@ -1013,18 +1013,21 @@ async function startServer() {
     await pool.query('SELECT 1');
     console.log('✅ Database connection successful');
     
-    const server = app.listen(PORT, '0.0.0.0', async () => {
-            console.log(`\n🚀 Server listening on port ${PORT}`);
-            console.log(`Environment variables:`, {
-                PORT: process.env.PORT,
-                NODE_ENV: process.env.NODE_ENV,
-                RENDER: process.env.RENDER,
-                DB_TYPE: process.env.DB_TYPE,
-                DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
-            });
-            console.log('✅ Server started successfully');
-            await createInitialEvent(); // Create initial event after startup
-        });
+    // Start the server
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`\n🚀 Server listening on port ${PORT}`);
+      console.log(`Environment variables:`, {
+        PORT: process.env.PORT,
+        NODE_ENV: process.env.NODE_ENV,
+        RENDER: process.env.RENDER,
+        DB_TYPE: process.env.DB_TYPE,
+        DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
+      });
+      console.log('✅ Server started successfully');
+    });
+    
+    // Create initial event after server has started
+    await createInitialEvent();
     
         // Add additional error logging
         process.on('unhandledRejection', (reason, promise) => {
