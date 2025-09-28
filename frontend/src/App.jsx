@@ -448,7 +448,10 @@ const EventCard = ({ event }) => {
       <div className="event-header">
         <h3>{event.title}</h3>
         <div className="event-meta">
-          <span className="entry-fee">🎫 ${event.entry_fee}</span>
+          <div className="event-cost-info">
+            <span className="entry-fee">🎫 Entry: ${event.entry_fee.toLocaleString()}</span>
+            <span className="prize-pool">💰 Pot: ${event.prize_pool?.toLocaleString() || 0}</span>
+          </div>
           <div className="time-remaining-container">
             <span className="time-remaining">
               {isExpired ? '⏱️ Expired' : `⏱️ ${formatTime(timeRemaining)}`}
