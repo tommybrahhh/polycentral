@@ -1,0 +1,10 @@
+{
+  "prod": {
+    "driver": "pg",
+    "user": "postgres",
+    "password": "MBeAkwZQLdPGhXzUTcclEYNFufdwcnnd",
+    "host": "postgres.railway.internal",
+    "database": "railway",
+    "port": 5432
+  }
+}

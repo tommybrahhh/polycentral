@@ -5,6 +5,9 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "db-migrate up --env prod",
+    "migrate:create": "db-migrate create --sql-file",
+    "migrate:rollback": "db-migrate down --env prod"
     "dev": "nodemon server.js",
     "start": "node server.js",
     "migrate": "db-migrate up --env prod",
