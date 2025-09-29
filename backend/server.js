@@ -188,6 +188,9 @@ async function initializeDatabase() {
 
     // Ensure participants table has correct column names
     await ensureParticipantsTableIntegrity();
+    
+    // Apply new migrations if any
+    await runMigrations();
 
     // Skip sample data in production - removed entirely to prevent errors
     console.log('⏭️ Skipping sample data creation in production');
@@ -329,6 +332,7 @@ async function runMigrations() {
     try {
       const { rows } = await pool.query('SELECT MAX(version) as current FROM schema_versions');
       currentVersion = rows[0].current || 0;
+      console.log('Current database version:', currentVersion);
     } catch (e) {
       console.log('No existing schema versions, starting fresh');
     }
@@ -982,10 +986,44 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+// Add this at the top of the file
+const sqlLogger = require('pino')({name: "SQL"});
+
 // GET active events
+// Temporary debug endpoint
+app.get('/api/debug/participants-schema', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'participants'
+    `);
+    console.log('Participants table schema:', result.rows);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Schema debug failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add debug endpoint before other routes
+app.get('/api/debug/participants-schema', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'participants'
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Schema debug failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/events/active', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const queryText = `
       SELECT
         e.id,
         e.title,
@@ -1000,10 +1038,21 @@ app.get('/api/events/active', async (req, res) => {
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
       FROM events e
-      WHERE e.status = 'active' OR e.resolution_status = 'pending'
-    `);
-
+      WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
+    
+    sqlLogger.debug({query: queryText}, "Executing active events query");
+    
+    const { rows } = await pool.query(queryText);
     const now = new Date();
+
+    // Add schema validation
+    if (!rows.every(event =>
+      typeof event.id === 'number' &&
+      typeof event.prize_pool === 'number'
+    )) {
+      throw new Error('Database schema mismatch - invalid data types returned');
+    }
+
     const activeEvents = rows.map(event => ({
       ...event,
       end_time: event.end_time.toISOString(),
@@ -1013,10 +1062,11 @@ app.get('/api/events/active', async (req, res) => {
 
     res.json(activeEvents);
   } catch (error) {
-    console.error('Error fetching active events:', error);
+    sqlLogger.error({error: error.message, stack: error.stack}, "Active events query failed");
     res.status(500).json({
       error: 'Failed to fetch active events',
-      details: error.message
+      details: error.message,
+      code: error.code
     });
   }
 });
