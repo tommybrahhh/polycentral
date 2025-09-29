@@ -7,8 +7,8 @@ const path = require('path');
 const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_NAME === 'production';
 
 // Log environment information
-console.log(`🚀 Starting in ${isProduction ? 'PRODUCTION' : 'development'} mode`);
-console.log(`🔧 Environment variables source: ${isProduction ? '.env.production' : '.env'}`);
+console.log("Starting in " + (isProduction ? 'PRODUCTION' : 'development') + " mode");
+console.log("Environment variables source: " + (isProduction ? '.env.production' : '.env'));
 
 // Load environment variables
 require('dotenv').config({
@@ -16,7 +16,7 @@ require('dotenv').config({
 });
 
 // Log critical environment variables
-console.log('🔍 Critical environment variables:');
+console.log("Critical environment variables:");
 console.log(`- RENDER: ${process.env.RENDER || 'not set'}`);
 console.log(`- NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
 console.log(`- DB_TYPE: ${process.env.DB_TYPE || 'not set'}`);
@@ -97,13 +97,19 @@ app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
-        console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms - ${req.ip}`);
+        console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms - ${req.ip} - Headers: ${JSON.stringify(req.headers)}`);
     });
     next();
 });
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
 app.use('/api/', limiter);
-app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    next();
+  } else {
+    express.json({ limit: '10mb' })(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true }));
 
 // --- Database Setup ---
@@ -1006,6 +1012,21 @@ app.get('/api/events/active', async (req, res) => {
   try {
     console.log('Fetching active events...');
     // Query active events with initial price and correct prize pool calculation
+console.log('Executing events/active query:', `SELECT
+  e.id,
+  e.title,
+  e.description,
+  e.options,
+  e.entry_fee,
+  e.start_time,
+  e.end_time,
+  e.initial_price,
+  e.final_price,
+  e.resolution_status,
+  (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
+  COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
+FROM events e
+WHERE e.status = 'active' OR e.resolution_status = 'pending'`);
     const { rows } = await pool.query(
       `SELECT
         e.id,
@@ -1017,13 +1038,11 @@ app.get('/api/events/active', async (req, res) => {
         e.end_time,
         e.initial_price,
         e.final_price,
-        e.correct_answer,
         e.resolution_status,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
       FROM events e
       WHERE e.status = 'active' OR e.resolution_status = 'pending'
-      GROUP BY e.id`
     );
 
     // Calculate time remaining and format response
@@ -1046,7 +1065,8 @@ app.get('/api/events/active', async (req, res) => {
     console.error('❌ Error fetching active events:', error);
     res.status(500).json({
       error: 'Internal server error while fetching active events',
-      details: error.message
+      details: error.message,
+      stack: error.stack
     });
   }
 });
@@ -1109,7 +1129,7 @@ async function createDailyEvent() {
     const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
     console.log('Daily event creation triggered with price:', currentPrice);
     await createEvent(currentPrice);
-    console.log(`Created new Bitcoin event with initial price: $${currentPrice}`);
+    console.log("Created new Bitcoin event with initial price: $" + currentPrice);
   } catch (error) {
     console.error('Error creating daily event:', error);
   }
@@ -1140,19 +1160,19 @@ async function startServer() {
     
     // Test database connection
     await pool.query('SELECT 1');
-    console.log('✅ Database connection successful');
+    console.log("Database connection successful");
     
     // Start the server
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`\n🚀 Server listening on port ${PORT}`);
-      console.log(`Environment variables:`, {
+      console.log("\nServer listening on port " + PORT);
+      console.log("Environment variables:", {
         PORT: process.env.PORT,
         NODE_ENV: process.env.NODE_ENV,
         RENDER: process.env.RENDER,
         DB_TYPE: process.env.DB_TYPE,
         DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
       });
-      console.log('✅ Server started successfully');
+      console.log("Server started successfully");
     });
     
     // Create initial event after server has started
@@ -1170,13 +1190,13 @@ async function startServer() {
         });
 
     server.on('error', (error) => {
-        console.error('❌ Server error:', error);
+        console.error("Server error:", error);
         if (error.code === 'EADDRINUSE') {
-            console.log(`Port ${PORT} is already in use. Trying alternative port...`);
+            console.log("Port " + PORT + " is already in use. Trying alternative port...");
             // Try alternative ports
             const alternativePorts = [8080, 8000, 5000];
             for (const altPort of alternativePorts) {
-                console.log(`Trying port ${altPort}...`);
+                console.log("Trying port " + altPort + "...");
                 try {
                     server.listen(altPort);
                     break;
@@ -1198,7 +1218,7 @@ async function startServer() {
 startServer();
 
 process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down server...');
+    console.log("\nShutting down server...");
     pool.end(() => {
         console.log('✅ Database connection closed');
         process.exit(0);
