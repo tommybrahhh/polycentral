@@ -8,14 +8,14 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --omit=dev
-
-# Run database migrations
-RUN npm run migrate --if-present
+# Install all dependencies
+RUN npm ci
 
 # Copy application code
 COPY . .
+
+# Run database migrations
+RUN npm run migrate --if-present
 
 # Expose the port the app runs on
 EXPOSE 8080
