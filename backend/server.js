@@ -1027,8 +1027,8 @@ console.log('Executing events/active query:', `SELECT
   COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
 FROM events e
 WHERE e.status = 'active' OR e.resolution_status = 'pending'`);
-    const { rows } = await pool.query(
-      `SELECT
+    const { rows } = await pool.query(`
+      SELECT
         e.id,
         e.title,
         e.description,
@@ -1043,7 +1043,7 @@ WHERE e.status = 'active' OR e.resolution_status = 'pending'`);
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
       FROM events e
       WHERE e.status = 'active' OR e.resolution_status = 'pending'
-    );
+    `);
 
     // Calculate time remaining and format response
     const now = new Date();
@@ -1083,7 +1083,7 @@ app.post('/api/events/resolve', authenticateAdmin, async (req, res) => {
     }
 });
 
-cron.schedule('* * * * *', async () => { /* ... */ });
+cron.schedule('0 * * * *', () => resolvePendingEvents()); // Run hourly at minute 0
 
 app.use((err, req, res, next) => {
     console.error('💥 Server error:', err);
