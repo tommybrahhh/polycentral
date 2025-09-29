@@ -5,6 +5,9 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
+# Add a build arg to bust cache
+ARG BUILD_DATE=unknown
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
