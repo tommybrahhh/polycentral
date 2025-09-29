@@ -17,9 +17,6 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Run database migrations
-RUN npm run migrate --if-present
-
 # Expose the port the app runs on
 EXPOSE 8080
 

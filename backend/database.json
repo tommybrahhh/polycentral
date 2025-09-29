@@ -3,8 +3,8 @@
     "driver": "pg",
     "user": "postgres",
     "password": "MBeAkwZQLdPGhXzUTcclEYNFufdwcnnd",
-    "host": "postgres.railway.internal",
+    "host": "metro.proxy.rlwy.net",
     "database": "railway",
-    "port": 5432
+    "port": 56048
   }
 }
