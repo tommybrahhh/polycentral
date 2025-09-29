@@ -9,7 +9,10 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
+
+# Run database migrations
+RUN npm run migrate --if-present
 
 # Copy application code
 COPY . .
