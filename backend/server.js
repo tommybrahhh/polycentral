@@ -58,40 +58,15 @@ const PORT = process.env.PORT || 8080;
 
 // --- Middleware Setup ---
 app.use(helmet());
-// Set allowed origins for CORS - include both your frontend domains
-const raw = process.env.CORS_ORIGIN || 'https://polyc-e9xss6xg8-tommybrahhhs-projects.vercel.app,https://polyc-seven.vercel.app,http://localhost:5173';
+// Set allowed origins for CORS
+const raw = process.env.CORS_ORIGIN || 'https://polycentral-production.up.railway.app,https://polyc-seven.vercel.app,http://localhost:5173';
 const allowedOrigins = raw.split(',').map(o => o.trim()).filter(Boolean);
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, curl requests)
-        if (!origin) return callback(null, true);
-        
-        // Check if the origin is in our allowed list
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            return callback(null, true);
-        }
-        
-        // Check for Vercel preview deployments (wildcard matching)
-        if (origin && origin.endsWith('.vercel.app')) {
-            // Extract the subdomain
-            const subdomain = origin.replace('https://', '').replace('.vercel.app', '');
-            // Check if it's a preview deployment (contains the project name and random string)
-            if (subdomain.includes('polyc-') && subdomain.includes('-tommybrahhhs-projects')) {
-                return callback(null, true);
-            }
-        }
-        
-        // If we reach here, origin is not allowed
-        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-        console.error(`CORS ERROR: ${msg}. Allowed origins: ${allowedOrigins.join(', ')}`);
-        return callback(new Error(msg), false);
-        
-        // Origin is allowed
-        return callback(null, true);
-    },
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    optionsSuccessStatus: 200
 }));
 app.use((req, res, next) => {
     const start = Date.now();
@@ -1010,23 +985,6 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
 // GET active events
 app.get('/api/events/active', async (req, res) => {
   try {
-    console.log('Fetching active events...');
-    // Query active events with initial price and correct prize pool calculation
-console.log('Executing events/active query:', `SELECT
-  e.id,
-  e.title,
-  e.description,
-  e.options,
-  e.entry_fee,
-  e.start_time,
-  e.end_time,
-  e.initial_price,
-  e.final_price,
-  e.resolution_status,
-  (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-  COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
-FROM events e
-WHERE e.status = 'active' OR e.resolution_status = 'pending'`);
     const { rows } = await pool.query(`
       SELECT
         e.id,
@@ -1045,28 +1003,20 @@ WHERE e.status = 'active' OR e.resolution_status = 'pending'`);
       WHERE e.status = 'active' OR e.resolution_status = 'pending'
     `);
 
-    // Calculate time remaining and format response
     const now = new Date();
-    const activeEvents = rows.map(event => {
-      const endTime = new Date(event.end_time);
-      const timeRemaining = Math.floor((endTime - now) / 1000); // seconds
-      const isExpired = timeRemaining <= 0;
-      
-      return {
-        ...event,
-        end_time: endTime.toISOString(),
-        time_remaining: isExpired ? 0 : timeRemaining,
-        status: isExpired && event.status === 'active' ? 'expired' : event.status
-      };
-    });
+    const activeEvents = rows.map(event => ({
+      ...event,
+      end_time: event.end_time.toISOString(),
+      time_remaining: Math.floor((new Date(event.end_time) - now) / 1000),
+      status: new Date(event.end_time) <= now ? 'expired' : event.status
+    }));
 
     res.json(activeEvents);
   } catch (error) {
-    console.error('❌ Error fetching active events:', error);
+    console.error('Error fetching active events:', error);
     res.status(500).json({
-      error: 'Internal server error while fetching active events',
-      details: error.message,
-      stack: error.stack
+      error: 'Failed to fetch active events',
+      details: error.message
     });
   }
 });

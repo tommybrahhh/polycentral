@@ -62,6 +62,15 @@ const App = () => {
     }
   };
   
+  // Add 404 component
+  const NotFound = () => (
+    <div className="not-found-container">
+      <h2>404 - Page Not Found</h2>
+      <p>The page you're looking for doesn't exist.</p>
+      <Link to="/" className="button button-primary">Back to Home</Link>
+    </div>
+  );
+  
   // This runs our function when the page loads.
   // It also sets up a listener for account changes.
   useEffect(() => {
@@ -225,6 +234,7 @@ const App = () => {
           <Route path="/events" element={<EventsInterface />} />
           <Route path="/predictions" element={<PredictionsInterface />} />
           <Route path="/" element={<EventsInterface />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
       
