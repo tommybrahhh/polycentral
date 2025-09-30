@@ -1,308 +1,232 @@
-# Authentication & Event Options Fix Plan
+# Fix Plan for 400 Bad Request Error on /api/events/active Endpoint
 
-## Problem Analysis
+## Issue Analysis
 
-### Current Issues:
-1. **Authentication Errors**: Both free coins claiming and event entry are failing with "Invalid token" errors
-2. **Event Options Display**: Users can't see prediction options in events
+After analyzing the codebase, I've identified the root cause of the 400 Bad Request error when fetching active events from the `/api/events/active` endpoint:
 
-### Root Cause Investigation:
+1. **Current State**: The `/api/events/active` endpoint in `backend/server.js` does not require authentication (no `authenticateToken` middleware)
+2. **Problem**: The frontend is making requests to this endpoint without authentication headers, but the backend is working correctly
+3. **CORS Configuration**: The CORS settings in `backend/.env` and `backend/.env.production` are correctly configured for the frontend domains
+4. **Root Cause**: The error is not actually with the `/api/events/active` endpoint itself but likely with the request being made incorrectly
 
-#### Authentication Issues:
-- JWT token validation is failing in the backend
-- Possible causes:
-  1. Token secret key mismatch between frontend and backend
-  2. Token format corruption during storage/retrieval
-  3. CORS/Environment configuration differences
-  4. Token expiration not being handled properly
+## Current Implementation Analysis
 
-#### Tournament Options Issues:
-- Event options are not being displayed correctly
-- The backend stores options as JSON string but frontend expects array
-- Event type parsing logic may be incorrect
-
-## Solution Implementation Plan
-
-### Phase 1: Authentication Fix
-
-#### Step 1: Add Diagnostic Logging
-- Add token logging in authentication functions
-- Log token values before and after storage
-- Track API request headers for debugging
-
-#### Step 2: Fix Token Handling
-- Ensure consistent JWT secret usage
-- Implement proper token validation
-- Add token refresh mechanism
-- Fix localStorage handling
-
-#### Step 3: Backend JWT Configuration Check
-- Verify JWT secret consistency
-- Check token validation logic
-- Ensure proper CORS configuration
-
-### Phase 2: Event Options Fix
-
-#### Step 1: Fix Event Options Parsing
-- Update `openTournamentModal` function to properly parse event options
-- Handle different event types correctly
-- Ensure options are displayed as radio buttons
-
-#### Step 2: Event Entry Flow
-- Fix the event entry API call
-- Ensure proper prediction submission
-- Add error handling for event participation
-
-### Phase 3: Testing & Validation
-
-#### Step 1: Unit Testing
-- Test token storage and retrieval
-- Verify event options parsing
-- Test API endpoint calls
-
-#### Step 2: Integration Testing
-- Test complete user registration flow
-- Verify event participation
-- Test free coins claiming
-
-#### Step 3: End-to-End Testing
-- Test in both localhost and production environments
-- Verify all features work correctly after login
-
-## Detailed Implementation Steps
-
-### Authentication Fix Implementation:
-
-#### 1. Frontend Token Handling Improvements:
+### Backend (`backend/server.js`)
 ```javascript
-// In app.js - Enhanced token logging
-console.log('Current token:', authToken);
-console.log('Token length:', authToken ? authToken.length : 'null');
-console.log('Token stored in localStorage:', localStorage.getItem('auth_token'));
-
-// Add token validation function
-function validateToken(token) {
-    if (!token) {
-        console.error('No token found');
-        return false;
-    }
-    
-    // Basic JWT format validation
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-        console.error('Invalid JWT format');
-        return false;
-    }
-    
-    return true;
-}
+app.get('/api/events/active', async (req, res) => {
+  // This endpoint does not require authentication
+  // It correctly returns active events
+  // ...
+});
 ```
 
-#### 2. Backend JWT Configuration Check:
-- Verify JWT secret is consistent across environments
-- Check token expiration settings
-- Ensure proper middleware implementation
-
-#### 3. API Request Enhancement:
+### Frontend (`frontend/src/App.jsx`)
 ```javascript
-// Enhanced API request with better error handling
-async function makeAuthenticatedRequest(url, options = {}) {
-    const token = localStorage.getItem('auth_token');
+const fetchEvents = async () => {
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+    setEvents(response.data);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+  }
+};
+```
+
+The frontend implementation is correct - it's making a GET request to the endpoint without authentication, which is appropriate since the endpoint is public.
+
+## Fix Plan
+
+### 1. Determine Authentication Requirements
+
+The `/api/events/active` endpoint should remain **public** (no authentication required) because:
+- It displays publicly available events
+- Users should be able to browse events before logging in
+- This is consistent with the current implementation
+
+### 2. Identify the Real Issue
+
+The 400 Bad Request error is likely caused by:
+- Incorrect API URL in the frontend environment configuration
+- Network connectivity issues
+- Request headers or parameters that are being rejected
+
+### 3. Implementation Steps
+
+#### Step 1: Verify Environment Configuration
+- Check that `VITE_API_BASE_URL` in `frontend/.env` points to the correct backend URL
+- Ensure the backend is running and accessible at that URL
+
+#### Step 2: Add Better Error Handling
+- Enhance error logging in the backend endpoint
+- Improve error messages in the frontend to provide more details
+
+#### Step 3: Add Request Validation
+- Add request validation to the backend endpoint to ensure proper parameters
+- Return more descriptive error messages when validation fails
+
+#### Step 4: Test the Fix
+- Test the endpoint directly using curl or Postman
+- Test through the frontend application
+- Verify the fix works in both development and production environments
+
+## Detailed Implementation
+
+### Backend Changes
+
+1. **Enhanced Error Handling** in `/api/events/active` endpoint:
+```javascript
+app.get('/api/events/active', async (req, res) => {
+  try {
+    // Log request details for debugging
+    console.log('DEBUG: /api/events/active endpoint called');
+    console.log('Request headers:', req.headers);
+    console.log('Request query parameters:', req.query);
     
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
+    // Validate query parameters if any
+    // Add specific validation logic here if needed
     
-    console.log('Making request to:', url);
-    console.log('Using token:', token.substring(0, 20) + '...');
+    const queryText = `
+      SELECT
+        e.id,
+        e.title,
+        e.description,
+        e.options,
+        e.entry_fee,
+        e.start_time,
+        e.end_time,
+        e.initial_price,
+        e.final_price,
+        e.status,
+        e.resolution_status,
+        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
+        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
+      FROM events e
+      WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
     
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            ...options.headers
-        }
+    const { rows } = await pool.query(queryText);
+    const now = new Date();
+
+    const activeEvents = rows.map(event => {
+      try {
+        const endTime = event.end_time ? new Date(event.end_time) : new Date();
+        const startTime = event.start_time ? new Date(event.start_time) : new Date();
+        
+        return {
+          ...event,
+          end_time: endTime.toISOString(),
+          start_time: startTime.toISOString(),
+          time_remaining: Math.floor((endTime - now) / 1000),
+          status: endTime <= now ? 'expired' : (event.status || 'active'),
+          prize_pool: event.prize_pool || 0,
+          current_participants: event.current_participants || 0,
+          entry_fee: event.entry_fee || 0,
+          initial_price: event.initial_price || 0,
+          final_price: event.final_price || null
+        };
+      } catch (transformError) {
+        console.error('Error transforming event data:', transformError, event);
+        return {
+          ...event,
+          end_time: event.end_time ? new Date(event.end_time).toISOString() : new Date().toISOString(),
+          start_time: event.start_time ? new Date(event.start_time).toISOString() : new Date().toISOString(),
+          time_remaining: 0,
+          status: event.status || 'active',
+          prize_pool: event.prize_pool || 0,
+          current_participants: event.current_participants || 0,
+          entry_fee: event.entry_fee || 0,
+          initial_price: event.initial_price || 0,
+          final_price: event.final_price || null
+        };
+      }
     });
-    
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error || 'Request failed');
-    }
-    
-    return response.json();
-}
+
+    res.json(activeEvents);
+  } catch (error) {
+    console.error('Error in /api/events/active endpoint:', error);
+    // Return 500 with error details for better debugging
+    res.status(500).json({ 
+      error: 'Failed to fetch active events',
+      message: error.message 
+    });
+  }
+});
 ```
 
-### Tournament Options Fix Implementation:
+### Frontend Changes
 
-#### 1. Tournament Options Parsing:
+1. **Enhanced Error Handling** in `fetchEvents` function:
 ```javascript
-// Updated openTournamentModal function
-function parseTournamentOptions(tournament) {
-    let options = [];
-    
-    if (tournament.tournament_type === 'yes_no') {
-        options = ['Yes', 'No'];
-    } else if (tournament.tournament_type === 'multiple_choice') {
-        if (tournament.options) {
-            try {
-                options = JSON.parse(tournament.options);
-            } catch (e) {
-                console.error('Error parsing tournament options:', e);
-                options = ['Option 1', 'Option 2', 'Option 3'];
-            }
-        } else {
-            options = ['Option 1', 'Option 2', 'Option 3'];
-        }
+const fetchEvents = async () => {
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+    setEvents(response.data);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    // More detailed error handling
+    if (error.response) {
+      // Server responded with error status
+      console.error('Server error:', error.response.status, error.response.data);
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error('Network error:', error.request);
+    } else {
+      // Something else happened
+      console.error('Error:', error.message);
     }
-    
-    return options;
-}
-```
-
-#### 2. Free Coins Claiming Fix:
-```javascript
-// Enhanced submitDailyPrediction function
-window.submitDailyPrediction = async function() {
-    if (!authToken) {
-        console.error('No authentication token found');
-        alert('Please login first!');
-        connectWallet();
-        return;
-    }
-    
-    // Validate token before making request
-    if (!validateToken(authToken)) {
-        console.error('Invalid token format');
-        alert('Session expired. Please login again.');
-        disconnectWallet();
-        return;
-    }
-    
-    try {
-        console.log('Attempting to claim free points...');
-        const response = await makeAuthenticatedRequest(`${API_BASE_URL}/user/claim-free-points`, {
-            method: 'POST'
-        });
-        
-        const points = response.points || 500;
-        currentUser.points += points;
-        updateUserInterface();
-        
-        console.log('Successfully claimed', points, 'points');
-        
-        // Update UI to show success
-        document.getElementById('daily-challenge').innerHTML = `
-            <div class="challenge-success">
-                <div class="success-icon">✅</div>
-                <h3 class="success-title">Daily Points Claimed!</h3>
-                <p class="success-message">You earned ${points} points! Come back tomorrow for more.</p>
-            </div>`;
-    } catch (error) {
-        console.error('Daily claim failed:', error);
-        alert('Claim failed: ' + error.message);
-    }
+  }
 };
 ```
 
-#### 3. Tournament Entry Fix:
-```javascript
-// Enhanced enterTournament function
-window.enterTournament = async function(tournamentId) {
-    const prediction = document.querySelector('input[name="prediction"]:checked')?.value;
-    if (!prediction) {
-        alert('Please select a prediction!');
-        return;
-    }
-    
-    // Validate token before making request
-    if (!validateToken(authToken)) {
-        console.error('Invalid token format');
-        alert('Session expired. Please login again.');
-        disconnectWallet();
-        return;
-    }
-    
-    try {
-        console.log('Attempting to enter event:', tournamentId);
-        console.log('Selected prediction:', prediction);
-        
-        const response = await makeAuthenticatedRequest(`${API_BASE_URL}/events/${tournamentId}/enter`, {
-            method: 'POST',
-            body: JSON.stringify({ prediction })
-        });
-        
-        console.log('Event entry response:', response);
-        
-        alert('Successfully entered event! Good luck!');
-        closeModal();
-        
-        // Refresh user data and tournaments
-        await loadUserData();
-        await loadTournaments();
-    } catch (error) {
-        console.error('Tournament entry failed:', error);
-        alert('Failed to enter tournament: ' + error.message);
-    }
-};
+2. **Verify Environment Configuration**:
+```bash
+# Check that VITE_API_BASE_URL in frontend/.env points to correct backend
+VITE_API_BASE_URL=https://polycentral-production.up.railway.app
 ```
 
-## Testing Strategy
+## Testing Plan
 
-### 1. Unit Tests:
-- Token validation function
-- Tournament options parsing
-- API request wrapper
+1. **Unit Testing**:
+   - Test the `/api/events/active` endpoint with various inputs
+   - Verify error handling works correctly
 
-### 2. Integration Tests:
-- User registration and login flow
-- Token storage and retrieval
-- Event participation
-- Free coins claiming
+2. **Integration Testing**:
+   - Test the complete flow from frontend to backend
+   - Verify CORS is working correctly
+   - Test with different browsers and devices
 
-### 3. End-to-End Tests:
-- Complete user journey from registration to tournament participation
-- Cross-environment testing (localhost vs production)
-- Error scenario testing
+3. **End-to-End Testing**:
+   - Test the user journey of viewing events
+   - Verify the fix works in both development and production
 
-## Deployment Considerations
+## Rollback Plan
 
-### 1. Environment Configuration:
-- Ensure JWT secrets are properly configured for each environment
-- Verify CORS settings for production
-- Test API base URL routing
+If the fix causes issues:
+1. Revert the backend changes to the previous implementation
+2. Restore the original error handling
+3. Verify the application works as before
 
-### 2. Error Handling:
-- Implement graceful degradation for authentication failures
-- Add user-friendly error messages
-- Include retry mechanisms for transient failures
+## Security Considerations
 
-### 3. Monitoring:
-- Add logging for authentication events
-- Track API request success/failure rates
-- Monitor token refresh patterns
+1. The `/api/events/active` endpoint should remain public as it displays non-sensitive information
+2. Ensure rate limiting is in place to prevent abuse
+3. Validate all inputs to prevent injection attacks
 
-## Expected Outcomes
+## Compatibility
 
-After implementing this plan:
+1. The fix is compatible with both PostgreSQL and SQLite databases
+2. The fix works with the existing deployment setup (Railway for backend, Vercel for frontend)
+3. No breaking changes to the API interface
 
-1. **Authentication Issues Resolved**:
-   - Users can successfully claim free coins
-   - Tournament entry works without authentication errors
-   - Token handling is more robust
+## Timeline
 
-2. **Event Options Display Fixed**:
-   - Prediction options are properly displayed
-   - Users can select predictions for events
-   - Event entry flow works correctly
+1. Implementation: 2-3 hours
+2. Testing: 2-3 hours
+3. Deployment: 1 hour
+4. Total estimated time: 5-7 hours
 
-3. **Improved User Experience**:
-   - Clear error messages for authentication issues
-   - Better feedback during API calls
-   - More reliable session management
+## Success Criteria
 
-This comprehensive plan addresses both the authentication issues and the event options display problems while providing a robust foundation for future enhancements.
+1. The 400 Bad Request error is resolved
+2. Active events are displayed correctly in the frontend
+3. The fix works in both development and production environments
+4. No regression issues are introduced

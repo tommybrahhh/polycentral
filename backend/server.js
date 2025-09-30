@@ -878,6 +878,116 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     }
 });
 
+// GET active events
+// Temporary debug endpoint
+app.get('/api/debug/participants-schema', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'participants'
+    `);
+    console.log('Participants table schema:', result.rows);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Schema debug failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/events/active', async (req, res) => {
+  try {
+    // Log request details for debugging
+    console.log('DEBUG: /api/events/active endpoint called');
+    console.log('Request headers:', req.headers);
+    console.log('Request query parameters:', req.query);
+    
+    // Validate query parameters if any
+    // Add specific validation logic here if needed
+    // For now, we just check for unexpected parameters
+    const allowedParams = ['limit', 'offset']; // Add any parameters you want to allow
+    const queryParams = Object.keys(req.query);
+    const invalidParams = queryParams.filter(param => !allowedParams.includes(param));
+    
+    if (invalidParams.length > 0) {
+      console.log('Invalid query parameters:', invalidParams);
+      // We don't return an error for invalid parameters, just log them
+    }
+    
+    const queryText = `
+      SELECT
+        e.id,
+        e.title,
+        e.description,
+        e.options,
+        e.entry_fee,
+        e.start_time,
+        e.end_time,
+        e.initial_price,
+        e.final_price,
+        e.status,
+        e.resolution_status,
+        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
+        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
+      FROM events e
+      WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
+    
+    sqlLogger.debug({query: queryText}, "Executing active events query");
+    console.log('DEBUG: Executing query:', queryText);
+    
+    const { rows } = await pool.query(queryText);
+    console.log('DEBUG: Query result rows count:', rows.length);
+    const now = new Date();
+
+    // More robust data transformation with error handling
+    const activeEvents = rows.map(event => {
+      try {
+        // Handle null/undefined values gracefully
+        const endTime = event.end_time ? new Date(event.end_time) : new Date();
+        const startTime = event.start_time ? new Date(event.start_time) : new Date();
+        
+        return {
+          ...event,
+          end_time: endTime.toISOString(),
+          start_time: startTime.toISOString(),
+          time_remaining: Math.floor((endTime - now) / 1000),
+          status: endTime <= now ? 'expired' : (event.status || 'active'),
+          prize_pool: event.prize_pool || 0,
+          current_participants: event.current_participants || 0,
+          entry_fee: event.entry_fee || 0,
+          initial_price: event.initial_price || 0,
+          final_price: event.final_price || null
+        };
+      } catch (transformError) {
+        console.error('Error transforming event data:', transformError, event);
+        // Return event with safe defaults
+        return {
+          ...event,
+          end_time: event.end_time ? new Date(event.end_time).toISOString() : new Date().toISOString(),
+          start_time: event.start_time ? new Date(event.start_time).toISOString() : new Date().toISOString(),
+          time_remaining: 0,
+          status: event.status || 'active',
+          prize_pool: event.prize_pool || 0,
+          current_participants: event.current_participants || 0,
+          entry_fee: event.entry_fee || 0,
+          initial_price: event.initial_price || 0,
+          final_price: event.final_price || null
+        };
+      }
+    });
+
+    console.log('DEBUG: Returning active events count:', activeEvents.length);
+    res.json(activeEvents);
+  } catch (error) {
+    console.error('Error in /api/events/active endpoint:', error);
+    // Return 500 with error details for better debugging
+    res.status(500).json({
+      error: 'Failed to fetch active events',
+      message: error.message
+    });
+  }
+});
+
 // GET event details
 app.get('/api/events/:id', async (req, res) => {
   try {
@@ -1046,116 +1156,7 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
 // Add this at the top of the file
 const sqlLogger = require('pino')({name: "SQL"});
 
-// GET active events
-// Temporary debug endpoint
-app.get('/api/debug/participants-schema', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT column_name, data_type
-      FROM information_schema.columns
-      WHERE table_name = 'participants'
-    `);
-    console.log('Participants table schema:', result.rows);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Schema debug failed:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
-// Add debug endpoint before other routes
-app.get('/api/debug/participants-schema', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT column_name, data_type
-      FROM information_schema.columns
-      WHERE table_name = 'participants'
-    `);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Schema debug failed:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/events/active', async (req, res) => {
-  try {
-    console.log('DEBUG: /api/events/active endpoint called');
-    console.log('Request headers:', req.headers);
-    console.log('Request query parameters:', req.query);
-    console.log('Request body:', req.body);
-    
-    const queryText = `
-      SELECT
-        e.id,
-        e.title,
-        e.description,
-        e.options,
-        e.entry_fee,
-        e.start_time,
-        e.end_time,
-        e.initial_price,
-        e.final_price,
-        e.status,
-        e.resolution_status,
-        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
-      FROM events e
-      WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
-    
-    sqlLogger.debug({query: queryText}, "Executing active events query");
-    console.log('DEBUG: Executing query:', queryText);
-    
-    const { rows } = await pool.query(queryText);
-    console.log('DEBUG: Query result rows:', rows);
-    const now = new Date();
-
-    // More robust data transformation with error handling
-    const activeEvents = rows.map(event => {
-      try {
-        // Handle null/undefined values gracefully
-        const endTime = event.end_time ? new Date(event.end_time) : new Date();
-        const startTime = event.start_time ? new Date(event.start_time) : new Date();
-        
-        return {
-          ...event,
-          end_time: endTime.toISOString(),
-          start_time: startTime.toISOString(),
-          time_remaining: Math.floor((endTime - now) / 1000),
-          status: endTime <= now ? 'expired' : (event.status || 'active'),
-          prize_pool: event.prize_pool || 0,
-          current_participants: event.current_participants || 0,
-          entry_fee: event.entry_fee || 0,
-          initial_price: event.initial_price || 0,
-          final_price: event.final_price || null
-        };
-      } catch (transformError) {
-        console.error('Error transforming event data:', transformError, event);
-        // Return event with safe defaults
-        return {
-          ...event,
-          end_time: event.end_time ? new Date(event.end_time).toISOString() : new Date().toISOString(),
-          start_time: event.start_time ? new Date(event.start_time).toISOString() : new Date().toISOString(),
-          time_remaining: 0,
-          status: event.status || 'active',
-          prize_pool: event.prize_pool || 0,
-          current_participants: event.current_participants || 0,
-          entry_fee: event.entry_fee || 0,
-          initial_price: event.initial_price || 0,
-          final_price: event.final_price || null
-        };
-      }
-    });
-
-    console.log('DEBUG: Returning active events:', activeEvents);
-    res.json(activeEvents);
-  } catch (error) {
-    console.log('DEBUG: Error in /api/events/active endpoint:', error);
-    sqlLogger.error({error: error.message, stack: error.stack}, "Active events query failed");
-    // Return 200 with empty array instead of 500 to prevent frontend errors
-    res.json([]);
-  }
-});
 app.get('/api/events', async (req, res) => { /* ... */ });
 
 // For testing: manually trigger event resolution
