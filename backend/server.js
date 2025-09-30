@@ -1080,6 +1080,11 @@ app.get('/api/debug/participants-schema', async (req, res) => {
 
 app.get('/api/events/active', async (req, res) => {
   try {
+    console.log('DEBUG: /api/events/active endpoint called');
+    console.log('Request headers:', req.headers);
+    console.log('Request query parameters:', req.query);
+    console.log('Request body:', req.body);
+    
     const queryText = `
       SELECT
         e.id,
@@ -1091,6 +1096,7 @@ app.get('/api/events/active', async (req, res) => {
         e.end_time,
         e.initial_price,
         e.final_price,
+        e.status,
         e.resolution_status,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
@@ -1098,8 +1104,10 @@ app.get('/api/events/active', async (req, res) => {
       WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
     
     sqlLogger.debug({query: queryText}, "Executing active events query");
+    console.log('DEBUG: Executing query:', queryText);
     
     const { rows } = await pool.query(queryText);
+    console.log('DEBUG: Query result rows:', rows);
     const now = new Date();
 
     // Add schema validation
@@ -1107,7 +1115,9 @@ app.get('/api/events/active', async (req, res) => {
       typeof event.id === 'number' &&
       typeof event.prize_pool === 'number'
     )) {
-      throw new Error('Database schema mismatch - invalid data types returned');
+      const validationError = new Error('Database schema mismatch - invalid data types returned');
+      console.log('DEBUG: Schema validation failed:', validationError.message);
+      throw validationError;
     }
 
     const activeEvents = rows.map(event => ({
@@ -1117,8 +1127,10 @@ app.get('/api/events/active', async (req, res) => {
       status: new Date(event.end_time) <= now ? 'expired' : event.status
     }));
 
+    console.log('DEBUG: Returning active events:', activeEvents);
     res.json(activeEvents);
   } catch (error) {
+    console.log('DEBUG: Error in /api/events/active endpoint:', error);
     sqlLogger.error({error: error.message, stack: error.stack}, "Active events query failed");
     res.status(500).json({
       error: 'Failed to fetch active events',
