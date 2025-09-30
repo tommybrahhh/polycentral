@@ -421,6 +421,53 @@ async function runMigrations() {
   }
 }
 
+// Helper function to split SQL while preserving DO blocks with $$ delimiters
+function splitSqlPreservingDoBlocks(sql) {
+  const statements = [];
+  let currentStatement = '';
+  let inDoBlock = false;
+  
+  // Split by lines to process each line
+  const lines = sql.split('\n');
+  
+  for (const line of lines) {
+    // Check for DO block start
+    if (/^\s*DO\s*\$\$/.test(line)) {
+      inDoBlock = true;
+      currentStatement = line + '\n';
+      continue;
+    }
+    
+    // If we're in a DO block, check for the end
+    if (inDoBlock) {
+      currentStatement += line + '\n';
+      // Check for end of DO block (END followed by $$)
+      if (/\s*END\s*\$\$/.test(line) || /\s*END\s*\$\$;/.test(line)) {
+        inDoBlock = false;
+        statements.push(currentStatement.trim());
+        currentStatement = '';
+      }
+      continue;
+    }
+    
+    // Regular statement processing
+    currentStatement += line + '\n';
+    
+    // Check if line ends with semicolon (end of statement)
+    if (line.trim().endsWith(';')) {
+      statements.push(currentStatement.trim());
+      currentStatement = '';
+    }
+  }
+  
+  // Add any remaining statement
+  if (currentStatement.trim()) {
+    statements.push(currentStatement.trim());
+  }
+  
+  return statements.filter(stmt => stmt.trim());
+}
+
 // --- Event Creation Functions ---
 async function createEvent(initialPrice) {
   const startTime = new Date();
