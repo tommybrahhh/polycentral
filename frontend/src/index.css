@@ -370,6 +370,46 @@ a:hover {
   padding: var(--spacing-md) 0;
 }
 
+/* Countdown Timer Styles */
+.countdown-timer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--body-text-size);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  transition: all var(--transition-normal);
+  animation: pulse 2s infinite;
+}
+
+.countdown-timer.normal {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--aero-text-primary);
+  border: 1px solid var(--aero-card-border);
+}
+
+.countdown-timer.warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning);
+  animation: pulse 1s infinite;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.countdown-timer.critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+  animation: pulse 0.5s infinite;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.countdown-timer .time-display {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
 .card {
   transition: all var(--transition-normal);
 }

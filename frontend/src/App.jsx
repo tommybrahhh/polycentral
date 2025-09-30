@@ -257,6 +257,91 @@ const isEventClosingSoon = (event) => {
   return timeDiff > 0 && timeDiff <= oneHour;
 };
 
+// Helper function to determine if an event is active (not expired)
+const isEventActive = (event) => {
+  const now = new Date();
+  const endTime = new Date(event.end_time);
+  const isActive = now < endTime && event.status !== 'expired';
+  console.log(`Event ${event.id} - ${event.title} is ${isActive ? 'active' : 'inactive'}. Now: ${now}, End: ${endTime}, Status: ${event.status}`);
+  return isActive;
+};
+
+// CountdownTimer component
+const CountdownTimer = ({ endTime }) => {
+  const [timeLeft, setTimeLeft] = React.useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [isCritical, setIsCritical] = React.useState(false);
+  const [isWarning, setIsWarning] = React.useState(false);
+
+  React.useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const end = new Date(endTime);
+      const difference = end - now;
+
+      if (difference <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      return { days, hours, minutes, seconds };
+    };
+
+    const timer = setInterval(() => {
+      const newTimeLeft = calculateTimeLeft();
+      setTimeLeft(newTimeLeft);
+  
+      // Calculate total time in minutes for warning states
+      const totalMinutes = newTimeLeft.days * 24 * 60 + newTimeLeft.hours * 60 + newTimeLeft.minutes;
+      const totalSeconds = totalMinutes * 60 + newTimeLeft.seconds;
+  
+      // Set warning states
+      const isCriticalState = totalSeconds <= 60; // 1 minute or less
+      const isWarningState = totalMinutes <= 60 && totalSeconds > 60; // 1 hour or less but more than 1 minute
+      
+      console.log(`Countdown for ${endTime}: ${totalMinutes} minutes, ${totalSeconds} seconds. Critical: ${isCriticalState}, Warning: ${isWarningState}`);
+      
+      setIsCritical(isCriticalState);
+      setIsWarning(isWarningState);
+    }, 1000);
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft());
+
+    return () => clearInterval(timer);
+  }, [endTime]);
+
+  const formatTime = (value) => {
+    return value.toString().padStart(2, '0');
+  };
+
+  const getTimeDisplay = () => {
+    const { days, hours, minutes, seconds } = timeLeft;
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  const timerClass = `countdown-timer ${isCritical ? 'critical' : isWarning ? 'warning' : 'normal'}`;
+
+  return (
+    <div className={timerClass}>
+      <span className="icon">⏰</span>
+      <span className="time-display">{getTimeDisplay()}</span>
+    </div>
+  );
+};
+
 // Events Interface Component (No changes needed here)
 const EventsInterface = () => {
   const [events, setEvents] = React.useState([]);
@@ -279,6 +364,7 @@ const EventsInterface = () => {
       // IMPORTANT: You might need to provide the full URL in development
       // e.g., axios.get('http://localhost:3001/api/events')
       const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+      console.log('EventsInterface fetched events:', response.data);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -421,7 +507,7 @@ const EventsInterface = () => {
       )}
 
       <div className="events-list">
-      {events.map(event => (
+      {events.filter(isEventActive).map(event => (
         <div key={event.id} className="card">
           <div className="card-header">
             <div className="event-header">
@@ -438,10 +524,7 @@ const EventsInterface = () => {
                   <div className="sentiment-fill higher" style={{ width: '70%' }}></div>
                   <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
                 </div>
-                <div className="event-time">
-                  <span className="icon">⏰</span>
-                  Ends at: {new Date(event.end_time).toLocaleString()}
-                </div>
+                <CountdownTimer endTime={event.end_time} />
               </div>
             </div>
           </div>
@@ -753,6 +836,7 @@ const PredictionsInterface = () => {
     const fetchEvents = async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
+        console.log('PredictionsInterface fetched events:', response.data);
         setEvents(response.data);
         setLoading(false);
       } catch (err) {
@@ -772,7 +856,7 @@ const PredictionsInterface = () => {
     <div className="events-container">
       <h2>Active Events</h2>
       <div className="events-list">
-        {events.map(event => (
+        {events.filter(isEventActive).map(event => (
           <div
             key={event.id}
             className="card"
@@ -787,10 +871,7 @@ const PredictionsInterface = () => {
                     <span className="participants">👥 {event.current_participants} participants</span>
                     <span className="status-dot status-active"></span>
                   </div>
-                  <div className="event-time">
-                    <span className="icon">⏰</span>
-                    Ends at: {new Date(event.end_time).toLocaleString()}
-                  </div>
+                  <CountdownTimer endTime={event.end_time} />
                 </div>
               </div>
             </div>
