@@ -369,12 +369,14 @@ async function runMigrations() {
             await runMigrationSafe(stmt);
           }
         } else {
-          // For PostgreSQL, we need to handle CREATE INDEX CONCURRENTLY differently
-          // as it cannot run inside a transaction block
-          const statements = migrationSql.split(';').filter(stmt => stmt.trim());
+          // For PostgreSQL, we need to handle CREATE INDEX CONCURRENTLY and DO blocks differently
+          // as they cannot run inside a transaction block
+          // Split SQL but preserve DO blocks with $$ delimiters
+          const statements = splitSqlPreservingDoBlocks(migrationSql);
           
           for (const stmt of statements) {
             const trimmedStmt = stmt.trim();
+            if (!trimmedStmt) continue;
             
             // Check if this is a CREATE INDEX CONCURRENTLY command
             if (/^CREATE\s+INDEX\s+CONCURRENTLY/i.test(trimmedStmt)) {
@@ -388,9 +390,17 @@ async function runMigrations() {
                 }
                 console.warn(`Index already exists: ${error.message}`);
               }
+            } else if (/^DO\s*\$\$/i.test(trimmedStmt)) {
+              // Handle DO blocks with $$ delimiters
+              console.log(`Executing DO block outside transaction: ${trimmedStmt.substring(0, 100)}...`);
+              try {
+                await pool.query(trimmedStmt);
+                console.log(`✅ DO block executed successfully`);
+              } catch (error) {
+                throw error;
+              }
             } else {
               // For all other statements, execute with transaction safety
-              // This includes PL/pgSQL functions with $$ blocks
               await runMigrationSafe(trimmedStmt);
             }
           }
