@@ -186,8 +186,12 @@ async function initializeDatabase() {
     // Run database migrations BEFORE creating sample data
     await runMigrations();
 
-    // Ensure participants table has correct column names
+    // Ensure table integrity for all tables
+    console.log('🔧 Ensuring table integrity for all tables...');
+    await ensureUsersTableIntegrity();
     await ensureParticipantsTableIntegrity();
+    await ensureEventsTableIntegrity();
+    console.log('✅ Table integrity checks completed');
     
     // Apply new migrations if any
     await runMigrations();
@@ -309,6 +313,187 @@ async function ensureParticipantsTableIntegrity() {
     
   } catch (error) {
     console.error('❌ Error checking participants table integrity:', error);
+    // Don't throw - this is a best-effort fix, not critical to startup
+  }
+}
+
+// Ensure users table has the correct column structure
+async function ensureUsersTableIntegrity() {
+  const dbType = getDatabaseType();
+  try {
+    console.log('🔧 Checking users table column integrity...');
+    
+    // Query to check column names - different for PostgreSQL and SQLite
+    let columnsQuery;
+    if (dbType === 'postgres') {
+      columnsQuery = `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'users'
+        AND column_name IN ('last_claimed', 'last_claim_date')
+      `;
+    } else {
+      // SQLite
+      columnsQuery = `
+        PRAGMA table_info(users)
+      `;
+    }
+    
+    const result = await pool.query(columnsQuery);
+    const columns = dbType === 'postgres'
+      ? result.rows.map(row => row.column_name)
+      : result.rows.filter(row => ['last_claimed', 'last_claim_date'].includes(row.name)).map(row => row.name);
+    
+    const hasLastClaimed = columns.includes('last_claimed');
+    const hasLastClaimDate = columns.includes('last_claim_date');
+    
+    if (hasLastClaimed && !hasLastClaimDate) {
+      console.log('✅ Users table has correct column: last_claimed');
+      return;
+    }
+    
+    if (!hasLastClaimed && hasLastClaimDate) {
+      // Rename last_claim_date to last_claimed
+      const renameQuery = dbType === 'postgres'
+        ? 'ALTER TABLE users RENAME COLUMN last_claim_date TO last_claimed'
+        : `
+          CREATE TABLE users_new AS SELECT id, email, username, password_hash, wallet_address, points, total_events, won_events, last_claim_date as last_claimed, last_login_date, created_at FROM users;
+          DROP TABLE users;
+          ALTER TABLE users_new RENAME TO users;
+        `;
+      
+      await pool.query(renameQuery);
+      console.log('✅ Renamed last_claim_date column to last_claimed in users table');
+      return;
+    }
+    
+    if (hasLastClaimed && hasLastClaimDate) {
+      // Both columns exist, migrate data and drop the old one
+      if (dbType === 'postgres') {
+        // Update last_claimed with data from last_claim_date where last_claimed is NULL
+        await pool.query(
+          `UPDATE users
+           SET last_claimed = last_claim_date
+           WHERE last_claimed IS NULL AND last_claim_date IS NOT NULL`
+        );
+        
+        // Drop the old column
+        await pool.query('ALTER TABLE users DROP COLUMN last_claim_date');
+      } else {
+        // For SQLite, we need to recreate the table
+        await pool.query(`
+          CREATE TABLE users_new AS
+          SELECT id, email, username, password_hash, wallet_address, points, total_events, won_events,
+                 COALESCE(last_claimed, last_claim_date) as last_claimed, last_login_date, created_at
+          FROM users
+        `);
+        await pool.query('DROP TABLE users');
+        await pool.query('ALTER TABLE users_new RENAME TO users');
+      }
+      console.log('✅ Migrated data from last_claim_date to last_claimed and removed old column');
+      return;
+    }
+    
+    // Neither column exists - create last_claimed column
+    const addColumnQuery = dbType === 'postgres'
+      ? 'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_claimed TIMESTAMP'
+      : 'ALTER TABLE users ADD COLUMN last_claimed TEXT';
+    
+    await pool.query(addColumnQuery);
+    console.log('✅ Added last_claimed column to users table');
+    
+  } catch (error) {
+    console.error('❌ Error checking users table integrity:', error);
+    // Don't throw - this is a best-effort fix, not critical to startup
+  }
+}
+
+// Ensure events table has the correct column structure
+async function ensureEventsTableIntegrity() {
+  const dbType = getDatabaseType();
+  try {
+    console.log('🔧 Checking events table column integrity...');
+    
+    // Query to check column names - different for PostgreSQL and SQLite
+    let columnsQuery;
+    if (dbType === 'postgres') {
+      columnsQuery = `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'events'
+        AND column_name IN ('crypto_symbol', 'cryptocurrency')
+      `;
+    } else {
+      // SQLite
+      columnsQuery = `
+        PRAGMA table_info(events)
+      `;
+    }
+    
+    const result = await pool.query(columnsQuery);
+    const columns = dbType === 'postgres'
+      ? result.rows.map(row => row.column_name)
+      : result.rows.filter(row => ['crypto_symbol', 'cryptocurrency'].includes(row.name)).map(row => row.name);
+    
+    const hasCryptoSymbol = columns.includes('crypto_symbol');
+    const hasCryptocurrency = columns.includes('cryptocurrency');
+    
+    if (hasCryptoSymbol && !hasCryptocurrency) {
+      console.log('✅ Events table has correct column: crypto_symbol');
+      return;
+    }
+    
+    if (!hasCryptoSymbol && hasCryptocurrency) {
+      // Rename cryptocurrency to crypto_symbol
+      const renameQuery = dbType === 'postgres'
+        ? 'ALTER TABLE events RENAME COLUMN cryptocurrency TO crypto_symbol'
+        : `
+          CREATE TABLE events_new AS SELECT id, title, description, category, options, entry_fee, max_participants, current_participants, prize_pool, total_bets, start_time, end_time, status, correct_answer, event_type_id, created_at, updated_at, cryptocurrency as crypto_symbol, initial_price, final_price, resolution_status, prediction_window, is_daily FROM events;
+          DROP TABLE events;
+          ALTER TABLE events_new RENAME TO events;
+        `;
+      
+      await pool.query(renameQuery);
+      console.log('✅ Renamed cryptocurrency column to crypto_symbol in events table');
+      return;
+    }
+    
+    // If both columns exist, we'll keep crypto_symbol and drop cryptocurrency
+    if (hasCryptoSymbol && hasCryptocurrency) {
+      if (dbType === 'postgres') {
+        // Update crypto_symbol with data from cryptocurrency where crypto_symbol is NULL
+        await pool.query(
+          `UPDATE events
+           SET crypto_symbol = cryptocurrency
+           WHERE crypto_symbol IS NULL AND cryptocurrency IS NOT NULL`
+        );
+        
+        // Drop the old column
+        await pool.query('ALTER TABLE events DROP COLUMN cryptocurrency');
+      } else {
+        // For SQLite, we need to recreate the table
+        await pool.query(`
+          CREATE TABLE events_new AS
+          SELECT id, title, description, category, options, entry_fee, max_participants, current_participants, prize_pool, total_bets, start_time, end_time, status, correct_answer, event_type_id, created_at, updated_at, COALESCE(crypto_symbol, cryptocurrency) as crypto_symbol, initial_price, final_price, resolution_status, prediction_window, is_daily
+          FROM events
+        `);
+        await pool.query('DROP TABLE events');
+        await pool.query('ALTER TABLE events_new RENAME TO events');
+      }
+      console.log('✅ Migrated data from cryptocurrency to crypto_symbol and removed old column');
+      return;
+    }
+    
+    // Neither column exists - create crypto_symbol column
+    const addColumnQuery = dbType === 'postgres'
+      ? 'ALTER TABLE events ADD COLUMN IF NOT EXISTS crypto_symbol TEXT DEFAULT \'bitcoin\''
+      : 'ALTER TABLE events ADD COLUMN crypto_symbol TEXT DEFAULT \'bitcoin\'';
+    
+    await pool.query(addColumnQuery);
+    console.log('✅ Added crypto_symbol column to events table');
+    
+  } catch (error) {
+    console.error('❌ Error checking events table integrity:', error);
     // Don't throw - this is a best-effort fix, not critical to startup
   }
 }
@@ -593,11 +778,28 @@ const authenticateAdmin = (req, res, next) => {
 };
 
 const authenticateToken = (req, res, next) => {
+    console.log('Authentication middleware called for path:', req.originalUrl);
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Access token required' });
+    console.log('Token extracted from header:', token ? 'present' : 'missing');
+    
+    if (!token) {
+        console.log('No token provided in request');
+        return res.status(401).json({ error: 'Access token required' });
+    }
+    
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.status(401).json({ error: 'Token is invalid or expired' });
+        if (err) {
+            console.log('Token verification failed:', err.message);
+            console.log('Token verification error details:', {
+                name: err.name,
+                message: err.message,
+                expiredAt: err.expiredAt
+            });
+            return res.status(401).json({ error: 'Token is invalid or expired' });
+        }
+        console.log('Token verified successfully for user:', user.userId);
+        console.log('Full token payload:', user);
         req.userId = user.userId;
         next();
     });
@@ -1038,77 +1240,174 @@ app.get('/api/events/:id', async (req, res) => {
 // Claim free points endpoint
 app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
   try {
+    // Log the incoming request
+    console.log('Claim free points request received for user:', req.userId);
+    
     // Check if user has already claimed points today
+    // Query both last_claimed and last_claim_date for compatibility
     const { rows: claimCheck } = await pool.query(
-      `SELECT last_claimed, last_login_date FROM users WHERE id = $1`,
+      `SELECT id, points, last_claimed, last_claim_date, last_login_date FROM users WHERE id = $1`,
       [req.userId]
     );
 
+    // Log for debugging
+    console.log('User claim check result:', claimCheck);
+    
+    // Check if the query returned any results
+    if (!claimCheck) {
+      console.error('Database query returned undefined for user:', req.userId);
+      return res.status(500).json({ error: 'Database query failed' });
+    }
+
     if (claimCheck.length === 0) {
+      console.log('User not found in database for claim request');
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const lastClaimed = claimCheck[0].last_claimed;
-    const now = new Date();
     
-    // Check if user has claimed within the last 24 hours
-    if (lastClaimed) {
-      const hoursSinceLastClaim = (now - new Date(lastClaimed)) / (1000 * 60 * 60);
-      if (hoursSinceLastClaim < 24) {
-        return res.status(400).json({
-          error: 'You can only claim free points once every 24 hours',
-          hoursRemaining: Math.ceil(24 - hoursSinceLastClaim)
-        });
-      }
+    // Check if the user object is valid
+    if (!claimCheck[0]) {
+      console.error('User object is undefined or null for user:', req.userId);
+      return res.status(500).json({ error: 'User data is invalid' });
     }
 
-    // For SQLite, we can't use client.query('BEGIN')/('COMMIT')/('ROLLBACK')
-    // Instead, we'll use the pool.query directly since our SQLite pool mock handles transactions
-    if (dbType === 'postgres') {
-      // Use transaction for PostgreSQL
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
+    const user = claimCheck[0];
+    // Use last_claimed if available, otherwise fall back to last_claim_date
+    const lastClaimed = user.last_claimed || user.last_claim_date;
+    const now = new Date();
+    
+    // Log user details for debugging
+    console.log('User details:', {
+      id: user.id,
+      points: user.points,
+      last_claimed: lastClaimed,
+      last_login_date: user.last_login_date
+    });
+    
+    // Log last claimed time and current time for debugging
+    console.log('Last claimed time:', lastClaimed);
+    console.log('Current time:', now);
+    
+    // Check if user has claimed within the last 24 hours
+    try {
+      if (lastClaimed) {
+        const lastClaimedDate = new Date(lastClaimed);
+        
+        // Check if the date is valid
+        if (isNaN(lastClaimedDate.getTime())) {
+          console.log('Invalid last claimed date, treating as no previous claim');
+        } else {
+          const timeDifference = now - lastClaimedDate;
+          const hoursSinceLastClaim = timeDifference / (1000 * 60 * 60);
+          const minutesSinceLastClaim = timeDifference / (1000 * 60);
+          const secondsSinceLastClaim = timeDifference / 1000;
+          
+          console.log('Time calculation details:', {
+            now: now.toISOString(),
+            lastClaimed: lastClaimedDate.toISOString(),
+            timeDifference: timeDifference,
+            hoursSinceLastClaim: hoursSinceLastClaim,
+            minutesSinceLastClaim: minutesSinceLastClaim,
+            secondsSinceLastClaim: secondsSinceLastClaim,
+            lastClaimedType: typeof lastClaimed,
+            lastClaimedValue: lastClaimed,
+            lastClaimedDateIsValid: !isNaN(lastClaimedDate.getTime()),
+            nowIsValid: !isNaN(now.getTime())
+          });
+          
+          if (hoursSinceLastClaim < 24) {
+            console.log('User attempted to claim points within 24 hours');
+            return res.status(400).json({
+              error: 'You can only claim free points once every 24 hours',
+              hoursRemaining: Math.ceil(24 - hoursSinceLastClaim),
+              lastClaimed: lastClaimed,
+              currentTime: now
+            });
+          }
+        }
+      }
+    } catch (dateError) {
+      console.error('Error processing last claimed date:', dateError);
+      // Continue with the claim process if there's an error with the date
+    }
 
-        // Award 250 points to the user
+    // Log before updating user points
+    console.log('Awarding 250 points to user:', req.userId);
+    
+    // Additional validation to ensure we're not hitting the 24-hour limit incorrectly
+    console.log('Final validation before awarding points:', {
+      userId: req.userId,
+      lastClaimed: lastClaimed,
+      now: now.toISOString(),
+      hoursSinceLastClaim: lastClaimed ? (now - new Date(lastClaimed)) / (1000 * 60 * 60) : null
+    });
+    
+    try {
+      // For SQLite, we can't use client.query('BEGIN')/('COMMIT')/('ROLLBACK')
+      // Instead, we'll use the pool.query directly since our SQLite pool mock handles transactions
+      if (dbType === 'postgres') {
+        // Use transaction for PostgreSQL
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+
+          // Award 250 points to the user
+          const pointsToAward = 250;
+          const { rows: [updatedUser] } = await client.query(
+            `UPDATE users
+             SET points = points + $1, last_claimed = NOW(), last_login_date = NOW()
+             WHERE id = $2
+             RETURNING id, username, points`,
+            [pointsToAward, req.userId]
+          );
+
+          await client.query('COMMIT');
+          
+          // Log successful claim
+          console.log('Successfully awarded points to user:', {
+            userId: req.userId,
+            pointsAwarded: pointsToAward,
+            newTotal: updatedUser.points
+          });
+          
+          res.json({
+            message: 'Successfully claimed free points!',
+            points: pointsToAward,
+            newTotal: updatedUser.points
+          });
+        } catch (error) {
+          await client.query('ROLLBACK');
+          console.error('Error in PostgreSQL transaction:', error);
+          throw error;
+        } finally {
+          client.release();
+        }
+      } else {
+        // For SQLite, use direct query (our SQLite mock handles the transaction internally)
         const pointsToAward = 250;
-        const { rows: [updatedUser] } = await client.query(
+        const { rows: [updatedUser] } = await pool.query(
           `UPDATE users
-           SET points = points + $1, last_claimed = NOW(), last_login_date = NOW()
+           SET points = points + $1, last_claimed = datetime('now'), last_login_date = datetime('now')
            WHERE id = $2
            RETURNING id, username, points`,
           [pointsToAward, req.userId]
         );
-
-        await client.query('COMMIT');
+        
+        // Log successful claim
+        console.log('Successfully awarded points to user:', {
+          userId: req.userId,
+          pointsAwarded: pointsToAward,
+          newTotal: updatedUser.points
+        });
         
         res.json({
           message: 'Successfully claimed free points!',
           points: pointsToAward,
           newTotal: updatedUser.points
         });
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
       }
-    } else {
-      // For SQLite, use direct query (our SQLite mock handles the transaction internally)
-      const pointsToAward = 250;
-      const { rows: [updatedUser] } = await pool.query(
-        `UPDATE users
-         SET points = points + $1, last_claimed = NOW(), last_login_date = NOW()
-         WHERE id = $2
-         RETURNING id, username, points`,
-        [pointsToAward, req.userId]
-      );
-      
-      res.json({
-        message: 'Successfully claimed free points!',
-        points: pointsToAward,
-        newTotal: updatedUser.points
-      });
+    } catch (dbError) {
+      console.error('Database error when updating user points:', dbError);
+      return res.status(500).json({ error: 'Failed to update user points in database' });
     }
   } catch (error) {
     console.error('Error claiming free points:', error);
