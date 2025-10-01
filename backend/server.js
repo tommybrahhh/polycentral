@@ -901,8 +901,13 @@ app.post('/api/auth/login', async (req, res) => {
 // New event creation endpoint that accepts all parameters used by the frontend
 app.post('/api/events', authenticateToken, async (req, res) => {
     const { title, description, options, entry_fee, start_time, end_time, location, capacity } = req.body;
-    if (!title || !description || !options || !entry_fee) {
+    if (!title || !description || !options || entry_fee === undefined) {
         return res.status(400).json({ error: 'Required fields: title, description, options, entry_fee' });
+    }
+    
+    // Validate entry fee is at least 100 points
+    if (entry_fee < 100) {
+        return res.status(400).json({ error: 'Entry fee must be at least 100 points' });
     }
     
     // Use current time if start_time not provided

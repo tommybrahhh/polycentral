@@ -1035,3 +1035,20 @@ a:hover {
     border: 2px solid #fff;
   }
 }
+
+/* Entry fee controls */
+.entry-fee-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entry-fee-controls .form-input {
+  flex: 1;
+  text-align: center;
+}
+
+.entry-fee-controls .button {
+  min-width: 60px;
+  padding: 8px 12px;
+}

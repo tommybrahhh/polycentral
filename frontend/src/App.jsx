@@ -362,7 +362,7 @@ const EventsInterface = () => {
     start_time: '',
     end_time: '',
     capacity: 100,
-    entry_fee: 0
+    entry_fee: 100
   });
 
   const fetchEvents = async () => {
@@ -404,7 +404,7 @@ const EventsInterface = () => {
         title: newEvent.title,
         description: newEvent.description,
         options: ['Higher', 'Lower'], // Default options for crypto price prediction
-        entry_fee: parseInt(newEvent.entry_fee) || 0, // Use configured entry fee or default to 0
+        entry_fee: parseInt(newEvent.entry_fee) || 100, // Use configured entry fee or default to 100
         start_time: newEvent.start_time,
         end_time: newEvent.end_time,
         location: newEvent.location,
@@ -520,14 +520,31 @@ const EventsInterface = () => {
 
               <div className="form-group">
                 <label htmlFor="event-entry-fee" className="form-label">Entry Fee (points)</label>
-                <input
-                  type="number"
-                  id="event-entry-fee"
-                  min="1"
-                  value={newEvent.entry_fee}
-                  onChange={(e) => setNewEvent({...newEvent, entry_fee: e.target.value})}
-                  className="form-input"
-                />
+                <div className="entry-fee-controls">
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => setNewEvent({...newEvent, entry_fee: Math.max(100, parseInt(newEvent.entry_fee) - 100)})}
+                  >
+                    -100
+                  </button>
+                  <input
+                    type="number"
+                    id="event-entry-fee"
+                    min="100"
+                    step="100"
+                    value={newEvent.entry_fee}
+                    onChange={(e) => setNewEvent({...newEvent, entry_fee: e.target.value})}
+                    className="form-input"
+                  />
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => setNewEvent({...newEvent, entry_fee: parseInt(newEvent.entry_fee) + 100})}
+                  >
+                    +100
+                  </button>
+                </div>
               </div>
 
               <div className="modal-footer">
