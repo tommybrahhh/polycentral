@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     points INTEGER DEFAULT 1000,
     total_events INTEGER DEFAULT 0,
     won_events INTEGER DEFAULT 0,
-    last_claim_date TIMESTAMP,
+    last_claimed TIMESTAMP,
     last_login_date TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS events (
     initial_price DECIMAL,
     final_price DECIMAL,
     resolution_status TEXT CHECK (resolution_status IN ('pending', 'resolved')),
-    prediction_window INTERVAL DEFAULT '24 hours',
+    prediction_window TEXT DEFAULT '24 hours',
     is_daily BOOLEAN DEFAULT false
 );
 

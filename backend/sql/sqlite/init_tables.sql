@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     points INTEGER DEFAULT 1000,
     total_events INTEGER DEFAULT 0,
     won_events INTEGER DEFAULT 0,
-    last_claim_date TEXT,
+    last_claimed TEXT,
     last_login_date TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS events (
     current_participants INTEGER NOT NULL DEFAULT 0,
     prize_pool INTEGER NOT NULL DEFAULT 0,
     total_bets INTEGER NOT NULL DEFAULT 0,
-    current_participants INTEGER NOT NULL DEFAULT 0,
     start_time TIMESTAMP,
     end_time TIMESTAMP,
     status TEXT DEFAULT 'pending',
@@ -37,11 +36,11 @@ CREATE TABLE IF NOT EXISTS events (
     event_type_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    cryptocurrency TEXT DEFAULT 'bitcoin',
+    crypto_symbol TEXT DEFAULT 'bitcoin',
     initial_price DECIMAL,
     final_price DECIMAL,
     resolution_status TEXT CHECK (resolution_status IN ('pending', 'resolved')),
-    prediction_window INTERVAL DEFAULT '24 hours',
+    prediction_window TEXT DEFAULT '24 hours',
     is_daily BOOLEAN DEFAULT false
 );
 
