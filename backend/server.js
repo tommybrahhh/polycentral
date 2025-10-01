@@ -1511,6 +1511,25 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
   }
 });
 
+// GET user profile endpoint
+app.get('/api/user/profile', authenticateToken, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, username, email, points FROM users WHERE id = $1',
+      [req.userId]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET user prediction history
 app.get('/api/user/history', authenticateToken, async (req, res) => {
   try {

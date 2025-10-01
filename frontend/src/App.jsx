@@ -656,17 +656,33 @@ const PredictionDetail = ({ event }) => {
       
       setBetStatus('success');
       
-      // Update user points after successful bet
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      userData.points = userData.points - event.entry_fee;
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUserPoints(userData.points);
-      
-      // Update global points state
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        // This will update the points in the main App component
+      // Fetch updated user data from the server to ensure points are accurate
+      try {
+        const userResponse = await axios.get(
+          `${import.meta.env.VITE_API_BASE_URL}/api/user/profile`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        // Update user points with the actual server value
+        const updatedUserData = {
+          ...JSON.parse(localStorage.getItem('user') || '{}'),
+          points: userResponse.data.points
+        };
+        
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        setUserPoints(updatedUserData.points);
+        
+        // Update global points state
+        window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: updatedUserData.points }));
+      } catch (userError) {
+        console.error('Failed to fetch updated user data:', userError);
+        // Fallback to local calculation if server fetch fails
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        userData.points = userData.points - event.entry_fee;
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUserPoints(userData.points);
+        
+        // Update global points state
         window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: userData.points }));
       }
       
