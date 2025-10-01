@@ -421,7 +421,7 @@ async function ensureEventsTableIntegrity() {
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = 'events'
-        AND column_name IN ('crypto_symbol', 'cryptocurrency')
+        AND column_name IN ('crypto_symbol', 'cryptocurrency', 'total_bets')
       `;
     } else {
       // SQLite
@@ -433,10 +433,21 @@ async function ensureEventsTableIntegrity() {
     const result = await pool.query(columnsQuery);
     const columns = dbType === 'postgres'
       ? result.rows.map(row => row.column_name)
-      : result.rows.filter(row => ['crypto_symbol', 'cryptocurrency'].includes(row.name)).map(row => row.name);
+      : result.rows.filter(row => ['crypto_symbol', 'cryptocurrency', 'total_bets'].includes(row.name)).map(row => row.name);
     
     const hasCryptoSymbol = columns.includes('crypto_symbol');
     const hasCryptocurrency = columns.includes('cryptocurrency');
+    const hasTotalBets = columns.includes('total_bets');
+    
+    // Check and fix total_bets column
+    if (!hasTotalBets) {
+      const addTotalBetsQuery = dbType === 'postgres'
+        ? 'ALTER TABLE events ADD COLUMN IF NOT EXISTS total_bets INTEGER NOT NULL DEFAULT 0'
+        : 'ALTER TABLE events ADD COLUMN total_bets INTEGER NOT NULL DEFAULT 0';
+      
+      await pool.query(addTotalBetsQuery);
+      console.log('✅ Added total_bets column to events table');
+    }
     
     if (hasCryptoSymbol && !hasCryptocurrency) {
       console.log('✅ Events table has correct column: crypto_symbol');
@@ -481,6 +492,12 @@ async function ensureEventsTableIntegrity() {
         await pool.query('ALTER TABLE events_new RENAME TO events');
       }
       console.log('✅ Migrated data from cryptocurrency to crypto_symbol and removed old column');
+      return;
+    }
+    
+    // Check if crypto_symbol exists (no action needed)
+    if (hasCryptoSymbol && !hasCryptocurrency) {
+      console.log('✅ Events table has correct column: crypto_symbol');
       return;
     }
     
