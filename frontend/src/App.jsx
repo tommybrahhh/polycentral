@@ -366,6 +366,10 @@ const EventsInterface = () => {
       // e.g., axios.get('http://localhost:3001/api/events')
       const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
       console.log('EventsInterface fetched events:', response.data);
+      // Log the first event to see its structure
+      if (response.data && response.data.length > 0) {
+        console.log('First event structure:', response.data[0]);
+      }
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -850,6 +854,10 @@ const PredictionsInterface = () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/active`);
         console.log('PredictionsInterface fetched events:', response.data);
+        // Log the first event to see its structure
+        if (response.data && response.data.length > 0) {
+          console.log('First event structure in PredictionsInterface:', response.data[0]);
+        }
         setEvents(response.data);
         setLoading(false);
       } catch (err) {
