@@ -1,72 +1,86 @@
-# 500 Internal Server Error Fix for POST /api/events/:id/bet Endpoint
+# Fix for "column 'total_bets' does not exist" Error
 
-## Issue Description
-The POST /api/events/:id/bet endpoint was returning a 500 Internal Server Error when users attempted to place bets on events. This error was occurring in the backend server and preventing users from participating in prediction events.
+## Problem Description
+The application was throwing a 500 error when users tried to place bets with the following error message:
+```
+❌ Bet placement error: error: column "total_bets" does not exist
+```
 
-## Root Cause Analysis
-After thorough investigation, the issue was found to be related to database schema inconsistencies, specifically with the `amount` column in the `participants` table. The route implementation assumed that the `amount` column exists in the table, but there were cases where:
-- The column didn't exist due to a failed migration
-- The column exists but with a different name (e.g., `points_paid`)
-- The database schema was not properly initialized
+## Root Cause
+The `total_bets` column was missing from the `events` table in the database. This column is used to track the total number of bets placed on each event.
 
-## Changes Made
+## Solution Implemented
 
-### 1. Database Schema Validation
-- Added diagnostic logging to help identify the exact point of failure
-- Added a schema check to verify the `amount` column exists in the `participants` table before attempting to insert data
-- Added proper error handling for both PostgreSQL and SQLite databases
-- Added rollback functionality if the schema check fails
+### 1. Database Migration
+Created new migration files to add the missing `total_bets` column:
 
-### 2. Enhanced Error Handling
-- Improved error handling in the bet placement route with more detailed logging
-- Added specific error responses for different failure scenarios
-- Added transaction rollback mechanism to ensure data consistency
+**PostgreSQL Migration (`backend/sql/postgres/migrate_v10_to_v11.sql`):**
+```sql
+-- Migration v10 to v11: Add missing total_bets column to events table
+DO $$
+BEGIN
+    -- Check if total_bets column exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'events' AND column_name = 'total_bets'
+    ) THEN
+        -- Add the missing total_bets column
+        ALTER TABLE events ADD COLUMN total_bets INTEGER NOT NULL DEFAULT 0;
+    END IF;
+END $$;
+```
 
-### 3. Code Changes
-The specific changes were made to the `app.post('/api/events/:id/bet', authenticateToken, ...)` route in `backend/server.js`:
-- Added a pre-flight check to verify the `amount` column exists in the `participants` table
-- Added detailed error logging for debugging purposes
-1. Added a pre-flight check to verify the `amount` column exists in the `participants` table:
-   - For PostgreSQL: Query `information_schema.columns` to check for the `amount` column
-   - For SQLite: Use `PRAGMA table_info(participants)` to check for the `amount` column
-   - Return a 500 error with a descriptive message if the column is missing
-   - Added error handling for the schema check itself
+**SQLite Migration (`backend/sql/sqlite/migrate_v10_to_v11.sql`):**
+```sql
+-- Migration v10 to v11: Add missing total_bets column to events table
+-- SQLite doesn't support DO blocks, so we rely on the application's ensureEventsTableIntegrity function
+SELECT 'Migration handled by application ensureEventsTableIntegrity function' as migration_status;
+```
 
-2. Enhanced transaction handling to ensure proper rollback on errors:
-   - Added detailed error logging for debugging purposes
-   - Ensured the transaction is properly rolled back when errors occur
-   - Added proper error responses to the client
+### 2. Application-Level Fix
+Enhanced the `ensureEventsTableIntegrity` function in `backend/server.js` to check for and add the `total_bets` column if it's missing:
 
-## Troubleshooting Similar Issues
-If you encounter similar 500 Internal Server Errors in the future, follow these steps:
+```javascript
+// Check and fix total_bets column
+if (!hasTotalBets) {
+  const addTotalBetsQuery = dbType === 'postgres'
+    ? 'ALTER TABLE events ADD COLUMN IF NOT EXISTS total_bets INTEGER NOT NULL DEFAULT 0'
+    : 'ALTER TABLE events ADD COLUMN total_bets INTEGER NOT NULL DEFAULT 0';
+  
+  await pool.query(addTotalBetsQuery);
+  console.log('✅ Added total_bets column to events table');
+}
+```
 
-1. Check the server logs for detailed error messages
-2. Verify that all required database columns exist in the relevant tables
-3. Ensure the database schema is properly initialized and up to date
-4. Check for any recent code changes that might have introduced the issue
-5. Test the affected functionality with different inputs to isolate the problem
-6. Verify database connectivity and permissions
-7. Check for any missing environment variables or incorrect configuration values
+### 3. Frontend Updates
+Updated the frontend to properly handle entry fees:
+
+1. Changed the default entry fee in the event creation form from 250 to 0
+2. Updated the event creation logic to use the configured entry fee or default to 0
+3. Ensured that the entry fee and prize pool are properly displayed in the UI
+
+## Verification
+After implementing these changes:
+
+1. The database migration successfully adds the `total_bets` column to the `events` table
+2. The application-level integrity check ensures the column exists
+3. Users can place bets without encountering the 500 error
+4. The entry fee and prize pool are properly displayed in the frontend
+
+## Files Modified
+1. `backend/sql/postgres/migrate_v10_to_v11.sql` - New PostgreSQL migration
+2. `backend/sql/sqlite/migrate_v10_to_v11.sql` - New SQLite migration
+3. `backend/server.js` - Enhanced table integrity check
+4. `frontend/src/App.jsx` - Updated default entry fee
+5. `docs/DATABASE-MIGRATIONS.md` - Updated documentation
+6. `docs/POST-BET-500-ERROR-FIX.md` - This document
 
 ## Testing
-The fix was tested by:
-1. Verifying the `amount` column exists in the `participants` table
-2. Testing the bet placement functionality with valid data
-3. Verifying proper error handling when the column is missing
-4. Testing both PostgreSQL and SQLite database implementations
+To verify the fix:
 
-## Deployment Instructions
-1. Deploy the updated `backend/server.js` file
-2. Ensure the database initialization process runs properly
-3. Monitor the logs for any errors during the bet placement process
+1. Create a new event with a custom entry fee
+2. Place a bet on the event
+3. Verify that the bet is placed successfully without errors
+4. Check that the entry fee and prize pool are displayed correctly in the UI
 
-## Monitoring
-- Check the server logs for any 500 errors related to the bet placement endpoint
-- Monitor user feedback for any issues with placing bets
-- Verify that the database schema is correctly set up in all environments
-
-## Future Improvements
-- Add more comprehensive unit tests for the bet placement functionality
-- Implement a more robust error reporting system
-- Add metrics tracking for bet placement success/failure rates
-- Create automated checks to verify database schema integrity during application startup
+The fix ensures that both new and existing deployments will have the required `total_bets` column, preventing the error from occurring.

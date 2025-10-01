@@ -353,7 +353,7 @@ const EventsInterface = () => {
     start_time: '',
     end_time: '',
     capacity: 100,
-    entry_fee: 250
+    entry_fee: 0
   });
 
   React.useEffect(() => {
@@ -384,7 +384,7 @@ const EventsInterface = () => {
         title: newEvent.title,
         description: newEvent.description,
         options: ['Higher', 'Lower'], // Default options for crypto price prediction
-        entry_fee: parseInt(newEvent.entry_fee) || 250, // Use configured entry fee or default to 250
+        entry_fee: parseInt(newEvent.entry_fee) || 0, // Use configured entry fee or default to 0
         start_time: newEvent.start_time,
         end_time: newEvent.end_time,
         location: newEvent.location,
