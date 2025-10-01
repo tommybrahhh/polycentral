@@ -989,77 +989,143 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     const { prediction } = req.body;
     const userId = req.userId;
     
+    console.log('DEBUG: Bet placement request received', { eventId, userId, prediction });
+    
     // Validate prediction - updated to use "Higher" and "Lower" options
     if (prediction !== 'Higher' && prediction !== 'Lower') {
+        console.log('DEBUG: Invalid prediction value', { prediction });
         return res.status(400).json({ error: 'Prediction must be "Higher" or "Lower"' });
     }
 
-    const client = await pool.connect();
+    let client;
     try {
+        console.log('DEBUG: Attempting to acquire database client');
+        client = await pool.connect();
+        console.log('DEBUG: Database client acquired successfully');
+    } catch (error) {
+        console.error('Failed to acquire database client:', error);
+        return res.status(500).json({ error: 'Database connection error' });
+    }
+    
+    try {
+        console.log('DEBUG: Starting transaction');
         await client.query('BEGIN');
+        console.log('DEBUG: Transaction started');
 
         // Check event exists
+        console.log('DEBUG: Checking if event exists', { eventId });
         const eventQuery = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
         if (eventQuery.rows.length === 0) {
+            console.log('DEBUG: Event not found', { eventId });
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Event not found' });
         }
         const event = eventQuery.rows[0];
+        console.log('DEBUG: Event found', { event });
         
         // Check if event is still active
         const now = new Date();
         const endTime = new Date(event.end_time);
+        console.log('DEBUG: Checking event time', { now, endTime, isEnded: now >= endTime });
         if (now >= endTime) {
+            console.log('DEBUG: Event has ended', { eventId });
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Event has ended' });
         }
         
         // Check user has sufficient points
+        console.log('DEBUG: Checking user points', { userId });
         const userQuery = await client.query('SELECT points FROM users WHERE id = $1', [userId]);
         if (userQuery.rows.length === 0) {
+            console.log('DEBUG: User not found', { userId });
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'User not found' });
         }
         
         const user = userQuery.rows[0];
+        console.log('DEBUG: User points check', { userId, userPoints: user.points, entryFee: event.entry_fee, sufficient: user.points >= event.entry_fee });
         if (user.points < event.entry_fee) {
+            console.log('DEBUG: Insufficient points', { userId, userPoints: user.points, entryFee: event.entry_fee });
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Insufficient points' });
         }
 
         // Check if user has already bet on this event
+        console.log('DEBUG: Checking if user already bet on this event', { eventId, userId });
         const existingBet = await client.query(
             'SELECT * FROM participants WHERE event_id = $1 AND user_id = $2',
             [eventId, userId]
         );
         if (existingBet.rows.length > 0) {
+            console.log('DEBUG: User already placed a bet on this event', { eventId, userId });
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'You have already placed a bet on this event' });
         }
 
         // Insert bet into participants table
+        console.log('DEBUG: Inserting bet into participants table', { eventId, userId, prediction, amount: event.entry_fee });
+        
+        // First, check if the amount column exists in the participants table
+        try {
+            if (dbType === 'postgres') {
+                const columnCheck = await client.query(
+                    `SELECT column_name
+                     FROM information_schema.columns
+                     WHERE table_name = 'participants' AND column_name = 'amount'`
+                );
+                
+                if (columnCheck.rows.length === 0) {
+                    console.error('ERROR: amount column does not exist in participants table');
+                    await client.query('ROLLBACK');
+                    return res.status(500).json({ error: 'Database schema error: amount column missing' });
+                }
+            } else {
+                // For SQLite
+                const columnCheck = await client.query(
+                    `PRAGMA table_info(participants)`
+                );
+                
+                const hasAmountColumn = columnCheck.rows.some(row => row.name === 'amount');
+                if (!hasAmountColumn) {
+                    console.error('ERROR: amount column does not exist in participants table');
+                    await client.query('ROLLBACK');
+                    return res.status(500).json({ error: 'Database schema error: amount column missing' });
+                }
+            }
+        } catch (schemaError) {
+            console.error('ERROR: Failed to check participants table schema', schemaError);
+            await client.query('ROLLBACK');
+            return res.status(500).json({ error: 'Database schema check failed' });
+        }
+        
         const { rows: [newBet] } = await client.query(
             `INSERT INTO participants (event_id, user_id, prediction, amount)
              VALUES ($1, $2, $3, $4)
              RETURNING *`,
             [eventId, userId, prediction, event.entry_fee]
         );
+        console.log('DEBUG: Bet inserted successfully', { newBet });
 
         // Deduct the entry fee from the user's points
+        console.log('DEBUG: Deducting entry fee from user points', { userId, entryFee: event.entry_fee });
         await client.query(
             'UPDATE users SET points = points - $1 WHERE id = $2',
             [event.entry_fee, userId]
         );
+        console.log('DEBUG: Entry fee deducted successfully');
         
         // Remove prize_pool update as it's now calculated from participants table
+        console.log('DEBUG: Updating event total_bets', { eventId });
         await client.query(
             `UPDATE events
              SET total_bets = total_bets + 1
-             WHERE id = $2`,
+             WHERE id = $1`,
             [eventId]
         );
+        console.log('DEBUG: Event total_bets updated successfully');
         
         // Update current_participants count
+        console.log('DEBUG: Updating event current_participants count', { eventId });
         await client.query(
             `UPDATE events
              SET current_participants = (
@@ -1068,15 +1134,28 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
              WHERE id = $1`,
             [eventId]
         );
+        console.log('DEBUG: Event current_participants count updated successfully');
         
         await client.query('COMMIT');
+        console.log('DEBUG: Transaction committed successfully', { newBet });
         res.status(201).json(newBet);
     } catch (error) {
-        await client.query('ROLLBACK');
+        console.log('DEBUG: Error in bet placement, attempting rollback', { error });
+        if (client) {
+            try {
+                await client.query('ROLLBACK');
+                console.log('DEBUG: Transaction rolled back successfully');
+            } catch (rollbackError) {
+                console.error('Failed to rollback transaction:', rollbackError);
+            }
+        }
         console.error('❌ Bet placement error:', error);
         res.status(500).json({ error: 'Server error' });
     } finally {
-        client.release();
+        if (client) {
+            console.log('DEBUG: Releasing database client');
+            client.release();
+        }
     }
 });
 
