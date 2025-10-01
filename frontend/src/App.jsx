@@ -91,16 +91,25 @@ const App = () => {
             setCurrentAccount(null);
         }
     };
+    
+    // Handler for points updates
+    const handlePointsUpdate = (event) => {
+      setPoints(event.detail);
+    };
 
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', handleAccountsChanged);
     }
     
-    // Cleanup the listener when the component is unmounted
+    // Add event listener for points updates
+    window.addEventListener('pointsUpdated', handlePointsUpdate);
+    
+    // Cleanup the listeners when the component is unmounted
     return () => {
         if (window.ethereum) {
             window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
         }
+        window.removeEventListener('pointsUpdated', handlePointsUpdate);
     };
   }, []);
 
@@ -342,7 +351,7 @@ const CountdownTimer = ({ endTime }) => {
   );
 };
 
-// Events Interface Component (No changes needed here)
+// Events Interface Component
 const EventsInterface = () => {
   const [events, setEvents] = React.useState([]);
   const [showCreateModal, setShowCreateModal] = React.useState(false);
@@ -355,10 +364,6 @@ const EventsInterface = () => {
     capacity: 100,
     entry_fee: 0
   });
-
-  React.useEffect(() => {
-    fetchEvents();
-  }, []);
 
   const fetchEvents = async () => {
     try {
@@ -375,6 +380,21 @@ const EventsInterface = () => {
       console.error('Error fetching events:', error);
     }
   };
+
+  React.useEffect(() => {
+    fetchEvents();
+    
+    // Add event listener for refreshing events
+    const refreshEventsHandler = () => {
+      fetchEvents();
+    };
+    
+    window.addEventListener('refreshEvents', refreshEventsHandler);
+    
+    return () => {
+      window.removeEventListener('refreshEvents', refreshEventsHandler);
+    };
+  }, []);
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
@@ -641,6 +661,19 @@ const PredictionDetail = ({ event }) => {
       userData.points = userData.points - event.entry_fee;
       localStorage.setItem('user', JSON.stringify(userData));
       setUserPoints(userData.points);
+      
+      // Update global points state
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        // This will update the points in the main App component
+        window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: userData.points }));
+      }
+      
+      // Refresh event data to update prize pool and participant count
+      // We need to get the fetchEvents function from the parent context
+      const eventUpdateEvent = new CustomEvent('refreshEvents');
+      window.dispatchEvent(eventUpdateEvent);
       
       // Add celebration effect for successful bet
       const eventCard = document.querySelector('.card');
