@@ -352,7 +352,8 @@ const EventsInterface = () => {
     location: '',
     start_time: '',
     end_time: '',
-    capacity: 100
+    capacity: 100,
+    entry_fee: 250
   });
 
   React.useEffect(() => {
@@ -379,7 +380,7 @@ const EventsInterface = () => {
         title: newEvent.title,
         description: newEvent.description,
         options: ['Higher', 'Lower'], // Default options for crypto price prediction
-        entry_fee: 250, // Default entry fee
+        entry_fee: parseInt(newEvent.entry_fee) || 250, // Use configured entry fee or default to 250
         start_time: newEvent.start_time,
         end_time: newEvent.end_time,
         location: newEvent.location,
@@ -493,6 +494,18 @@ const EventsInterface = () => {
                 />
               </div>
 
+              <div className="form-group">
+                <label htmlFor="event-entry-fee" className="form-label">Entry Fee (points)</label>
+                <input
+                  type="number"
+                  id="event-entry-fee"
+                  min="1"
+                  value={newEvent.entry_fee}
+                  onChange={(e) => setNewEvent({...newEvent, entry_fee: e.target.value})}
+                  className="form-input"
+                />
+              </div>
+
               <div className="modal-footer">
                 <button type="button" className="button button-secondary" onClick={() => setShowCreateModal(false)}>
                   Cancel
@@ -537,7 +550,7 @@ const EventsInterface = () => {
               </div>
               <div className="detail">
                 <span className="icon">🎫</span>
-                Min. Entry: 250 points
+                Min. Entry: {event.entry_fee} points
               </div>
             </div>
             <div className="sparkline-container">
@@ -726,8 +739,8 @@ const PredictionDetail = ({ event }) => {
         {/* User Balance Information */}
         <div className="user-info-display">
           Your Balance: {userPoints.toLocaleString()} points /
-          <span className={userPoints >= 250 ? '' : 'insufficient-points'}>
-            Entry: 250 points
+          <span className={userPoints >= event.entry_fee ? '' : 'insufficient-points'}>
+            Entry: {event.entry_fee} points
           </span>
         </div>
         
