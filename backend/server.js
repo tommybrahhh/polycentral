@@ -677,7 +677,7 @@ function splitSqlPreservingDoBlocks(sql) {
 async function createEvent(initialPrice) {
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
-  const entryFee = 0; // Free participation for daily event
+  const entryFee = 100; // Set entry fee to 100 points for all events
   console.log('Creating event with initial price:', initialPrice);
 
   // Generate formatted title with date and crypto symbol
