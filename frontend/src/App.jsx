@@ -398,18 +398,48 @@ const EventsInterface = () => {
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
+    
+    // Log the entry fee value before submission
+    console.log('Entry fee value before submission:', newEvent.entry_fee);
+    console.log('Entry fee type:', typeof newEvent.entry_fee);
+    
+    // Validate entry fee before submission
+    const entryFeeValue = parseInt(newEvent.entry_fee);
+    console.log('Parsed entry fee value:', entryFeeValue);
+    console.log('Is NaN check:', isNaN(entryFeeValue));
+    console.log('Is less than 100 check:', entryFeeValue < 100);
+    
+    if (isNaN(entryFeeValue) || entryFeeValue < 100) {
+      console.error('Invalid entry fee value:', newEvent.entry_fee);
+      
+      // Show error toast for invalid entry fee
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-error show';
+      toast.textContent = 'Entry fee must be at least 100 points';
+      document.body.appendChild(toast);
+      
+      // Remove toast after 3 seconds
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+      
+      return;
+    }
+    
     try {
       // Transform the newEvent data to match the backend API requirements
       const eventData = {
         title: newEvent.title,
         description: newEvent.description,
         options: ['Higher', 'Lower'], // Default options for crypto price prediction
-        entry_fee: parseInt(newEvent.entry_fee) || 100, // Use configured entry fee or default to 100
+        entry_fee: entryFeeValue, // Use validated entry fee
         start_time: newEvent.start_time,
         end_time: newEvent.end_time,
         location: newEvent.location,
         capacity: newEvent.capacity
       };
+      
+      console.log('Submitting event data:', eventData);
       
       await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/events`, eventData, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
@@ -524,7 +554,12 @@ const EventsInterface = () => {
                   <button
                     type="button"
                     className="button button-secondary"
-                    onClick={() => setNewEvent({...newEvent, entry_fee: Math.max(100, parseInt(newEvent.entry_fee) - 100)})}
+                    onClick={() => {
+                      console.log('Decreasing entry fee. Current value:', newEvent.entry_fee);
+                      const newValue = Math.max(100, (newEvent.entry_fee || 0) - 100);
+                      console.log('New value after decrease:', newValue);
+                      setNewEvent({...newEvent, entry_fee: newValue});
+                    }}
                   >
                     -100
                   </button>
@@ -534,13 +569,37 @@ const EventsInterface = () => {
                     min="100"
                     step="100"
                     value={newEvent.entry_fee}
-                    onChange={(e) => setNewEvent({...newEvent, entry_fee: e.target.value})}
+                    onChange={(e) => {
+                      console.log('Entry fee input changed:', e.target.value);
+                      const value = parseInt(e.target.value) || 0;
+                      console.log('Parsed value:', value);
+                      // Enforce minimum value of 100
+                      if (value < 100) {
+                        console.log('Value is below minimum, setting to 100');
+                        setNewEvent({...newEvent, entry_fee: 100});
+                      } else {
+                        setNewEvent({...newEvent, entry_fee: value});
+                      }
+                    }}
                     className="form-input"
+                    onBlur={(e) => {
+                      // Additional validation when user leaves the field
+                      const value = parseInt(e.target.value) || 0;
+                      if (value < 100) {
+                        console.log('Entry fee is below minimum on blur, setting to 100');
+                        setNewEvent({...newEvent, entry_fee: 100});
+                      }
+                    }}
                   />
                   <button
                     type="button"
                     className="button button-primary"
-                    onClick={() => setNewEvent({...newEvent, entry_fee: parseInt(newEvent.entry_fee) + 100})}
+                    onClick={() => {
+                      console.log('Increasing entry fee. Current value:', newEvent.entry_fee);
+                      const newValue = (newEvent.entry_fee || 0) + 100;
+                      console.log('New value after increase:', newValue);
+                      setNewEvent({...newEvent, entry_fee: newValue});
+                    }}
                   >
                     +100
                   </button>
