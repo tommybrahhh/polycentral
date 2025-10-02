@@ -907,6 +907,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
     if (!title || !description || !options || entry_fee === undefined) {
         return res.status(400).json({ error: 'Required fields: title, description, options, entry_fee' });
     }
+    console.log('Event creation request - entry_fee:', entry_fee, 'Type:', typeof entry_fee);
     
     // Validate entry fee is at least 100 points
     if (entry_fee < 100) {
@@ -1016,6 +1017,38 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     
     console.log('DEBUG: Bet placement request received', { eventId, userId, prediction });
     
+    // Validate event configuration first
+    try {
+        // Get event details including entry fee
+        const eventQuery = await pool.query(
+            'SELECT entry_fee, end_time, status FROM events WHERE id = $1',
+            [eventId]
+        );
+        
+        if (eventQuery.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        
+        const event = eventQuery.rows[0];
+        
+        // Validate entry fee structure
+        console.log('Validating event entry fee - Value:', event.entry_fee, 'Type:', typeof event.entry_fee);
+        if (typeof event.entry_fee !== 'number' || event.entry_fee < 100) {
+            console.log('Invalid entry fee configuration detected:', event.entry_fee);
+            return res.status(400).json({ error: 'Invalid event configuration' });
+        }
+        
+        // Check event status
+        const now = new Date();
+        const endTime = new Date(event.end_time);
+        if (now >= endTime || event.status !== 'active') {
+            return res.status(400).json({ error: 'Event is no longer active' });
+        }
+    } catch (error) {
+        console.error('Event validation failed:', error);
+        return res.status(500).json({ error: 'Failed to validate event' });
+    }
+    
     // Validate prediction - updated to use "Higher" and "Lower" options
     if (prediction !== 'Higher' && prediction !== 'Lower') {
         console.log('DEBUG: Invalid prediction value', { prediction });
@@ -1069,6 +1102,11 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         
         const user = userQuery.rows[0];
         console.log('DEBUG: User points check', { userId, userPoints: user.points, entryFee: event.entry_fee, sufficient: user.points >= event.entry_fee });
+        console.log('User points vs entry fee:', {
+          userPoints: user.points,
+          entryFee: event.entry_fee,
+          comparison: user.points >= event.entry_fee
+        });
         if (user.points < event.entry_fee) {
             console.log('DEBUG: Insufficient points', { userId, userPoints: user.points, entryFee: event.entry_fee });
             await client.query('ROLLBACK');
