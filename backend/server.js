@@ -519,6 +519,7 @@ async function runMigrations() {
   const dbType = getDatabaseType();
   try {
     console.log(`🛠️ Running database migrations (${dbType})...`);
+    console.log('📁 Migration files directory:', path.join(__dirname, 'sql', dbType));
     
     // Create version tracking table if not exists
     await runMigrationSafe(`
@@ -540,7 +541,6 @@ async function runMigrations() {
     }
     
     // Get all migration files sorted by version
-    // Get and sort migrations considering both upgrade and rollback
     const migrationFiles = (await fs.readdir(path.join(__dirname, 'sql', dbType)))
         .filter(f => f.startsWith('migrate_v'))
         .sort((a, b) => {
@@ -548,12 +548,15 @@ async function runMigrations() {
             const bVersions = b.match(/\d+/g).map(Number);
             const aFrom = aVersions[0], aTo = aVersions[1];
             const bFrom = bVersions[0], bTo = bVersions[1];
-            // Sort upgrades ascending, rollbacks descending
-            return aTo > aFrom ? aTo - bTo : bTo - aTo;
+            // Sort upgrades ascending
+            return aTo - bTo;
         });
+    
+    console.log('📄 Found migration files:', migrationFiles);
 
     for (const file of migrationFiles) {
         const toVersion = parseInt(file.match(/\d+/g)[1]);
+        console.log(`🔍 Processing migration file: ${file} (toVersion: ${toVersion}, currentVersion: ${currentVersion})`);
         if (currentVersion >= toVersion) {
             console.log(`✅ Migration to v${toVersion} already applied. Skipping.`);
             continue;
@@ -1668,57 +1671,82 @@ async function startServer() {
     await pool.query('SELECT 1');
     console.log("Database connection successful");
     
-    // Start the server
-    const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log("\nServer listening on port " + PORT);
-      console.log("Environment variables:", {
-        PORT: process.env.PORT,
-        NODE_ENV: process.env.NODE_ENV,
-        RENDER: process.env.RENDER,
-        DB_TYPE: process.env.DB_TYPE,
-        DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
-      });
-      console.log("Server started successfully");
-    });
+    // Try to start the server on the specified port or an alternative port
+    const server = await startServerOnAvailablePort();
     
     // Create initial event after server has started
     await createInitialEvent();
     
-        // Add additional error logging
-        process.on('unhandledRejection', (reason, promise) => {
-            console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-            // Application specific logging, throwing an error, or other logic here
-        });
+    // Add additional error logging
+    process.on('unhandledRejection', (reason, promise) => {
+        console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+        // Application specific logging, throwing an error, or other logic here
+    });
     
-        process.on('uncaughtException', (error) => {
-            console.error('Uncaught Exception:', error);
-            // Application specific logging, throwing an error, or other logic here
-        });
-
-    server.on('error', (error) => {
-        console.error("Server error:", error);
-        if (error.code === 'EADDRINUSE') {
-            console.log("Port " + PORT + " is already in use. Trying alternative port...");
-            // Try alternative ports
-            const alternativePorts = [8080, 8000, 5000];
-            for (const altPort of alternativePorts) {
-                console.log("Trying port " + altPort + "...");
-                try {
-                    server.listen(altPort);
-                    break;
-                } catch (err) {
-                    if (err.code !== 'EADDRINUSE') {
-                        console.error('Unexpected error:', err);
-                        break;
-                    }
-                }
-            }
-        }
+    process.on('uncaughtException', (error) => {
+        console.error('Uncaught Exception:', error);
+        // Application specific logging, throwing an error, or other logic here
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
+}
+
+async function startServerOnAvailablePort() {
+  const portsToTry = [PORT, 8000, 5000, 3000];
+  
+  for (const port of portsToTry) {
+    console.log(`Trying to start server on port ${port}...`);
+    try {
+      // Try to start server on the specified port
+      const server = app.listen(port, '0.0.0.0', () => {
+        console.log("\nServer listening on port " + port);
+        console.log("Environment variables:", {
+          PORT: port,
+          NODE_ENV: process.env.NODE_ENV,
+          RENDER: process.env.RENDER,
+          DB_TYPE: process.env.DB_TYPE,
+          DATABASE_URL: process.env.DATABASE_URL ? 'set' : 'not set'
+        });
+        console.log("Server started successfully");
+      });
+      
+      // Wait a short time to see if the server starts successfully
+      await new Promise((resolve, reject) => {
+        server.on('listening', () => {
+          resolve(server);
+        });
+        
+        server.on('error', (error) => {
+          if (error.code === 'EADDRINUSE') {
+            console.log("Port " + port + " is already in use.");
+            reject(error);
+          } else {
+            reject(error);
+          }
+        });
+        
+        // Timeout after 1 second
+        setTimeout(() => {
+          reject(new Error('Server start timeout'));
+        }, 1000);
+      });
+      
+      // If we get here, the server started successfully
+      return server;
+    } catch (error) {
+      if (error.code === 'EADDRINUSE') {
+        console.log("Port " + port + " is already in use. Trying next port...");
+        continue;
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  // If all ports are in use, throw an error
+  throw new Error('All ports are in use');
 }
 
 startServer();

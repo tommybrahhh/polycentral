@@ -37,11 +37,13 @@ if (dbType === 'postgres') {
 async function testClaimFunctionality() {
   try {
     console.log('Testing claim functionality...');
+    console.log('DB_TYPE:', process.env.DB_TYPE);
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'set' : 'not set');
+    console.log('dbType:', dbType);
     
     // Check if users table exists
     const usersTable = await pool.query(
-      `SELECT name FROM ${dbType === 'postgres' ? 'information_schema.tables' : 'sqlite_master'} 
-       WHERE ${dbType === 'postgres' ? 'table_name' : 'name'} = 'users'`
+      `SELECT ${dbType === 'postgres' ? 'table_name' : 'name'} FROM ${dbType === 'postgres' ? 'information_schema.tables' : 'sqlite_master'} WHERE ${dbType === 'postgres' ? 'table_name' : 'name'} = 'users'`
     );
     
     if (usersTable.rows.length === 0) {
@@ -52,9 +54,7 @@ async function testClaimFunctionality() {
     
     // Check if last_claimed column exists
     const lastClaimedColumn = await pool.query(
-      `SELECT ${dbType === 'postgres' ? 'column_name' : 'name'} 
-       FROM ${dbType === 'postgres' ? 'information_schema.columns' : 'pragma_table_info(\'users\')'} 
-       WHERE ${dbType === 'postgres' ? 'table_name = \'users\' AND column_name' : 'name'} = 'last_claimed'`
+      `SELECT ${dbType === 'postgres' ? 'column_name' : 'name'} FROM ${dbType === 'postgres' ? 'information_schema.columns' : 'pragma_table_info(\'users\')'} WHERE ${dbType === 'postgres' ? 'table_name = \'users\' AND column_name' : 'name'} = 'last_claimed'`
     );
     
     if (lastClaimedColumn.rows.length === 0) {
@@ -65,9 +65,7 @@ async function testClaimFunctionality() {
     
     // Check if last_claim_date column exists (should not exist after migration)
     const lastClaimDateColumn = await pool.query(
-      `SELECT ${dbType === 'postgres' ? 'column_name' : 'name'} 
-       FROM ${dbType === 'postgres' ? 'information_schema.columns' : 'pragma_table_info(\'users\')'} 
-       WHERE ${dbType === 'postgres' ? 'table_name = \'users\' AND column_name' : 'name'} = 'last_claim_date'`
+      `SELECT ${dbType === 'postgres' ? 'column_name' : 'name'} FROM ${dbType === 'postgres' ? 'information_schema.columns' : 'pragma_table_info(\'users\')'} WHERE ${dbType === 'postgres' ? 'table_name = \'users\' AND column_name' : 'name'} = 'last_claim_date'`
     );
     
     if (lastClaimDateColumn.rows.length > 0) {
