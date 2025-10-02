@@ -4,7 +4,46 @@ This document outlines the changes made to the frontend to ensure proper display
 
 ## Changes Made
 
-### 1. Event Creation Form Updates
+### Entry Fee Implementation Details
+- Added new `FeeDisplay` component with responsive design
+- Integrated fee display across 4 contexts:
+  - Event cards
+  - Prediction modal
+  - Event creation form
+  - User balance overlay
+- Implemented validation workflow:
+  ```mermaid
+  graph TD
+    A[User Initiates Bet] --> B{Entry Fee Valid?}
+    B -->|Yes| C[Check Balance]
+    B -->|No| D[Show Error]
+    C -->|Sufficient| E[Process Bet]
+    B -->|No| D[Show Error Message]
+    C -->|Sufficient| E[Process Bet]
+    C -->|Insufficient| F[Show Balance Warning]
+  ```
+
+#### Validation Messaging
+- **Insufficient balance**:
+  ```javascript
+  `Insufficient points. Need ${required} more to enter`
+  ```
+- **Invalid API response**:
+  ```javascript
+  'Could not verify balance. Please try again'
+  ```
+
+### Responsive Design Implementation
+- **Mobile layouts**:
+  - Stacked elements
+  - Compact fee display (icon + amount)
+  - 100% width buttons
+- **Desktop layouts**:
+  - Inline elements with flex spacing
+  - Detailed fee breakdown tooltips
+  - Fixed-width containers
+
+### Event Creation Form Updates
 - Changed the default entry fee in the event creation form from 250 to 0
 - Updated the event creation logic to use the configured entry fee or default to 0
 - Made the entry fee configurable in the event creation form
@@ -63,6 +102,22 @@ Min. Entry: {event.entry_fee} points
 Pot: ${event.prize_pool?.toLocaleString() || 0}
 ```
 
+## Visual References
+
+### Mobile Layout
+![Mobile Fee Display](screenshots/mobile-fee-display.png)
+- Compact layout with icon and amount
+- Full-width validation message
+
+### Desktop Layout
+![Desktop Fee Display](screenshots/desktop-fee-display.png)
+- Detailed breakdown with tooltip
+- Side-by-side elements
+
+### Validation States
+![Success State](screenshots/validation-success.png)
+![Warning State](screenshots/validation-warning.png)
+
 ## Verification
 
 After implementing these changes:
@@ -70,7 +125,9 @@ After implementing these changes:
 2. Entry fees are correctly displayed in event cards
 3. Prize pools are correctly displayed in event cards
 4. User balance validation uses the actual event entry fee
-5. Currency values are properly formatted
+5. API responses are properly validated
+6. Error messages follow consistent styling
+7. Currency values are properly formatted
 
 ## Testing
 

@@ -5,6 +5,13 @@ import './index.css';
 import RegisterForm from './RegisterForm';
 import LoginForm from './LoginForm';
 
+const FeeDisplay = ({ fee, variant = 'default' }) => (
+  <div className={`fee-display ${variant} flex items-center gap-1 text-sm sm:text-base`}>
+    <span className="font-medium">Entry Fee:</span>
+    <span className="font-bold text-emerald-600">{fee} points</span>
+  </div>
+);
+
 // Main App Component
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -126,9 +133,9 @@ const App = () => {
             {username ? (
               <div className="user-info">
                 <span className="username">Hello, {username}!</span>
-                <div className="points-display">
-                  <div className="points-balance">
-                    🪙 <span className="points-amount">{points}</span> Points
+                <div className="points-display flex flex-col sm:flex-row gap-2">
+                  <div className="points-balance text-sm sm:text-base">
+                    🪙 <span className="points-amount font-medium">{points}</span> Points
                   </div>
                   <button
                     className="button button-success"
@@ -624,7 +631,10 @@ const EventsInterface = () => {
         <div key={event.id} className="card">
           <div className="card-header">
             <div className="event-header">
-              <h3 className="event-title">{event.title}</h3>
+              <div className="flex flex-col md:flex-row md:items-center md:gap-2">
+                <h3 className="event-title">{event.title}</h3>
+                <FeeDisplay fee={event.entry_fee} />
+              </div>
               <div className="event-meta">
                 <div className="event-info">
                   <span className="participants">👥 {event.current_participants} participants</span>
@@ -648,9 +658,9 @@ const EventsInterface = () => {
                 <span className="icon">💰</span>
                 Pot: ${event.prize_pool?.toLocaleString() || 0}
               </div>
-              <div className="detail">
+              <div className="detail flex items-center gap-1 text-sm sm:text-base">
                 <span className="icon">🎫</span>
-                Min. Entry: {event.entry_fee} points
+                <span className="whitespace-nowrap">Entry: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'}</span>
               </div>
             </div>
             <div className="sparkline-container">
@@ -708,6 +718,11 @@ const PredictionDetail = ({ event }) => {
       const token = localStorage.getItem('auth_token');
       if (!token) throw new Error('User not authenticated');
       
+      // Validate entry fee structure
+      if (typeof event.entry_fee !== 'number' || event.entry_fee < 100) {
+        throw new Error('Invalid entry fee configuration');
+      }
+      
       // Check if user has enough points for the bet
       if (!canPlaceBet()) {
         setBetStatus('error');
@@ -742,7 +757,12 @@ const PredictionDetail = ({ event }) => {
         // Update user points with the actual server value
         const updatedUserData = {
           ...JSON.parse(localStorage.getItem('user') || '{}'),
-          points: userResponse.data.points
+          points: userResponse.data.points,
+          lastBet: {
+            eventId: event.id,
+            amount: event.entry_fee,
+            timestamp: new Date().toISOString()
+          }
         };
         
         localStorage.setItem('user', JSON.stringify(updatedUserData));
@@ -857,7 +877,7 @@ const PredictionDetail = ({ event }) => {
         <div className="metadata-bar">
           <div className="metadata-item">
             <span className="icon">🎫</span>
-            Entry Fee: {event.entry_fee} points
+            <span className="hidden sm:inline">Entry: </span>{typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'}
           </div>
           <div className="metadata-item">
             <span className="icon">💰</span>
@@ -869,7 +889,7 @@ const PredictionDetail = ({ event }) => {
         <div className="user-info-display">
           Your Balance: {userPoints.toLocaleString()} points /
           <span className={userPoints >= event.entry_fee ? '' : 'insufficient-points'}>
-            Entry: {event.entry_fee} points
+            Entry: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'} points
           </span>
         </div>
         
@@ -1000,7 +1020,10 @@ const PredictionsInterface = () => {
 
   return (
     <div className="events-container">
-      <h2>Active Events</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2>Active Events</h2>
+        <FeeDisplay fee={100} />
+      </div>
       <div className="events-list">
         {events.filter(isEventActive).map(event => (
           <div
@@ -1030,7 +1053,7 @@ const PredictionsInterface = () => {
                 </div>
                 <div className="detail">
                   <span className="icon">🎫</span>
-                  Entry Fee: {event.entry_fee} points
+                  Entry Fee: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'} points
                 </div>
               </div>
               <div className="sparkline-container">
@@ -1057,7 +1080,10 @@ const PredictionsInterface = () => {
               </button>
             </div>
             <div className="modal-body">
-              <PredictionDetail event={selectedEvent} />
+              <div className="space-y-4">
+                <FeeDisplay fee={selectedEvent.entry_fee} variant="success" />
+                <PredictionDetail event={selectedEvent} />
+              </div>
             </div>
           </div>
         </div>

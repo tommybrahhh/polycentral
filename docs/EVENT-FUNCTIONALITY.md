@@ -1,6 +1,16 @@
 # Event Functionality Documentation
 
 ## Overview
+```mermaid
+graph TD
+  A[Event Card] --> B[FeeDisplay]
+  B --> C{Validation}
+  C -->|Valid| D[Process Bet]
+  C -->|Invalid| E[Show Error]
+  D --> F[Update Balance]
+  F --> G[API]
+  G --> H[Database]
+```
 This document describes the event functionality implemented in the Polycentral application, which allows users to predict whether the price of Bitcoin will be higher or lower than the current price at a specific time.
 
 ## Backend Event System
@@ -362,6 +372,12 @@ const EventList = () => {
   );
 };
 ```
+
+## Backend Security Integration
+See [Security Documentation](../SECURITY.md#balance-validation) for:
+- Balance encryption
+- Transaction verification
+- API endpoint protection
 
 ## Environment Configuration
 
