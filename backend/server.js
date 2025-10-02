@@ -459,7 +459,7 @@ async function ensureEventsTableIntegrity() {
       const renameQuery = dbType === 'postgres'
         ? 'ALTER TABLE events RENAME COLUMN cryptocurrency TO crypto_symbol'
         : `
-          CREATE TABLE events_new AS SELECT id, title, description, category, options, entry_fee, max_participants, current_participants, prize_pool, total_bets, start_time, end_time, status, correct_answer, event_type_id, created_at, updated_at, cryptocurrency as crypto_symbol, initial_price, final_price, resolution_status, prediction_window, is_daily FROM events;
+          CREATE TABLE events_new AS SELECT id, title, description, category, options, 100 as entry_fee, max_participants, current_participants, prize_pool, total_bets, start_time, end_time, status, correct_answer, event_type_id, created_at, updated_at, cryptocurrency as crypto_symbol, initial_price, final_price, resolution_status, prediction_window, is_daily FROM events;
           DROP TABLE events;
           ALTER TABLE events_new RENAME TO events;
         `;
@@ -677,8 +677,8 @@ function splitSqlPreservingDoBlocks(sql) {
 async function createEvent(initialPrice) {
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
-  const entryFee = 100; // Set entry fee to 100 points for all events
-  console.log('Creating event with initial price:', initialPrice);
+  const entryFee = 100;
+  console.log('Creating event with entry fee:', entryFee, 'and initial price:', initialPrice);
 
   // Generate formatted title with date and crypto symbol
   const eventDate = new Date().toISOString().split('T')[0];
