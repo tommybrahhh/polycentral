@@ -534,82 +534,84 @@ const EventsInterface = () => {
               </button>
             </div>
             <form onSubmit={handleCreateEvent} className="form">
-              <div className="form-content">
-              <div className="form-group">
-                <label htmlFor="event-title" className="form-label">Event Title</label>
-                <input
-                  type="text"
-                  id="event-title"
-                  required
-                  onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
-                  className="form-input"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="event-description" className="form-label">Description</label>
-                <textarea
-                  id="event-description"
-                  onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
-                  className="form-input form-textarea"
-                />
-              </div>
+              <div className="modal-body">
+                <div className="form-content">
+                  <div className="form-group">
+                    <label htmlFor="event-title" className="form-label">Event Title</label>
+                    <input
+                      type="text"
+                      id="event-title"
+                      required
+                      onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+                      className="form-input"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="event-description" className="form-label">Description</label>
+                    <textarea
+                      id="event-description"
+                      onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
+                      className="form-input form-textarea"
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label htmlFor="event-location" className="form-label">Location</label>
-                <input
-                  type="text"
-                  id="event-location"
-                  required
-                  onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
-                  className="form-input"
-                />
-              </div>
+                  <div className="form-group">
+                    <label htmlFor="event-location" className="form-label">Location</label>
+                    <input
+                      type="text"
+                      id="event-location"
+                      required
+                      onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
+                      className="form-input"
+                    />
+                  </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="event-start-time" className="form-label">Start Time</label>
-                  <input
-                    type="datetime-local"
-                    id="event-start-time"
-                    required
-                    onChange={(e) => setNewEvent({...newEvent, start_time: e.target.value})}
-                    className="form-input"
-                  />
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="event-start-time" className="form-label">Start Time</label>
+                      <input
+                        type="datetime-local"
+                        id="event-start-time"
+                        required
+                        onChange={(e) => setNewEvent({...newEvent, start_time: e.target.value})}
+                        className="form-input"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="event-end-time" className="form-label">End Time</label>
+                      <input
+                        type="datetime-local"
+                        id="event-end-time"
+                        required
+                        onChange={(e) => setNewEvent({...newEvent, end_time: e.target.value})}
+                        className="form-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="event-capacity" className="form-label">Capacity</label>
+                    <input
+                      type="number"
+                      id="event-capacity"
+                      min="1"
+                      value={newEvent.capacity}
+                      onChange={(e) => setNewEvent({...newEvent, capacity: e.target.value})}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="event-entry-fee" className="form-label">Entry Fee (points)</label>
+                    <FeeControls
+                      value={newEvent.entry_fee}
+                      onChange={(newValue) => setNewEvent({...newEvent, entry_fee: newValue})}
+                    />
+                  </div>
                 </div>
-
-                <div className="form-group">
-                  <label htmlFor="event-end-time" className="form-label">End Time</label>
-                  <input
-                    type="datetime-local"
-                    id="event-end-time"
-                    required
-                    onChange={(e) => setNewEvent({...newEvent, end_time: e.target.value})}
-                    className="form-input"
-                  />
-                </div>
               </div>
-
-              <div className="form-group">
-                <label htmlFor="event-capacity" className="form-label">Capacity</label>
-                <input
-                  type="number"
-                  id="event-capacity"
-                  min="1"
-                  value={newEvent.capacity}
-                  onChange={(e) => setNewEvent({...newEvent, capacity: e.target.value})}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="event-entry-fee" className="form-label">Entry Fee (points)</label>
-                <FeeControls
-                  value={newEvent.entry_fee}
-                  onChange={(newValue) => setNewEvent({...newEvent, entry_fee: newValue})}
-                />
-              </div>
-
               <div className="modal-footer">
                 <button type="button" className="button button-secondary" onClick={() => setShowCreateModal(false)}>
                   Cancel
@@ -617,17 +619,6 @@ const EventsInterface = () => {
                 <button type="submit" className="button button-primary">
                   Create Event
                 </button>
-              </div>
-              </div>
-
-              <div className="modal-footer">
-                <button type="button" className="button button-secondary" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="button button-primary">
-                  Create Event
-                </button>
-              </div>
               </div>
             </form>
           </div>
