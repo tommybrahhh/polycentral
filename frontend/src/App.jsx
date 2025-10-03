@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useEvents } from './hooks/useTournaments';
+import { useTournaments } from './hooks/useTournaments';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './index.css';
@@ -64,7 +64,7 @@ const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [points, setPoints] = useState(0);
   const [events, setEvents] = useState([]);
-  const { loadingStates } = useEvents();
+  const { loadingStates } = useTournaments();
   const [username, setUsername] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
