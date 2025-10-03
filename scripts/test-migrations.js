@@ -19,9 +19,9 @@ if (dbType === 'postgres') {
 async function testMigrationSystem() {
   try {
     // Test 1: Check if schema_versions table exists
-    console.log('\n📝 Test 1: Checking schema_versions table');
+    console.log('\n📝 Test 1: Checking __schema_versions table');
     const schemaVersionsTable = await pool.query(
-      `SELECT table_name FROM information_schema.tables WHERE table_name = 'schema_versions'`
+      `SELECT table_name FROM information_schema.tables WHERE table_name = '__schema_versions'`
     );
     
     if (schemaVersionsTable.rows.length === 0) {
@@ -31,10 +31,23 @@ async function testMigrationSystem() {
     console.log('✅ schema_versions table exists');
     
     // Test 2: Check current schema version
-    console.log('\n📝 Test 2: Checking current schema version');
-    const currentVersion = await pool.query('SELECT MAX(version) as current FROM schema_versions');
+    console.log('\n📝 Test 2: Detailed schema version checks');
+    // Verify version history
+    const versionsRes = await pool.query('SELECT version FROM __schema_versions ORDER BY version');
+    console.log('📜 Version history:', versionsRes.rows.map(r => r.version).join(', '));
+    
+    // Check current version
+    const currentVersion = await pool.query('SELECT MAX(version) as current FROM __schema_versions');
     const version = currentVersion.rows[0].current || 0;
-    console.log('✅ Current schema version:', version);
+    
+    // Verify version assertion
+    try {
+      await pool.query('SELECT assert_schema_version($1)', [version]);
+      console.log(`✅ Schema version assertion passes for version ${version}`);
+    } catch (error) {
+      console.log(`❌ Schema version assertion failed for version ${version}:`, error.message);
+      throw error;
+    }
     
     // Test 3: Check if all expected tables exist
     console.log('\n📝 Test 3: Checking expected tables');
@@ -164,22 +177,26 @@ async function testMigrationSystem() {
     console.log('\n🔙 Testing migration rollback functionality');
     
     // Get current schema version
-    const rollbackVersion = parseInt((await pool.query('SELECT MAX(version) as current FROM schema_versions')).rows[0].current, 10);
-    const expectedVersion = rollbackVersion - 1;
-    if (isNaN(rollbackVersion) || rollbackVersion < 1) {
+    const preRollbackRes = await pool.query('SELECT MAX(version) FROM __schema_versions');
+    const preRollbackVersion = preRollbackRes.rows[0].max || 0;
+    
+    if (isNaN(preRollbackVersion) || preRollbackVersion < 1) {
       console.log('❌ Cannot test rollback - no migrations applied');
       return;
     }
-    
-    // Perform rollback
-    console.log(`⏪ Rolling back from version ${rollbackVersion} to ${rollbackVersion - 1}`);
-    await pool.query('DELETE FROM schema_versions WHERE version = $1', [rollbackVersion]);
+
+    // Perform actual migration rollback
+    console.log(`⏪ Rolling back from version ${preRollbackVersion} to ${preRollbackVersion - 1}`);
+    const migrationFile = `../backend/sql/postgres/migrate_v${preRollbackVersion}_to_v${preRollbackVersion - 1}.sql`;
+    const migrationSQL = require('fs').readFileSync(path.join(__dirname, migrationFile), 'utf8');
+    await pool.query(migrationSQL);
     
     // Verify rollback
-    const newVersion = parseInt((await pool.query('SELECT MAX(version) as current FROM schema_versions')).rows[0].current || 0, 10);
+    const postRollbackRes = await pool.query('SELECT MAX(version) FROM __schema_versions');
+    const postRollbackVersion = postRollbackRes.rows[0].max || 0;
     
-    if (newVersion === expectedVersion) {
-      console.log(`✅ Successfully rolled back to version ${newVersion}`);
+    if (postRollbackVersion === preRollbackVersion - 1) {
+      console.log(`✅ Successfully rolled back to version ${postRollbackVersion}`);
       
       // Verify schema changes were reverted
       const columnExists = await pool.query(
