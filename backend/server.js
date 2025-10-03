@@ -1018,6 +1018,135 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
     }
 });
 
+// Tournament endpoints
+app.post('/api/tournaments/:id/join', authenticateToken, async (req, res) => {
+    const tournamentId = req.params.id;
+    const userId = req.userId;
+    
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        // Get tournament details
+        const tournament = await client.query(
+            'SELECT entry_fee FROM tournaments WHERE id = $1',
+            [tournamentId]
+        );
+        if (tournament.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+        const entryFee = tournament.rows[0].entry_fee;
+
+        // Check user balance
+        const user = await client.query(
+            'SELECT points FROM users WHERE id = $1',
+            [userId]
+        );
+        if (user.rows[0].points < entryFee) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Insufficient points' });
+        }
+
+        // Deduct entry fee
+        await client.query(
+            'UPDATE users SET points = points - $1 WHERE id = $2',
+            [entryFee, userId]
+        );
+
+        // Add participant
+        await client.query(
+            'INSERT INTO tournament_participants (tournament_id, user_id) VALUES ($1, $2)',
+            [tournamentId, userId]
+        );
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'Joined tournament successfully' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Tournament join error:', error);
+        res.status(500).json({ error: 'Failed to join tournament' });
+    } finally {
+        client?.release();
+    }
+});
+
+app.post('/api/tournaments/:id/entries', authenticateToken, async (req, res) => {
+    const tournamentId = req.params.id;
+    const userId = req.userId;
+    const { entries } = req.body;
+    
+    if (!Array.isArray(entries) || entries.length === 0) {
+        return res.status(400).json({ error: 'Invalid entries format' });
+    }
+
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        // Verify tournament exists
+        const tournament = await client.query(
+            'SELECT entry_fee FROM tournaments WHERE id = $1',
+            [tournamentId]
+        );
+        if (tournament.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+        const entryFee = tournament.rows[0].entry_fee;
+
+        // Check user balance for total entries
+        const totalCost = entryFee * entries.length;
+        const user = await client.query(
+            'SELECT points FROM users WHERE id = $1',
+            [userId]
+        );
+        if (user.rows[0].points < totalCost) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Insufficient points' });
+        }
+
+        // Deduct points
+        await client.query(
+            'UPDATE users SET points = points - $1 WHERE id = $2',
+            [totalCost, userId]
+        );
+
+        // Create entries
+        for (const entry of entries) {
+            await client.query(
+                'INSERT INTO tournament_entries (tournament_id, user_id, entry_fee) VALUES ($1, $2, $3)',
+                [tournamentId, userId, entryFee]
+            );
+        }
+
+        await client.query('COMMIT');
+        res.json({ success: true, entries_created: entries.length });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Tournament entry error:', error);
+        res.status(500).json({ error: 'Failed to create tournament entries' });
+    } finally {
+        client?.release();
+    }
+});
+
+app.get('/api/tournaments/:id/pot', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            'SELECT SUM(entry_fee) AS total_pot FROM tournament_entries WHERE tournament_id = $1',
+            [id]
+        );
+        res.json({ pot: result.rows[0].total_pot || 0 });
+    } catch (error) {
+        console.error('Pot calculation error:', error);
+        res.status(500).json({ error: 'Failed to calculate tournament pot' });
+    }
+});
+
 // Endpoint for placing a bet on an event
 app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     const eventId = req.params.id;

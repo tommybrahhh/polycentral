@@ -1,9 +1,46 @@
--- Migration v9 to v10: Fix events table column naming and data types for SQLite
--- This migration ensures the events table has the correct column structure
--- and data types for compatibility between PostgreSQL and SQLite
+PRAGMA foreign_keys=off;
 
--- SQLite doesn't support DO blocks, so we'll use the application's ensureEventsTableIntegrity function
--- to handle this migration. The function will be called after migrations in the server.js initialization
+BEGIN TRANSACTION;
 
--- For now, we'll just add a comment to indicate this
-SELECT 'Migration handled by application ensureEventsTableIntegrity function' as migration_status;
+-- Create tournaments table with enhanced constraints
+CREATE TABLE tournaments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL UNIQUE,
+    description TEXT,
+    entry_fee INTEGER NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('upcoming', 'active', 'completed')),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    CHECK (entry_fee >= 100 AND entry_fee % 25 = 0)
+);
+
+-- Tournament participants junction table
+CREATE TABLE tournament_participants (
+    tournament_id INTEGER,
+    user_id INTEGER,
+    joined_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (tournament_id, user_id),
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Tournament entries with points tracking
+CREATE TABLE tournament_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id INTEGER,
+    user_id INTEGER,
+    entry_fee INTEGER NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    CHECK (entry_fee >= 100 AND entry_fee % 25 = 0),
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_tournament_entries_user ON tournament_entries(user_id);
+CREATE INDEX idx_tournament_entries_tournament ON tournament_entries(tournament_id);
+
+COMMIT;
+
+PRAGMA foreign_keys=on;

@@ -20,6 +20,7 @@ The following PostgreSQL migration files were modified to improve the migration 
 4. `backend/sql/postgres/migrate_v4_to_v5.sql`
 5. `backend/sql/postgres/migrate_v5_to_v6.sql`
 6. `backend/sql/postgres/migrate_v6_to_v7.sql`
+7. `backend/sql/postgres/migrate_v9_to_v10.sql` (Tournament system)
 
 ### 1.3. Files Created
 
@@ -181,6 +182,11 @@ A new test script `scripts/test-migrations.js` was created to verify the migrati
 - **Column Renaming**: The system properly handles column renaming, ensuring that the same data is accessible with the new column names.
 - **Duplicate Prevention**: The use of `IF NOT EXISTS` and `IF EXISTS` checks prevents duplicate operations.
 - **Index Management**: Performance indexes are only added when they don't already exist.
+- **Tournament System Schema**: Added complete tournament system tables with proper constraints:
+  - `tournaments` table with entry fee validation
+  - `tournament_participants` junction table
+  - `tournament_entries` with point tracking
+  - Indexes for fast lookups
 
 ### 2.3. Improved Maintainability
 
@@ -263,6 +269,14 @@ The migration system was tested to ensure that:
 
 - **Issue**: The application had both `crypto_symbol` and `cryptocurrency` columns in the events table, which was causing confusion.
 - **Resolution**: Implemented the `ensureEventsTableIntegrity` function to ensure that only the `crypto_symbol` column exists and data from `cryptocurrency` is migrated if needed.
+
+### 4.8. Tournament Schema Implementation
+- **Issue**: Missing tournament system tables in initial migrations
+- **Resolution**: Added migration v9_to_v10.sql with:
+  - tournaments table with entry fee validation
+  - tournament_participants junction table
+  - tournament_entries with proper constraints
+  - Indexes for performance optimization
 
 ### 4.7. Missing Column in Events Table
 

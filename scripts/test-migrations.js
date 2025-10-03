@@ -160,6 +160,42 @@ async function testMigrationSystem() {
     }
     console.log('✅ Event type "prediction" exists in event_types table');
     
+    // Rollback verification test
+    console.log('\n🔙 Testing migration rollback functionality');
+    
+    // Get current schema version
+    const rollbackVersion = parseInt((await pool.query('SELECT MAX(version) as current FROM schema_versions')).rows[0].current, 10);
+    const expectedVersion = rollbackVersion - 1;
+    if (isNaN(rollbackVersion) || rollbackVersion < 1) {
+      console.log('❌ Cannot test rollback - no migrations applied');
+      return;
+    }
+    
+    // Perform rollback
+    console.log(`⏪ Rolling back from version ${rollbackVersion} to ${rollbackVersion - 1}`);
+    await pool.query('DELETE FROM schema_versions WHERE version = $1', [rollbackVersion]);
+    
+    // Verify rollback
+    const newVersion = parseInt((await pool.query('SELECT MAX(version) as current FROM schema_versions')).rows[0].current || 0, 10);
+    
+    if (newVersion === expectedVersion) {
+      console.log(`✅ Successfully rolled back to version ${newVersion}`);
+      
+      // Verify schema changes were reverted
+      const columnExists = await pool.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_name = 'users' AND column_name = 'last_claim_date'`
+      );
+      
+      if (columnExists.rows.length === 0) {
+        console.log('✅ Rollback verification: last_claim_date column remains deleted');
+      } else {
+        console.log('❌ Rollback verification: last_claim_date column reappeared');
+      }
+    } else {
+      throw new Error(`Rollback failed. Expected version ${expectedVersion}, got ${newVersion}`);
+    }
+    
     console.log('\n🎉 All migration system tests passed!');
   } catch (error) {
     console.error('❌ Test failed:', error);

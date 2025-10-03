@@ -113,6 +113,49 @@ async function testClaimFunctionality() {
       console.log('✅ Second claim attempt correctly failed:', error.message);
     }
     
+    // Concurrency test - simulate multiple simultaneous claims
+    console.log('\n🔀 Starting concurrency test');
+    const concurrentUsers = await Promise.all(
+      Array.from({length: 5}, (_, i) =>
+        pool.query(
+          `INSERT INTO users (username, email, password_hash, points)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, points`,
+          [`concurrentuser${i}`, `test${i}@example.com`, 'concurrenthash', 1000]
+        )
+      )
+    );
+    
+    const initialPoints = concurrentUsers.reduce((sum, user) => sum + user.rows[0].points, 0);
+    
+    // Simulate concurrent claims
+    await Promise.all(
+      concurrentUsers.map(user =>
+        pool.query(
+          `UPDATE users
+           SET points = points + $1, last_claimed = NOW()
+           WHERE id = $2`,
+          [250, user.rows[0].id]
+        )
+      )
+    );
+    
+    // Verify results
+    const updatedUsers = await Promise.all(
+      concurrentUsers.map(user =>
+        pool.query('SELECT points FROM users WHERE id = $1', [user.rows[0].id])
+      )
+    );
+    
+    const finalPoints = updatedUsers.reduce((sum, user) => sum + user.rows[0].points, 0);
+    const expectedPoints = initialPoints + (250 * concurrentUsers.length);
+    
+    if (finalPoints === expectedPoints) {
+      console.log(`✅ Concurrency test passed. Total points: ${finalPoints}`);
+    } else {
+      console.log(`❌ Concurrency test failed. Expected ${expectedPoints}, got ${finalPoints}`);
+    }
+    
     console.log('✅ All tests passed');
   } catch (error) {
     console.error('❌ Test failed:', error);

@@ -373,6 +373,38 @@ const EventList = () => {
 };
 ```
 
+### Tournament Component Integration
+```jsx
+// TournamentCard.jsx Component Structure
+const TournamentCard = ({ tournament }) => {
+  // State management for entry points and pot size
+  const [entryPoints, setEntryPoints] = useState(tournament.min_entry);
+  const [potSize, setPotSize] = useState(tournament.pot_size);
+
+  // Real-time updates
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const updatedPot = await getPotSize(tournament.id);
+      setPotSize(updatedPot);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [tournament.id]);
+
+  // Entry submission handler
+  const handleEntry = async () => {
+    try {
+      await enterTournament(tournament.id, entryPoints);
+      const newPot = await getPotSize(tournament.id);
+      setPotSize(newPot);
+    } catch (error) {
+      console.error('Entry failed:', error);
+    }
+  };
+
+  // Render component UI...
+}
+```
+
 ## Backend Security Integration
 See [Security Documentation](../SECURITY.md#balance-validation) for:
 - Balance encryption

@@ -1,8 +1,32 @@
 # Frontend Changes Documentation
 
-This document outlines the changes made to the frontend to ensure proper display of entry fees and prize pools.
+This document outlines the changes made to the frontend to ensure proper display of entry fees, prize pools, and tournament functionality.
 
 ## Changes Made
+
+### Tournament Entry Flow Implementation
+```mermaid
+sequenceDiagram
+    participant User
+    participant TournamentCard
+    participant useTournaments
+    participant API
+    
+    User->>TournamentCard: Adjusts entry points
+    User->>TournamentCard: Clicks "Enter Tournament"
+    TournamentCard->>useTournaments: enterTournament(tournamentId, entryPoints)
+    useTournaments->>API: POST /api/tournaments/{id}/entries
+    API-->>useTournaments: Response
+    useTournaments->>TournamentCard: Update pot size
+    TournamentCard->>User: Show success/error
+```
+
+#### Key Features:
+- Real-time pot size updates every 5 seconds
+- Entry point adjustment controls (+25/-25)
+- Loading states for entry submission
+- Minimum entry validation (tournament.min_entry)
+- Error handling with console logging
 
 ### Entry Fee Implementation Details
 - Added new `FeeDisplay` component with responsive design
@@ -137,3 +161,61 @@ To verify the frontend changes:
 3. Verify that the prize pool is displayed correctly in the event card
 4. Attempt to place a bet with insufficient points to verify error messaging
 5. Place a bet with sufficient points to verify the process works correctly
+
+## Tournament Implementation Details
+
+### Component Structure
+```javascript
+TournamentCard.jsx
+├── useEffect (pot size polling)
+├── handleEntry (submission handler)
+├── Entry controls UI
+│   ├── Point adjustment buttons
+│   ├── Input field
+│   └── Submit button
+└── Pot display
+    ├── Current pot size
+    └── Loading state
+
+useTournaments.js
+├── enterTournament()
+└── getPotSize()
+```
+
+### Key Props
+```javascript
+TournamentCard.propTypes = {
+  tournament: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    min_entry: PropTypes.number.isRequired,
+    pot_size: PropTypes.number.isRequired,
+    participants_count: PropTypes.number.isRequired,
+    status: PropTypes.string.isRequired
+  })
+};
+```
+
+### Error Handling
+```javascript
+const handleEntry = async () => {
+  try {
+    await enterTournament(tournament.id, entryPoints);
+    const newPot = await getPotSize(tournament.id);
+    setPotSize(newPot);
+  } catch (error) {
+    console.error('Entry failed:', error);
+  }
+};
+```
+
+### Real-time Updates
+```javascript
+React.useEffect(() => {
+  const fetchPot = async () => {
+    const updatedPot = await getPotSize(tournament.id);
+    setPotSize(updatedPot);
+  };
+  const interval = setInterval(fetchPot, 5000);
+  return () => clearInterval(interval);
+}, [tournament.id]);
+```
