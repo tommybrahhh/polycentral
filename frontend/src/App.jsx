@@ -12,6 +12,52 @@ const FeeDisplay = ({ fee, variant = 'default' }) => (
   </div>
 );
 
+const FeeControls = ({ value, onChange }) => {
+  const handleIncrement = () => onChange(Math.max(100, value + 25));
+  const handleDecrement = () => onChange(Math.max(100, value - 25));
+
+  const handleChange = (e) => {
+    const newValue = parseInt(e.target.value) || 0;
+    onChange(Math.max(100, newValue));
+  };
+
+  const handleBlur = () => {
+    const roundedValue = Math.floor(value / 25) * 25;
+    onChange(Math.max(100, roundedValue));
+  };
+
+  return (
+    <div className="entry-fee-controls flex gap-2 items-center">
+      <button
+        type="button"
+        onClick={handleDecrement}
+        className="button button-secondary px-3 py-1 sm:px-4 sm:py-2"
+        aria-label="Decrease entry fee by 25 points"
+      >
+        -25
+      </button>
+      <input
+        type="number"
+        value={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        min="100"
+        step="25"
+        className="form-input w-20 text-center"
+        aria-label="Entry fee amount"
+      />
+      <button
+        type="button"
+        onClick={handleIncrement}
+        className="button button-primary px-3 py-1 sm:px-4 sm:py-2"
+        aria-label="Increase entry fee by 25 points"
+      >
+        +25
+      </button>
+    </div>
+  );
+};
+
 // Main App Component
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
@@ -563,18 +609,18 @@ const EventsInterface = () => {
                     className="button button-secondary"
                     onClick={() => {
                       console.log('Decreasing entry fee. Current value:', newEvent.entry_fee);
-                      const newValue = Math.max(100, (newEvent.entry_fee || 0) - 100);
+                      const newValue = Math.max(100, (newEvent.entry_fee || 0) - 25);
                       console.log('New value after decrease:', newValue);
                       setNewEvent({...newEvent, entry_fee: newValue});
                     }}
                   >
-                    -100
+                    -25
                   </button>
                   <input
                     type="number"
                     id="event-entry-fee"
                     min="100"
-                    step="100"
+                    step="25"
                     value={newEvent.entry_fee}
                     onChange={(e) => {
                       console.log('Entry fee input changed:', e.target.value);
@@ -603,12 +649,12 @@ const EventsInterface = () => {
                     className="button button-primary"
                     onClick={() => {
                       console.log('Increasing entry fee. Current value:', newEvent.entry_fee);
-                      const newValue = (newEvent.entry_fee || 0) + 100;
+                      const newValue = (newEvent.entry_fee || 0) + 25;
                       console.log('New value after increase:', newValue);
                       setNewEvent({...newEvent, entry_fee: newValue});
                     }}
                   >
-                    +100
+                    +25
                   </button>
                 </div>
               </div>

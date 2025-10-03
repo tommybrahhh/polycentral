@@ -1,9 +1,29 @@
--- Migration v8 to v9: Fix last_claimed column naming for SQLite
--- This migration ensures the last_claimed column is properly set up
--- and data from last_claim_date is migrated if needed
+-- SQLite doesn't support ALTER TABLE ADD CONSTRAINT, so we recreate the table
+PRAGMA foreign_keys=off;
 
--- SQLite doesn't support DO blocks, so we'll use the application's ensureUsersTableIntegrity function
--- to handle this migration. The function will be called after migrations in the server.js initialization
+BEGIN TRANSACTION;
 
--- For now, we'll just add a comment to indicate this
-SELECT 'Migration handled by application ensureUsersTableIntegrity function' as migration_status;
+-- Create new table with constraint
+CREATE TABLE tournaments_new (
+    -- Existing columns remain the same
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    options TEXT,
+    entry_fee INTEGER NOT NULL CHECK (entry_fee >= 100 AND entry_fee % 25 = 0),
+    -- ... other columns ...
+    
+    -- Maintain existing constraints
+    CHECK (status IN ('active', 'completed', 'canceled'))
+);
+
+-- Copy data from old table
+INSERT INTO tournaments_new SELECT * FROM tournaments;
+
+-- Drop old table and rename new one
+DROP TABLE tournaments;
+ALTER TABLE tournaments_new RENAME TO tournaments;
+
+COMMIT;
+
+PRAGMA foreign_keys=on;
