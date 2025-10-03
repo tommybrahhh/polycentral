@@ -534,6 +534,7 @@ const EventsInterface = () => {
               </button>
             </div>
             <form onSubmit={handleCreateEvent} className="form">
+              <div className="form-content">
               <div className="form-group">
                 <label htmlFor="event-title" className="form-label">Event Title</label>
                 <input
@@ -603,60 +604,10 @@ const EventsInterface = () => {
 
               <div className="form-group">
                 <label htmlFor="event-entry-fee" className="form-label">Entry Fee (points)</label>
-                <div className="entry-fee-controls">
-                  <button
-                    type="button"
-                    className="button button-secondary"
-                    onClick={() => {
-                      console.log('Decreasing entry fee. Current value:', newEvent.entry_fee);
-                      const newValue = Math.max(100, (newEvent.entry_fee || 0) - 25);
-                      console.log('New value after decrease:', newValue);
-                      setNewEvent({...newEvent, entry_fee: newValue});
-                    }}
-                  >
-                    -25
-                  </button>
-                  <input
-                    type="number"
-                    id="event-entry-fee"
-                    min="100"
-                    step="25"
-                    value={newEvent.entry_fee}
-                    onChange={(e) => {
-                      console.log('Entry fee input changed:', e.target.value);
-                      const value = parseInt(e.target.value) || 0;
-                      console.log('Parsed value:', value);
-                      // Enforce minimum value of 100
-                      if (value < 100) {
-                        console.log('Value is below minimum, setting to 100');
-                        setNewEvent({...newEvent, entry_fee: 100});
-                      } else {
-                        setNewEvent({...newEvent, entry_fee: value});
-                      }
-                    }}
-                    className="form-input"
-                    onBlur={(e) => {
-                      // Additional validation when user leaves the field
-                      const value = parseInt(e.target.value) || 0;
-                      if (value < 100) {
-                        console.log('Entry fee is below minimum on blur, setting to 100');
-                        setNewEvent({...newEvent, entry_fee: 100});
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() => {
-                      console.log('Increasing entry fee. Current value:', newEvent.entry_fee);
-                      const newValue = (newEvent.entry_fee || 0) + 25;
-                      console.log('New value after increase:', newValue);
-                      setNewEvent({...newEvent, entry_fee: newValue});
-                    }}
-                  >
-                    +25
-                  </button>
-                </div>
+                <FeeControls
+                  value={newEvent.entry_fee}
+                  onChange={(newValue) => setNewEvent({...newEvent, entry_fee: newValue})}
+                />
               </div>
 
               <div className="modal-footer">
@@ -666,6 +617,17 @@ const EventsInterface = () => {
                 <button type="submit" className="button button-primary">
                   Create Event
                 </button>
+              </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="button button-secondary" onClick={() => setShowCreateModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="button button-primary">
+                  Create Event
+                </button>
+              </div>
               </div>
             </form>
           </div>
@@ -679,7 +641,15 @@ const EventsInterface = () => {
             <div className="event-header">
               <div className="flex flex-col md:flex-row md:items-center md:gap-2">
                 <h3 className="event-title">{event.title}</h3>
-                <FeeDisplay fee={event.entry_fee} />
+                <FeeControls
+                  value={event.entry_fee}
+                  onChange={(newFee) => {
+                    const updatedEvents = events.map(ev =>
+                      ev.id === event.id ? {...ev, entry_fee: newFee} : ev
+                    );
+                    setEvents(updatedEvents);
+                  }}
+                />
               </div>
               <div className="event-meta">
                 <div className="event-info">
