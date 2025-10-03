@@ -1,19 +1,16 @@
-import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 
-export const useEvents = () => {
-  const [loadingStates, setLoadingStates] = useState({
-    entry: false,
-    pot: false
-  });
-  const [error, setError] = useState(null);
+export const useTournaments = () => {
+  const queryClient = useQueryClient();
 
-  const joinEvent = async (eventId, eventType, points) => {
-    setLoadingStates(prev => ({...prev, entry: true}));
-    try {
+
+
+  const participateInEventMutation = useMutation({
+    mutationFn: async ({ eventId, prediction, entryFee }) => {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/events/${eventId}/entries?eventType=${eventType}`,
-        { points },
+        `${import.meta.env.VITE_API_BASE_URL}/api/tournaments/${eventId}/participate`,
+        { prediction, entry_fee: entryFee },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('auth_token')}`
@@ -21,33 +18,16 @@ export const useEvents = () => {
         }
       );
       return response.data;
-    } catch (error) {
-      setError(error.response?.data?.message || 'Event join failed');
-      throw error;
-    } finally {
-      setLoadingStates(prev => ({...prev, entry: false}));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['userBalance']);
+      queryClient.invalidateQueries(['activeTournaments']);
     }
-  };
-
-  const getEventPot = async (eventId, eventType) => {
-    setLoadingStates(prev => ({...prev, pot: true}));
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/events/${eventId}/pot?eventType=${eventType}`
-      );
-      return response.data.pot_size;
-    } catch (error) {
-      setError('Failed to fetch event pot');
-      throw error;
-    } finally {
-      setLoadingStates(prev => ({...prev, pot: false}));
-    }
-  };
+  });
 
   return {
-    joinEvent,
-    getEventPot,
-    loadingStates,
-    error
+    participateInEvent: participateInEventMutation.mutateAsync,
+    isLoading: participateInEventMutation.isLoading,
+    error: participateInEventMutation.error
   };
 };

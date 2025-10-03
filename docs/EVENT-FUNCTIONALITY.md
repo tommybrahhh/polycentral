@@ -154,8 +154,102 @@ app.get('/api/events/active', async (req, res) => {
 });
 ```
 
+### Error Handling
+
+#### Error Codes Reference
+| Code | Error Key               | Description                                 |
+|------|-------------------------|---------------------------------------------|
+| 400  | INVALID_PREDICTION      | Invalid prediction value                    |
+| 402  | INSUFFICIENT_FUNDS      | User doesn't have enough points to place bet|
+| 409  | DUPLICATE_ENTRY         | User already has active bet on this event   |
+| 410  | EVENT_CLOSED            | Event is no longer accepting predictions    |
+
+#### Example Error Response
+```json
+{
+  "error": "INSUFFICIENT_FUNDS",
+  "message": "You need 50 more points to place this bet",
+  "code": 402,
+  "details": {
+    "required": 100,
+    "available": 50
+  }
+}
+```
+
+### Error Handling Best Practices
+1. **Client-Side Validation**
+   - Validate prediction values before submission
+   - Check user balance against event entry fee
+   - Verify event status and remaining time
+
+2. **Retry Logic**
+   - Implement exponential backoff for 5xx errors
+   - Maximum 3 retries for rate limit exceeded errors
+
+3. **Localization**
+   - Use error codes for machine-readable handling
+   - Store user-facing messages in localization files
+### Error Handling
+
+#### Error Codes Reference
+| Code | Error Key               | Description                                 |
+|------|-------------------------|---------------------------------------------|
+| 400  | INVALID_PREDICTION      | Invalid prediction value                    |
+| 402  | INSUFFICIENT_FUNDS      | User doesn't have enough points to place bet|
+| 409  | DUPLICATE_ENTRY         | User already has active bet on this event   |
+| 410  | EVENT_CLOSED            | Event is no longer accepting predictions    |
+
+#### Example Error Response
+```json
+{
+  "error": "INSUFFICIENT_FUNDS",
+  "message": "You need 50 more points to place this bet",
+  "code": 402,
+  "details": {
+    "required": 100,
+    "available": 50
+  }
+}
+```
+
+### Error Handling Best Practices
+1. **Client-Side Validation**
+   - Validate prediction values before submission
+   - Check user balance against event entry fee
+   - Verify event status and remaining time
+
+2. **Retry Logic**
+   - Implement exponential backoff for 5xx errors
+   - Maximum 3 retries for rate limit exceeded errors
+
+3. **Localization**
+   - Use error codes for machine-readable handling
+   - Store user-facing messages in localization files
+
 #### POST /api/events/:id/bet
 Allows users to place a bet on an event with "Higher" or "Lower" prediction.
+
+**Request Headers**
+```
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Rate Limits**
+- 100 requests/minute per IP
+- 5 concurrent requests per user
+
+
+**Request Headers**
+```
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Rate Limits**
+- 100 requests/minute per IP
+- 5 concurrent requests per user
 
 ```javascript
 app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {

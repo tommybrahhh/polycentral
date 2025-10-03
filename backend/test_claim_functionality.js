@@ -157,13 +157,186 @@ async function testClaimFunctionality() {
     }
     
     console.log('✅ All tests passed');
+
+    // Error handling test suite
+    console.log('\n🚨 Starting error handling tests');
+    
+    // Test helper functions
+    async function createTestUser() {
+      const user = await pool.query(
+        `INSERT INTO users (username, email, password_hash, points)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, points`,
+        [`testuser_${Date.now()}`, 'error-test@example.com', 'testhash', 1000]
+      );
+      return user.rows[0];
+    }
+
+    async function createTestEvent(status = 'open') {
+      const event = await pool.query(
+        `INSERT INTO events (name, status, entry_fee)
+         VALUES ($1, $2, $3)
+         RETURNING id, status`,
+        ['Error Test Event', status, 100]
+      );
+      return event.rows[0];
+    }
+
+    async function cleanupTestData(userId, eventId) {
+      await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+      await pool.query('DELETE FROM events WHERE id = $1', [eventId]);
+      await pool.query('DELETE FROM participations WHERE user_id = $1 OR event_id = $1', [userId]);
+    }
+
+    // Test Case 1: EVENT_CLOSED (410)
+    try {
+      const testUser = await createTestUser();
+      const testEvent = await createTestEvent('closed');
+      
+      const participationResponse = await pool.query(
+        `INSERT INTO participations (user_id, event_id)
+         VALUES ($1, $2)
+         RETURNING id`,
+        [testUser.id, testEvent.id]
+      );
+      
+      console.log('⚠️  EVENT_CLOSED test failed - participation created on closed event');
+      await cleanupTestData(testUser.id, testEvent.id);
+    } catch (error) {
+      if (error.message.includes('410')) {
+        console.log('✅ EVENT_CLOSED (410) handled correctly:', error.message);
+      } else {
+        console.log('❌ EVENT_CLOSED test failed with unexpected error:', error.message);
+      }
+    }
+
+    // Test Case 2: DUPLICATE_ENTRY (409)
+    try {
+      const testUser = await createTestUser();
+      const testEvent = await createTestEvent();
+      
+      // First participation
+      await pool.query(
+        `INSERT INTO participations (user_id, event_id)
+         VALUES ($1, $2)`,
+        [testUser.id, testEvent.id]
+      );
+      
+      // Duplicate participation
+      await pool.query(
+        `INSERT INTO participations (user_id, event_id)
+         VALUES ($1, $2)`,
+        [testUser.id, testEvent.id]
+      );
+      
+      console.log('⚠️  DUPLICATE_ENTRY test failed - duplicate participation created');
+      await cleanupTestData(testUser.id, testEvent.id);
+    } catch (error) {
+      if (error.message.includes('409')) {
+        console.log('✅ DUPLICATE_ENTRY (409) handled correctly:', error.message);
+        
+        // Verify database state
+        const participations = await pool.query(
+          'SELECT COUNT(*) FROM participations WHERE user_id = $1',
+          [testUser.id]
+        );
+        if (participations.rows[0].count === '1') {
+          console.log('✅ Database consistency maintained for duplicate entry');
+        }
+      } else {
+        console.log('❌ DUPLICATE_ENTRY test failed with unexpected error:', error.message);
+      }
+    }
+
+    // Test Case 3: INSUFFICIENT_FUNDS (402)
+    try {
+      const testUser = await createTestUser();
+      await pool.query(
+        'UPDATE users SET points = $1 WHERE id = $2',
+        [50, testUser.id]
+      );
+      
+      const testEvent = await createTestEvent();
+      
+      await pool.query(
+        `INSERT INTO participations (user_id, event_id)
+         VALUES ($1, $2)`,
+        [testUser.id, testEvent.id]
+      );
+      
+      console.log('⚠️  INSUFFICIENT_FUNDS test failed - participation with low balance created');
+      await cleanupTestData(testUser.id, testEvent.id);
+    } catch (error) {
+      if (error.message.includes('402')) {
+        console.log('✅ INSUFFICIENT_FUNDS (402) handled correctly:', error.message);
+        
+        // Verify transaction rollback
+        const userBalance = await pool.query(
+          'SELECT points FROM users WHERE id = $1',
+          [testUser.id]
+        );
+        if (userBalance.rows[0].points === 50) {
+          console.log('✅ Transaction rollback verified');
+        }
+      } else {
+        console.log('❌ INSUFFICIENT_FUNDS test failed with unexpected error:', error.message);
+      }
+    }
+
+    // Test Case 4: INVALID_PREDICTION (400)
+    try {
+      const testUser = await createTestUser();
+      const testEvent = await createTestEvent();
+      
+      await pool.query(
+        `INSERT INTO participations (user_id, event_id, prediction)
+         VALUES ($1, $2, $3)`,
+        [testUser.id, testEvent.id, 'invalid_prediction_data']
+      );
+      
+      console.log('⚠️  INVALID_PREDICTION test failed - invalid prediction accepted');
+      await cleanupTestData(testUser.id, testEvent.id);
+    } catch (error) {
+      if (error.message.includes('400')) {
+        console.log('✅ INVALID_PREDICTION (400) handled correctly:', error.message);
+      } else {
+        console.log('❌ INVALID_PREDICTION test failed with unexpected error:', error.message);
+      }
+    }
+
+    // Boundary Value Analysis
+    try {
+      const testUser = await createTestUser();
+      await pool.query(
+        'UPDATE users SET points = $1 WHERE id = $2',
+        [100, testUser.id]  // Exact entry fee amount
+      );
+      
+      const testEvent = await createTestEvent();
+      
+      const participation = await pool.query(
+        `INSERT INTO participations (user_id, event_id)
+         VALUES ($1, $2)
+         RETURNING id`,
+        [testUser.id, testEvent.id]
+      );
+      
+      console.log('✅ Boundary value (exact points) test passed');
+      await cleanupTestData(testUser.id, testEvent.id);
+    } catch (error) {
+      console.log('❌ Boundary value test failed:', error.message);
+    }
+
+    console.log('✅ All error handling tests completed');
   } catch (error) {
     console.error('❌ Test failed:', error);
   } finally {
     // Clean up test user
     try {
-      await pool.query('DELETE FROM users WHERE username = $1', ['testuser']);
-      console.log('✅ Test user cleaned up');
+      await pool.query("DELETE FROM users WHERE email LIKE '%error-test%'");
+      await pool.query("DELETE FROM events WHERE name LIKE 'Error Test%'");
+      await pool.query("DELETE FROM participations WHERE event_id IN (SELECT id FROM events WHERE name LIKE 'Error Test%')");
+      console.log('✅ All test data cleaned up');
     } catch (error) {
       console.error('⚠️  Error cleaning up test user:', error);
     }

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useTournaments } from '../hooks/useTournaments';
 
 export const EventCard = ({ event }) => {
-  const { enterTournament, getPotSize, loadingStates } = useTournaments();
+  const { enterTournament, getPotSize, loadingStates, participateInEvent } = useTournaments();
   const [entryPoints, setEntryPoints] = React.useState(event.entry_fee);
   const [potSize, setPotSize] = React.useState(tournament.pot_size);
 
@@ -24,6 +24,17 @@ export const EventCard = ({ event }) => {
     } catch (error) {
       console.error('Entry failed:', error);
     }
+  };
+
+  const PredictionAdapter = ({ event }) => {
+    return (
+      <PredictionSelector
+        event={event}
+        onParticipate={participateInEvent}
+        loading={loadingStates.participation}
+        userPoints={user?.points || 0}
+      />
+    );
   };
 
   return (

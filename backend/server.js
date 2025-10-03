@@ -1019,6 +1019,95 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
 });
 
 // Tournament endpoints
+// Participation endpoint for predictions
+app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
+  const eventId = req.params.id;
+  const userId = req.userId;
+  const { prediction, entryFee } = req.body;
+
+  if (!['higher', 'lower'].includes(prediction)) {
+    return res.status(400).json({ error: 'Invalid prediction value' });
+  }
+
+  if (entryFee < 100 || entryFee > 1000 || entryFee % 25 !== 0) {
+    return res.status(400).json({ error: 'Entry fee must be between 100-1000 and divisible by 25' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Verify event is active
+    const event = await client.query(
+      'SELECT status, end_time FROM events WHERE id = $1 FOR UPDATE',
+      [eventId]
+    );
+    
+    if (event.rows[0].status !== 'active' || new Date(event.rows[0].end_time) < new Date()) {
+      throw new Error('EVENT_CLOSED');
+    }
+
+    // Check existing participation
+    const existing = await client.query(
+      'SELECT 1 FROM participants WHERE event_id = $1 AND user_id = $2',
+      [eventId, userId]
+    );
+    
+    if (existing.rows.length > 0) {
+      throw new Error('DUPLICATE_ENTRY');
+    }
+
+    // Validate and deduct entry fee
+    const balanceCheck = await client.query(
+      'SELECT points FROM users WHERE id = $1 FOR UPDATE',
+      [userId]
+    );
+    
+    if (balanceCheck.rows[0].points < entryFee) {
+      throw new Error('INSUFFICIENT_FUNDS');
+    }
+
+    await client.query(
+      'UPDATE users SET points = points - $1 WHERE id = $2',
+      [entryFee, userId]
+    );
+
+    // Record participation
+    await client.query(
+      'INSERT INTO participants (event_id, user_id, prediction, amount) VALUES ($1, $2, $3, $4)',
+      [eventId, userId, prediction, entryFee]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, newBalance: balanceCheck.rows[0].points - entryFee });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    handleParticipationError(error, res);
+  } finally {
+    client.release();
+  }
+});
+
+function handleParticipationError(error, res) {
+switch(error.message) {
+  case 'EVENT_CLOSED':
+    res.status(410).json({ error: 'Event closed for predictions' });
+    break;
+  case 'DUPLICATE_ENTRY':
+    res.status(409).json({ error: 'Already participated in this event' });
+    break;
+  case 'INSUFFICIENT_FUNDS':
+    res.status(402).json({ error: 'Insufficient balance for entry fee' });
+    break;
+  case 'INVALID_PREDICTION':
+    res.status(400).json({ error: 'Prediction must be "Higher" or "Lower"' });
+    break;
+  default:
+    console.error('Participation error:', error);
+    res.status(500).json({ error: 'Participation failed' });
+}
+}
+
 app.post('/api/tournaments/:id/join', authenticateToken, async (req, res) => {
     const tournamentId = req.params.id;
     const userId = req.userId;
