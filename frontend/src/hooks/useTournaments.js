@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-export const useTournaments = () => {
+export const useEvents = () => {
   const [loadingStates, setLoadingStates] = useState({
     entry: false,
     pot: false
   });
   const [error, setError] = useState(null);
 
-  const enterTournament = async (tournamentId, points) => {
+  const joinEvent = async (eventId, eventType, points) => {
     setLoadingStates(prev => ({...prev, entry: true}));
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/tournaments/${tournamentId}/entries`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/events/${eventId}/entries?eventType=${eventType}`,
         { points },
         {
           headers: {
@@ -22,22 +22,22 @@ export const useTournaments = () => {
       );
       return response.data;
     } catch (error) {
-      setError(error.response?.data?.message || 'Entry failed');
+      setError(error.response?.data?.message || 'Event join failed');
       throw error;
     } finally {
       setLoadingStates(prev => ({...prev, entry: false}));
     }
   };
 
-  const getPotSize = async (tournamentId) => {
+  const getEventPot = async (eventId, eventType) => {
     setLoadingStates(prev => ({...prev, pot: true}));
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/tournaments/${tournamentId}/pot`
+        `${import.meta.env.VITE_API_BASE_URL}/api/events/${eventId}/pot?eventType=${eventType}`
       );
       return response.data.pot_size;
     } catch (error) {
-      setError('Failed to fetch pot size');
+      setError('Failed to fetch event pot');
       throw error;
     } finally {
       setLoadingStates(prev => ({...prev, pot: false}));
@@ -45,8 +45,8 @@ export const useTournaments = () => {
   };
 
   return {
-    enterTournament,
-    getPotSize,
+    joinEvent,
+    getEventPot,
     loadingStates,
     error
   };

@@ -7,7 +7,7 @@ This document serves as a comprehensive context guide for the Polycentral Predic
 ## Project Purpose and Goals
 
 ### Core Purpose
-Polycentral Predictions is a gamified cryptocurrency prediction platform that allows users to predict Bitcoin price movements over 24-hour periods. The application combines financial market engagement with a points-based gaming system to create an interactive experience around cryptocurrency price speculation.
+Polycentral Events is a unified event management platform that allows users to participate in various time-based competitions. The application combines tournament-style engagements with adaptive entry systems, providing a flexible framework for different event types.
 
 ### Primary Goals
 1. **Educational Engagement**: Help users understand cryptocurrency market volatility through interactive participation

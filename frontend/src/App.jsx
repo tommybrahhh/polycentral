@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TournamentCard } from './components/TournamentCard';
-import { useTournaments } from './hooks/useTournaments';
+import { useEvents } from './hooks/useTournaments';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './index.css';
@@ -64,8 +63,8 @@ const FeeControls = ({ value, onChange }) => {
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState(null);
   const [points, setPoints] = useState(0);
-  const [tournaments, setTournaments] = useState([]);
-  const { loadingStates } = useTournaments();
+  const [events, setEvents] = useState([]);
+  const { loadingStates } = useEvents();
   const [username, setUsername] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -134,8 +133,8 @@ const App = () => {
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/tournaments`);
-        setTournaments(response.data);
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events`);
+        setEvents(response.data);
       } catch (error) {
         console.error('Error fetching tournaments:', error);
       }
@@ -189,8 +188,6 @@ const App = () => {
         <nav className="main-nav">
           <div className="nav-links">
             <Link to="/events" className="nav-link">Events</Link>
-            <Link to="/predictions" className="nav-link">Predictions</Link>
-            <Link to="/tournaments" className="nav-link">Tournaments</Link>
           </div>
           {/* --- User Status Display --- */}
           <div className="user-status">
@@ -312,23 +309,6 @@ const App = () => {
 
         <Routes>
           <Route path="/events" element={<EventsInterface />} />
-          <Route path="/predictions" element={<PredictionsInterface />} />
-          <Route path="/tournaments" element={
-            <div className="tournaments-container p-4">
-              <h2 className="text-2xl font-bold mb-6">Active Tournaments</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tournaments.map(tournament => (
-                  <TournamentCard
-                    key={tournament.id}
-                    tournament={tournament}
-                  />
-                ))}
-                {loadingStates.entry && (
-                  <div className="text-center text-gray-500">Processing entry...</div>
-                )}
-              </div>
-            </div>
-          } />
           <Route path="/" element={<EventsInterface />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

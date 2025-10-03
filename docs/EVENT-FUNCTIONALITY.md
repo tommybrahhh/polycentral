@@ -373,10 +373,10 @@ const EventList = () => {
 };
 ```
 
-### Tournament Component Integration
+### Event Component Integration
 ```jsx
-// TournamentCard.jsx Component Structure
-const TournamentCard = ({ tournament }) => {
+// EventCard.jsx Component Structure
+const EventCard = ({ event }) => {
   // State management for entry points and pot size
   const [entryPoints, setEntryPoints] = useState(tournament.min_entry);
   const [potSize, setPotSize] = useState(tournament.pot_size);
@@ -384,11 +384,11 @@ const TournamentCard = ({ tournament }) => {
   // Real-time updates
   useEffect(() => {
     const interval = setInterval(async () => {
-      const updatedPot = await getPotSize(tournament.id);
-      setPotSize(updatedPot);
+      const updatedPool = await getPoolSize(event.id);
+      setPrizePool(updatedPool);
     }, 5000);
     return () => clearInterval(interval);
-  }, [tournament.id]);
+  }, [event.id]);
 
   // Entry submission handler
   const handleEntry = async () => {

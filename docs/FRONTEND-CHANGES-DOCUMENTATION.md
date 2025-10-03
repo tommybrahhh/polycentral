@@ -4,18 +4,18 @@ This document outlines the changes made to the frontend to ensure proper display
 
 ## Changes Made
 
-### Tournament Entry Flow Implementation
+### Event Entry Flow Implementation
 ```mermaid
 sequenceDiagram
     participant User
-    participant TournamentCard
-    participant useTournaments
+    participant EventCard
+    participant useEvents
     participant API
     
     User->>TournamentCard: Adjusts entry points
     User->>TournamentCard: Clicks "Enter Tournament"
-    TournamentCard->>useTournaments: enterTournament(tournamentId, entryPoints)
-    useTournaments->>API: POST /api/tournaments/{id}/entries
+    EventCard->>useEvents: enterEvent(eventId, entryPoints)
+    useEvents->>API: POST /api/events/{id}/entries
     API-->>useTournaments: Response
     useTournaments->>TournamentCard: Update pot size
     TournamentCard->>User: Show success/error
@@ -162,24 +162,24 @@ To verify the frontend changes:
 4. Attempt to place a bet with insufficient points to verify error messaging
 5. Place a bet with sufficient points to verify the process works correctly
 
-## Tournament Implementation Details
+## Event Implementation Details
 
 ### Component Structure
 ```javascript
-TournamentCard.jsx
-├── useEffect (pot size polling)
+EventCard.jsx
+├── useEffect (prize pool polling)
 ├── handleEntry (submission handler)
 ├── Entry controls UI
 │   ├── Point adjustment buttons
 │   ├── Input field
 │   └── Submit button
-└── Pot display
-    ├── Current pot size
+└── Prize Pool display
+    ├── Current pool size
     └── Loading state
 
-useTournaments.js
-├── enterTournament()
-└── getPotSize()
+useEvents.js
+├── enterEvent()
+└── getPoolSize()
 ```
 
 ### Key Props

@@ -2,9 +2,9 @@ import React from 'react';
 import axios from 'axios';
 import { useTournaments } from '../hooks/useTournaments';
 
-export const TournamentCard = ({ tournament }) => {
+export const EventCard = ({ event }) => {
   const { enterTournament, getPotSize, loadingStates } = useTournaments();
-  const [entryPoints, setEntryPoints] = React.useState(tournament.min_entry);
+  const [entryPoints, setEntryPoints] = React.useState(event.entry_fee);
   const [potSize, setPotSize] = React.useState(tournament.pot_size);
 
   React.useEffect(() => {
@@ -29,7 +29,16 @@ export const TournamentCard = ({ tournament }) => {
   return (
     <div className="card bg-white rounded-lg p-6 shadow-lg mb-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-        <h3 className="text-xl font-bold mb-2 md:mb-0">{tournament.name}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-xl font-bold mb-2 md:mb-0">{event.title}</h3>
+          <span className={`px-2 py-1 rounded-full text-sm ${
+            event.event_type === 'prediction'
+              ? 'bg-purple-100 text-purple-800'
+              : 'bg-blue-100 text-blue-800'
+          }`}>
+            {event.event_type}
+          </span>
+        </div>
         <div className="badge bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
           {tournament.status}
         </div>
@@ -44,8 +53,15 @@ export const TournamentCard = ({ tournament }) => {
         <div className="flex items-center">
           <span className="mr-2">👥</span>
           <span className="font-medium">Entries:</span>
-          <span className="ml-2">{tournament.participants_count}</span>
+          <span className="ml-2">{event.participants_count}</span>
         </div>
+        {event.event_type === 'prediction' && (
+          <div className="col-span-2 flex items-center">
+            <span className="mr-2">📈</span>
+            <span className="font-medium">Current Price:</span>
+            <span className="ml-2">${event.current_price?.toLocaleString()}</span>
+          </div>
+        )}
       </div>
 
       <div className="entry-controls flex flex-col sm:flex-row gap-4 items-center">
@@ -62,7 +78,7 @@ export const TournamentCard = ({ tournament }) => {
             value={entryPoints}
             onChange={(e) => setEntryPoints(Math.max(tournament.min_entry, parseInt(e.target.value) || 0))}
             className="w-20 text-center border rounded-lg py-1"
-            min={tournament.min_entry}
+            min={event.entry_fee}
           />
           <button
             onClick={() => setEntryPoints(entryPoints + 25)}
@@ -77,7 +93,7 @@ export const TournamentCard = ({ tournament }) => {
           className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
           disabled={loadingStates.entry}
         >
-          {loadingStates.entry ? 'Entering...' : 'Enter Tournament'}
+          {loadingStates.entry ? 'Entering...' : `Join ${event.event_type}`}
         </button>
       </div>
 

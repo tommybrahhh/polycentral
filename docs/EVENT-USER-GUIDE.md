@@ -1,9 +1,9 @@
-# Tournament Participation Guide
+# Event Participation Guide
 
-## Getting Started with Tournaments
+## Getting Started with Events
 ```mermaid
 flowchart TD
-    A[View Tournament List] --> B{Select Tournament}
+    A[View Event List] --> B{Select Event}
     B --> C[Adjust Entry Points]
     C --> D[Review Pot Size]
     D --> E[Submit Entry]
@@ -16,11 +16,11 @@ flowchart TD
 ![Entry Interface](screenshots/tournament-entry-ui.png)
 
 ## Key Features
-- Real-time pot updates every 5 seconds
+- Real-time prize pool updates every 5 seconds
 - Multi-entry support (submit multiple entries)
 - Historical performance tracking
 
-## Tournament Rules
+## Event Rules
 | Rule Type | Requirement |
 |-----------|-------------|
 | Minimum Entry | 100 points |
