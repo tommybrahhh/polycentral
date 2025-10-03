@@ -5,7 +5,7 @@ import { useTournaments } from '../hooks/useTournaments';
 export const EventCard = ({ event }) => {
   const { enterTournament, getPotSize, loadingStates, participateInEvent } = useTournaments();
   const [entryPoints, setEntryPoints] = React.useState(event.entry_fee);
-  const [potSize, setPotSize] = React.useState(tournament.pot_size);
+  const [potSize, setPotSize] = React.useState(event.pot_size);
 
   React.useEffect(() => {
     const fetchPot = async () => {
@@ -51,7 +51,7 @@ export const EventCard = ({ event }) => {
           </span>
         </div>
         <div className="badge bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
-          {tournament.status}
+          {event.status}
         </div>
       </div>
       
@@ -87,7 +87,7 @@ export const EventCard = ({ event }) => {
           <input
             type="number"
             value={entryPoints}
-            onChange={(e) => setEntryPoints(Math.max(tournament.min_entry, parseInt(e.target.value) || 0))}
+            onChange={(e) => setEntryPoints(Math.max(100, parseInt(e.target.value) || 0))}
             className="w-20 text-center border rounded-lg py-1"
             min={event.entry_fee}
           />

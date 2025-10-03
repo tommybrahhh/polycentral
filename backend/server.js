@@ -519,7 +519,13 @@ async function runMigrations() {
   const dbType = getDatabaseType();
   try {
     console.log(`🛠️ Running database migrations (${dbType})...`);
-    console.log('📁 Migration files directory:', path.join(__dirname, 'sql', dbType));
+    const migrationPath = path.join(__dirname, 'sql', dbType);
+    console.log('📁 Migration files directory:', migrationPath);
+    
+    // Verify migrations directory exists
+    if (!(await fs.access(migrationPath).then(() => true).catch(() => false))) {
+      throw new Error(`Migrations directory not found: ${migrationPath}`);
+    }
     
     // Create version tracking table if not exists
     await runMigrationSafe(`
@@ -1108,7 +1114,7 @@ switch(error.message) {
 }
 }
 
-app.post('/api/tournaments/:id/join', authenticateToken, async (req, res) => {
+app.post('/api/events/:id/join', authenticateToken, async (req, res) => {
     const tournamentId = req.params.id;
     const userId = req.userId;
     
@@ -1119,7 +1125,7 @@ app.post('/api/tournaments/:id/join', authenticateToken, async (req, res) => {
 
         // Get tournament details
         const tournament = await client.query(
-            'SELECT entry_fee FROM tournaments WHERE id = $1',
+            'SELECT entry_fee FROM events WHERE id = $1',
             [tournamentId]
         );
         if (tournament.rows.length === 0) {
@@ -1146,7 +1152,7 @@ app.post('/api/tournaments/:id/join', authenticateToken, async (req, res) => {
 
         // Add participant
         await client.query(
-            'INSERT INTO tournament_participants (tournament_id, user_id) VALUES ($1, $2)',
+            'INSERT INTO event_participants (event_id, user_id) VALUES ($1, $2)',
             [tournamentId, userId]
         );
 
@@ -1222,7 +1228,7 @@ app.post('/api/tournaments/:id/entries', authenticateToken, async (req, res) => 
     }
 });
 
-app.get('/api/tournaments/:id/pot', async (req, res) => {
+app.get('/api/events/:id/pot', async (req, res) => {
     try {
         const { id } = req.params;
         const result = await pool.query(
