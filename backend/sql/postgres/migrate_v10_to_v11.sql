@@ -4,7 +4,7 @@ DO $$
 DECLARE
     current_version INTEGER;
 BEGIN
-    SELECT MAX(version) INTO current_version FROM __schema_versions;
+    SELECT MAX(version) INTO current_version FROM schema_versions;
     IF current_version != 10 THEN
         RAISE EXCEPTION 'Schema version mismatch. Expected 10, found %', current_version;
     END IF;
