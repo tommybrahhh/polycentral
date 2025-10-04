@@ -1539,8 +1539,10 @@ app.get('/api/events/active', async (req, res) => {
         e.status,
         e.resolution_status,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool
+        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
+        et.name as event_type
       FROM events e
+      LEFT JOIN event_types et ON e.event_type_id = et.id
       WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
     
     sqlLogger.debug({query: queryText}, "Executing active events query");
