@@ -129,7 +129,7 @@ export const PredictionSelector = ({
           />
           <button
             onClick={handleParticipation}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 w-full sm:w-auto transition-colors"
+            className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 w-full sm:w-auto transition-colors shadow-md hover:shadow-lg"
             disabled={!selectedPrediction || loading}
             aria-describedby="participation-error"
           >

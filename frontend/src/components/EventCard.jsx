@@ -61,12 +61,14 @@ export const EventCard = ({ event, userPoints: propsUserPoints }) => {
 
       {/* Prediction Selector for prediction events */}
       {event.event_type === 'prediction' && (
-        <PredictionSelector
-          event={event}
-          onParticipate={handleParticipate}
-          loading={loadingStates.participation}
-          userPoints={userPoints}
-        />
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <PredictionSelector
+            event={event}
+            onParticipate={handleParticipate}
+            loading={loadingStates.participation}
+            userPoints={userPoints}
+          />
+        </div>
       )}
     </div>
   );
