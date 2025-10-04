@@ -1,31 +1,70 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-export const PredictionSelector = ({ 
-  event, 
-  onParticipate, 
+export const PredictionSelector = ({
+  event,
+  onParticipate,
   loading,
   userPoints
 }) => {
+  // Initialize entryAmount with event.min_bet or fallback to 100
   const [selectedPrediction, setSelectedPrediction] = React.useState(null);
-  const [entryAmount, setEntryAmount] = React.useState(event.entry_fee);
+  const [entryAmount, setEntryAmount] = React.useState(event.min_bet || 100);
   const [validationError, setValidationError] = React.useState('');
 
+  // Validate that event has required pot system fields
+  React.useEffect(() => {
+    if (!event) {
+      setValidationError('Event data is missing');
+      return;
+    }
+    
+    // Check if event has pot system fields
+    if (event.pot_enabled === undefined && event.min_bet === undefined && event.max_bet === undefined) {
+      console.warn('Event is missing pot system fields, using default values');
+    }
+  }, [event]);
+
   const handleParticipation = async () => {
+    // Validate event data
+    if (!event) {
+      setValidationError('Event data is missing');
+      return;
+    }
+
     if (!selectedPrediction) {
       setValidationError('Please select a prediction');
       return;
     }
+
+    // Check if userPoints is provided
+    if (userPoints === undefined || userPoints === null) {
+      setValidationError('User points information not available');
+      return;
+    }
+
     if (entryAmount > userPoints) {
       setValidationError('Insufficient points');
       return;
     }
-    if (entryAmount < (event.min_bet || 100)) {
-      setValidationError(`Minimum bet is ${(event.min_bet || 100)} points`);
+
+    // Use event.min_bet or default to 100
+    const minBet = event.min_bet || 100;
+    if (entryAmount < minBet) {
+      setValidationError(`Minimum bet is ${minBet} points`);
       return;
     }
-    if (entryAmount > (event.max_bet || 1000)) {
-      setValidationError(`Maximum bet is ${(event.max_bet || 1000)} points`);
+
+    // Use event.max_bet or default to 1000
+    const maxBet = event.max_bet || 1000;
+    if (entryAmount > maxBet) {
+      setValidationError(`Maximum bet is ${maxBet} points`);
+      return;
+    }
+
+    // Validate entry amount is divisible by 25
+    if (entryAmount % 25 !== 0) {
+      setValidationError('Bet amount must be divisible by 25');
       return;
     }
 

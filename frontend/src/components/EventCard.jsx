@@ -2,9 +2,12 @@ import React from 'react';
 import { useTournaments } from '../hooks/useTournaments';
 import { PredictionSelector } from './PredictionSelector';
 
-export const EventCard = ({ event, userPoints }) => {
+export const EventCard = ({ event, userPoints: propsUserPoints }) => {
   const { participateInEvent, loadingStates } = useTournaments();
   const [entryAmount, setEntryAmount] = React.useState(event.min_bet || 100);
+  
+  // Use propsUserPoints if provided, otherwise default to 0
+  const userPoints = propsUserPoints || 0;
 
   const handleParticipate = async (prediction) => {
     try {
