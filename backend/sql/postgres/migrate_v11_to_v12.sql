@@ -14,6 +14,6 @@ ALTER INDEX IF EXISTS idx_tournament_entries_user RENAME TO idx_event_entries_us
 ALTER INDEX IF EXISTS idx_tournament_entries_tournament RENAME TO idx_event_entries_event;
 
 -- Update schema version
-INSERT INTO __schema_versions (version) VALUES (12);
+INSERT INTO schema_versions (version) VALUES (12);
 
 COMMIT;

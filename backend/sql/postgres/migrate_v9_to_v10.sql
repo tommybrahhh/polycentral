@@ -34,10 +34,10 @@ CREATE INDEX IF NOT EXISTS idx_tournament_entries_user ON tournament_entries(use
 CREATE INDEX IF NOT EXISTS idx_tournament_entries_tournament ON tournament_entries(tournament_id);
 
 -- Add version tracking for schema changes
-CREATE TABLE IF NOT EXISTS __schema_versions (
+CREATE TABLE IF NOT EXISTS schema_versions (
     version INTEGER PRIMARY KEY,
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-COMMENT ON TABLE __schema_versions IS 'Tracks database schema migration versions';
-INSERT INTO __schema_versions (version) VALUES (10)
+COMMENT ON TABLE schema_versions IS 'Tracks database schema migration versions';
+INSERT INTO schema_versions (version) VALUES (10)
 ON CONFLICT (version) DO NOTHING;

@@ -45,7 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_participants_unsettled ON participants (event_id)
 WHERE settled = FALSE;
 
 -- Update schema version
-INSERT INTO __schema_versions (version) VALUES (11);
+INSERT INTO schema_versions (version) VALUES (11);
 
 -- Rollback safeguard
 COMMENT ON TABLE participants IS 'Contains event participation records v2';
