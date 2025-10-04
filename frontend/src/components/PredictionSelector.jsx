@@ -20,8 +20,12 @@ export const PredictionSelector = ({
       setValidationError('Insufficient points');
       return;
     }
-    if (entryAmount < event.entry_fee) {
-      setValidationError(`Minimum entry is ${event.entry_fee} points`);
+    if (entryAmount < (event.min_bet || 100)) {
+      setValidationError(`Minimum bet is ${(event.min_bet || 100)} points`);
+      return;
+    }
+    if (entryAmount > (event.max_bet || 1000)) {
+      setValidationError(`Maximum bet is ${(event.max_bet || 1000)} points`);
       return;
     }
 
@@ -73,12 +77,12 @@ export const PredictionSelector = ({
             onChange={(e) => {
               const value = Number(e.target.value);
               setEntryAmount(Math.max(
-                event.entry_fee,
-                Math.min(value, 1000)
+                event.min_bet || 100,
+                Math.min(value, event.max_bet || 1000)
               ));
             }}
-            min={event.entry_fee}
-            max={1000}
+            min={event.min_bet || 100}
+            max={event.max_bet || 1000}
             step="25"
             className="w-full sm:w-24 px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
             disabled={loading}

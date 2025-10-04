@@ -712,7 +712,7 @@ async function resolvePendingEvents() {
     
     // Find events ready for resolution
     const { rows: events } = await pool.query(
-      `SELECT id, end_time, initial_price, entry_fee FROM events
+      `SELECT id, end_time, initial_price FROM events
        WHERE end_time < $1 AND resolution_status = 'pending'`,
       [now]
     );
@@ -741,32 +741,40 @@ async function resolvePendingEvents() {
         // Determine outcome based on price comparison
         const outcome = finalPrice > event.initial_price ? 'Higher' : 'Lower';
         
-        // Calculate prize pool and number of winners
-        const { rows: [prizeData] } = await pool.query(
-          `SELECT
-             SUM(amount) as total_prize_pool,
-             COUNT(*) as winner_count
-           FROM participants
-           WHERE event_id = $1 AND prediction = $2`,
-          [event.id, outcome]
+        // Calculate total pot from all participants
+        const { rows: [potData] } = await pool.query(
+          `SELECT SUM(amount) as total_pot FROM participants WHERE event_id = $1`,
+          [event.id]
         );
         
-        if (prizeData.winner_count > 0 && prizeData.total_prize_pool > 0) {
-          // Award proportional share of prize pool to each winner
-          const prizePerWinner = Math.floor(prizeData.total_prize_pool / prizeData.winner_count);
-          
-          const result = await pool.query(
-            `UPDATE users SET points = points + $1
-             WHERE id IN (
-               SELECT user_id FROM participants
-               WHERE event_id = $2 AND prediction = $3
-             )`,
-            [prizePerWinner, event.id, outcome]
+        const totalPot = potData.total_pot || 0;
+        
+        if (totalPot > 0) {
+          // Get all winners with their bet amounts
+          const { rows: winners } = await pool.query(
+            `SELECT user_id, amount FROM participants WHERE event_id = $1 AND prediction = $2`,
+            [event.id, outcome]
           );
           
-          console.log(`Awarded ${prizePerWinner} points to ${result.rowCount} winners for event ${event.id}`);
+          if (winners.length > 0) {
+            // Calculate total amount bet by winners
+            const totalWinnerAmount = winners.reduce((sum, winner) => sum + winner.amount, 0);
+            
+            // Award proportional share of pot to each winner
+            for (const winner of winners) {
+              const winnerShare = Math.floor((winner.amount / totalWinnerAmount) * totalPot);
+              await pool.query(
+                `UPDATE users SET points = points + $1 WHERE id = $2`,
+                [winnerShare, winner.user_id]
+              );
+            }
+            
+            console.log(`Distributed ${totalPot} points to ${winners.length} winners for event ${event.id}`);
+          } else {
+            console.log(`No winners for event ${event.id}, pot not distributed`);
+          }
         } else {
-          console.log(`No winners for event ${event.id}`);
+          console.log(`Event ${event.id} has no pot to distribute`);
         }
       } catch (error) {
         // --- START OF NEW, MORE DETAILED LOGGING ---
@@ -1287,6 +1295,32 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         console.log('DEBUG: Invalid prediction value', { prediction });
         return res.status(400).json({ error: 'Prediction must be "Higher" or "Lower"' });
     }
+  
+    // Get event details including pot system configuration
+    const eventQuery = await pool.query(
+        'SELECT pot_enabled, min_bet, max_bet, status, end_time FROM events WHERE id = $1',
+        [eventId]
+    );
+    
+    if (eventQuery.rows.length === 0) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    const event = eventQuery.rows[0];
+    
+    // Check if event is still active
+    const now = new Date();
+    const endTime = new Date(event.end_time);
+    if (now >= endTime || event.status !== 'active') {
+        return res.status(400).json({ error: 'Event is no longer active' });
+    }
+  
+    // Validate bet amount against event constraints
+    if (entryFee < event.min_bet || entryFee > event.max_bet) {
+        return res.status(400).json({
+            error: `Bet amount must be between ${event.min_bet} and ${event.max_bet} points`
+        });
+    }
 
     let client;
     try {
@@ -1334,14 +1368,14 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         }
         
         const user = userQuery.rows[0];
-        console.log('DEBUG: User points check', { userId, userPoints: user.points, entryFee: event.entry_fee, sufficient: user.points >= event.entry_fee });
+        console.log('DEBUG: User points check', { userId, userPoints: user.points, entryFee: entryFee, sufficient: user.points >= entryFee });
         console.log('User points vs entry fee:', {
           userPoints: user.points,
-          entryFee: event.entry_fee,
-          comparison: user.points >= event.entry_fee
+          entryFee: entryFee,
+          comparison: user.points >= entryFee
         });
-        if (user.points < event.entry_fee) {
-            console.log('DEBUG: Insufficient points', { userId, userPoints: user.points, entryFee: event.entry_fee });
+        if (user.points < entryFee) {
+            console.log('DEBUG: Insufficient points', { userId, userPoints: user.points, entryFee: entryFee });
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Insufficient points' });
         }
@@ -1359,7 +1393,7 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         }
 
         // Insert bet into participants table
-        console.log('DEBUG: Inserting bet into participants table', { eventId, userId, prediction, amount: event.entry_fee });
+        console.log('DEBUG: Inserting bet into participants table', { eventId, userId, prediction, amount: entryFee });
         
         // First, check if the amount column exists in the participants table
         try {
@@ -1398,15 +1432,15 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
             `INSERT INTO participants (event_id, user_id, prediction, amount)
              VALUES ($1, $2, $3, $4)
              RETURNING *`,
-            [eventId, userId, prediction, event.entry_fee]
+            [eventId, userId, prediction, entryFee]
         );
         console.log('DEBUG: Bet inserted successfully', { newBet });
 
-        // Deduct the entry fee from the user's points
-        console.log('DEBUG: Deducting entry fee from user points', { userId, entryFee: event.entry_fee });
+        // Deduct the bet amount from the user's points
+        console.log('DEBUG: Deducting bet amount from user points', { userId, amount: entryFee });
         await client.query(
             'UPDATE users SET points = points - $1 WHERE id = $2',
-            [event.entry_fee, userId]
+            [entryFee, userId]
         );
         console.log('DEBUG: Entry fee deducted successfully');
         
