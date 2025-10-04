@@ -94,7 +94,7 @@ export const PredictionSelector = ({
             disabled={!selectedPrediction || loading}
             aria-describedby="participation-error"
           >
-            {isLoading ? 'Submitting...' : 'Participate'}
+            {loading ? 'Submitting...' : 'Place Bet'}
           </button>
         </div>
         
@@ -109,7 +109,7 @@ export const PredictionSelector = ({
         )}
       </div>
       <p className="text-gray-500 text-sm mt-2">
-        Entry fee: {event.entry_fee} points (non-refundable)
+        Bet amount: {entryAmount} points (non-refundable)
       </p>
     </div>
   );

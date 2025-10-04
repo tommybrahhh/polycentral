@@ -2,9 +2,21 @@ import React from 'react';
 import { useTournaments } from '../hooks/useTournaments';
 import { PredictionSelector } from './PredictionSelector';
 
-export const EventCard = ({ event }) => {
+export const EventCard = ({ event, userPoints }) => {
   const { participateInEvent, loadingStates } = useTournaments();
-  const [entryAmount, setEntryAmount] = React.useState(event.entry_fee);
+  const [entryAmount, setEntryAmount] = React.useState(event.min_bet || 100);
+
+  const handleParticipate = async (prediction) => {
+    try {
+      await participateInEvent({
+        eventId: event.id,
+        prediction: prediction,
+        entryFee: entryAmount
+      });
+    } catch (error) {
+      console.error('Failed to place bet:', error);
+    }
+  };
 
   return (
     <div className="card bg-white rounded-lg p-6 shadow-lg mb-4">
@@ -48,9 +60,9 @@ export const EventCard = ({ event }) => {
       {event.event_type === 'prediction' && (
         <PredictionSelector
           event={event}
-          onParticipate={participateInEvent}
+          onParticipate={handleParticipate}
           loading={loadingStates.participation}
-          userPoints={0} // This will be passed from parent component
+          userPoints={userPoints}
         />
       )}
     </div>
