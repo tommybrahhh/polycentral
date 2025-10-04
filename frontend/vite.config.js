@@ -6,10 +6,10 @@ export default defineConfig({
   plugins: [react()],
   css: {
     postcss: {
-      plugins: {
-        tailwindcss: {},
-        autoprefixer: {},
-      },
+      plugins: [
+        require('tailwindcss'),
+        require('autoprefixer'),
+      ],
     },
   },
   build: {
