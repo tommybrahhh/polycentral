@@ -1619,9 +1619,9 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
     console.log('Claim free points request received for user:', req.userId);
     
     // Check if user has already claimed points today
-    // Query both last_claimed and last_claim_date for compatibility
+    // Query only last_claimed column as ensureUsersTableIntegrity ensures this is the correct column
     const { rows: claimCheck } = await pool.query(
-      `SELECT id, points, last_claimed, last_claim_date, last_login_date FROM users WHERE id = $1`,
+      `SELECT id, points, last_claimed, last_login_date FROM users WHERE id = $1`,
       [req.userId]
     );
 
