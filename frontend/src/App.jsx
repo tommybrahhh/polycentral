@@ -1051,47 +1051,12 @@ const PredictionsInterface = () => {
       </div>
       <div className="events-list">
         {events.filter(isEventActive).map(event => (
-          <div
+          <EventCard
             key={event.id}
-            className="card"
+            event={event}
             onClick={() => setSelectedEvent(event)}
             style={{ cursor: 'pointer' }}
-          >
-            <div className="card-header">
-              <div className="event-header">
-                <h3 className="event-title">{event.title}</h3>
-                <div className="event-meta">
-                  <div className="event-info">
-                    <span className="participants">👥 {event.current_participants} participants</span>
-                    <span className="status-dot status-active"></span>
-                  </div>
-                  <CountdownTimer endTime={event.end_time} />
-                </div>
-              </div>
-            </div>
-            <div className="card-body">
-              <p className="description">{event.description}</p>
-              <div className="event-details">
-                <div className="detail">
-                  <span className="icon">💰</span>
-                  Pot: ${event.prize_pool?.toLocaleString() || 0}
-                </div>
-                <div className="detail">
-                  <span className="icon">🎫</span>
-                  Entry Fee: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'} points
-                </div>
-              </div>
-              <div className="sparkline-container">
-                <svg className="sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-                  <path d="M0,15 L10,12 L20,14 L30,10 L40,12 L50,8 L60,10 L70,6 L80,8 L90,7 L100,9"
-                        stroke="var(--aero-primary-accent)"
-                        strokeWidth="2"
-                        fill="none"
-                        filter="drop-shadow(0 0 4px rgba(255, 140, 0, 0.5))" />
-                </svg>
-              </div>
-            </div>
-          </div>
+          />
         ))}
       </div>
 

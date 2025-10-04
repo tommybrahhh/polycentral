@@ -2,12 +2,19 @@ import React from 'react';
 import { useTournaments } from '../hooks/useTournaments';
 import { PredictionSelector } from './PredictionSelector';
 
-export const EventCard = ({ event, userPoints: propsUserPoints }) => {
+export const EventCard = ({ event, userPoints: propsUserPoints, onClick }) => {
   const { participateInEvent, loadingStates } = useTournaments();
   const [entryAmount, setEntryAmount] = React.useState(event.min_bet || 100);
   
   // Use propsUserPoints if provided, otherwise default to 0
   const userPoints = propsUserPoints || 0;
+  
+  // If onClick is provided, use it for the entire card click
+  const handleClick = (e) => {
+    if (onClick) {
+      onClick(e);
+    }
+  };
 
   const handleParticipate = async (prediction) => {
     try {
@@ -22,7 +29,7 @@ export const EventCard = ({ event, userPoints: propsUserPoints }) => {
   };
 
   return (
-    <div className="card bg-white rounded-lg p-6 shadow-lg mb-4">
+    <div className="card bg-white rounded-lg p-6 shadow-lg mb-4" onClick={handleClick}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-xl font-bold mb-2 md:mb-0">{event.title}</h3>
@@ -72,5 +79,4 @@ export const EventCard = ({ event, userPoints: propsUserPoints }) => {
       )}
     </div>
   );
-};
 };
