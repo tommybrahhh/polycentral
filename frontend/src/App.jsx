@@ -187,7 +187,6 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
       <Router>
         <div className="app-container">
           <nav className="main-nav">
@@ -326,7 +325,6 @@ const App = () => {
         <LoginForm onClose={() => setShowLoginModal(false)} />
       )}
     </Router>
-    </QueryClientProvider>
   );
 };
 
