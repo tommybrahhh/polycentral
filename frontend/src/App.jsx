@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './index.css';
 import RegisterForm from './RegisterForm';
 import LoginForm from './LoginForm';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const FeeDisplay = ({ fee, variant = 'default' }) => (
   <div className={`fee-display ${variant} flex items-center gap-1 text-sm sm:text-base`}>
@@ -58,6 +59,9 @@ const FeeControls = ({ value, onChange }) => {
     </div>
   );
 };
+
+// Create a client
+const queryClient = new QueryClient();
 
 // Main App Component
 const App = () => {
@@ -183,9 +187,10 @@ const App = () => {
   }, []);
 
   return (
-    <Router>
-      <div className="app-container">
-        <nav className="main-nav">
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <div className="app-container">
+          <nav className="main-nav">
           <div className="nav-links">
             <Link to="/events" className="nav-link">Events</Link>
           </div>
@@ -321,6 +326,7 @@ const App = () => {
         <LoginForm onClose={() => setShowLoginModal(false)} />
       )}
     </Router>
+    </QueryClientProvider>
   );
 };
 
