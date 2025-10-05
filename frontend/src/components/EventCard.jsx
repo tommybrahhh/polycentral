@@ -73,7 +73,7 @@ export const EventCard = ({ event, userPoints: propsUserPoints, onClick }) => {
   };
 
   return (
-    <div className="card bg-white rounded-xl p-6 shadow-card hover:shadow-card-hover transition-shadow duration-300 mb-4" onClick={handleClick}>
+    <div className="card event-box" onClick={handleClick}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-xl font-bold mb-2 md:mb-0">{event.title}</h3>

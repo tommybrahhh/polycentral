@@ -188,10 +188,10 @@ const App = () => {
 
   return (
       <Router>
-        <div className="app-container bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
-          <nav className="main-nav bg-white shadow-md border-b border-slate-200">
+        <div className="app-container main-container">
+          <nav className="main-nav">
           <div className="nav-links">
-            <Link to="/events" className="nav-link text-primary-700 hover:text-primary-800 font-medium transition-colors duration-200">Events</Link>
+            <Link to="/events" className="nav-link">Events</Link>
           </div>
           {/* --- User Status Display --- */}
           <div className="user-status">
