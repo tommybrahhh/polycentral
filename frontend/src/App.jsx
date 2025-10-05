@@ -188,22 +188,22 @@ const App = () => {
 
   return (
       <Router>
-        <div className="app-container">
-          <nav className="main-nav">
+        <div className="app-container bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+          <nav className="main-nav bg-white shadow-md border-b border-slate-200">
           <div className="nav-links">
-            <Link to="/events" className="nav-link">Events</Link>
+            <Link to="/events" className="nav-link text-primary-700 hover:text-primary-800 font-medium transition-colors duration-200">Events</Link>
           </div>
           {/* --- User Status Display --- */}
           <div className="user-status">
             {username ? (
-              <div className="user-info">
-                <span className="username">Hello, {username}!</span>
+              <div className="user-info flex flex-col sm:flex-row items-center gap-4">
+                <span className="username text-primary-700 font-medium">Hello, {username}!</span>
                 <div className="points-display flex flex-col sm:flex-row gap-2">
-                  <div className="points-balance text-sm sm:text-base">
-                    🪙 <span className="points-amount font-medium">{points}</span> Points
+                  <div className="points-balance text-sm sm:text-base bg-primary-50 px-3 py-1 rounded-full">
+                    🪙 <span className="points-amount font-medium text-primary-700">{points}</span> Points
                   </div>
                   <button
-                    className="button button-success"
+                    className="button button-success bg-success-600 hover:bg-success-700 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 shadow-sm hover:shadow"
                     onClick={async () => {
                       try {
                         const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/claim-free-points`, {}, {
@@ -240,7 +240,7 @@ const App = () => {
                         
                         // Show success toast
                         const toast = document.createElement('div');
-                        toast.className = 'toast toast-success show';
+                        toast.className = 'toast toast-success show bg-success-500 text-white';
                         toast.textContent = response.data.message;
                         document.body.appendChild(toast);
                         
@@ -253,7 +253,7 @@ const App = () => {
                         
                         // Show error toast
                         const toast = document.createElement('div');
-                        toast.className = 'toast toast-error show';
+                        toast.className = 'toast toast-error show bg-danger-500 text-white';
                         toast.textContent = 'Failed to claim points: ' + (error.response?.data?.message || error.message);
                         document.body.appendChild(toast);
                         
@@ -269,7 +269,7 @@ const App = () => {
                   </button>
                 </div>
                 <button
-                  className="button button-secondary"
+                  className="button button-secondary bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200"
                   onClick={() => {
                     // Clear authentication data
                     localStorage.removeItem('auth_token');
@@ -279,7 +279,7 @@ const App = () => {
                     
                     // Show success toast
                     const toast = document.createElement('div');
-                    toast.className = 'toast toast-success show';
+                    toast.className = 'toast toast-success show bg-success-500 text-white';
                     toast.textContent = 'Successfully logged out';
                     document.body.appendChild(toast);
                     
@@ -293,15 +293,15 @@ const App = () => {
                 </button>
               </div>
             ) : (
-              <div className="auth-buttons">
+              <div className="auth-buttons flex gap-2">
                 <button
-                  className="button button-secondary"
+                  className="button button-secondary bg-secondary-100 hover:bg-secondary-200 text-secondary-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200"
                   onClick={() => setShowRegisterModal(true)}
                 >
                   Register
                 </button>
                 <button
-                  className="button button-primary"
+                  className="button button-primary bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 shadow-sm hover:shadow"
                   onClick={() => setShowLoginModal(true)}
                 >
                   Login

@@ -83,10 +83,10 @@ export const PredictionSelector = ({
     <div className="prediction-ui space-y-4">
       <div className="flex gap-2 justify-center">
         <button
-          className={`px-4 py-2 rounded-lg transition-colors ${
+          className={`px-4 py-2 rounded-lg transition-all duration-200 ${
             selectedPrediction === 'higher'
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+              ? 'bg-success-500 text-white shadow-md'
+              : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
           }`}
           onClick={() => setSelectedPrediction('higher')}
           disabled={loading}
@@ -95,10 +95,10 @@ export const PredictionSelector = ({
           ▲ Higher
         </button>
         <button
-          className={`px-4 py-2 rounded-lg transition-colors ${
+          className={`px-4 py-2 rounded-lg transition-all duration-200 ${
             selectedPrediction === 'lower'
-              ? 'bg-red-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+              ? 'bg-danger-500 text-white shadow-md'
+              : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
           }`}
           onClick={() => setSelectedPrediction('lower')}
           disabled={loading}
@@ -123,13 +123,13 @@ export const PredictionSelector = ({
             min={event.min_bet || 100}
             max={event.max_bet || 1000}
             step="25"
-            className="w-full sm:w-24 px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
+            className="w-full sm:w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             disabled={loading}
             aria-label="Entry amount"
           />
           <button
             onClick={handleParticipation}
-            className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 w-full sm:w-auto transition-colors shadow-md hover:shadow-lg"
+            className="px-6 py-3 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 disabled:bg-gray-400 w-full sm:w-auto transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:transform-none"
             disabled={!selectedPrediction || loading}
             aria-describedby="participation-error"
           >
@@ -141,13 +141,13 @@ export const PredictionSelector = ({
           <div
             id="participation-error"
             role="alert"
-            className="text-red-500 text-sm mt-2 sm:mt-0"
+            className="text-danger-500 text-sm mt-2 sm:mt-0 animate-pulse"
           >
             {validationError}
           </div>
         )}
       </div>
-      <p className="text-gray-500 text-sm mt-2">
+      <p className="text-gray-500 text-sm mt-2 italic">
         Bet amount: {entryAmount} points (non-refundable)
       </p>
     </div>
