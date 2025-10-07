@@ -1253,7 +1253,7 @@ app.get('/api/events/:id/pot', async (req, res) => {
 // Endpoint for placing a bet on an event
 app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     const eventId = req.params.id;
-    const { prediction } = req.body;
+    const { prediction, entryFee } = req.body;
     const userId = req.userId;
     
     console.log('DEBUG: Bet placement request received', { eventId, userId, prediction });
@@ -1290,6 +1290,16 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         return res.status(500).json({ error: 'Failed to validate event' });
     }
     
+    // Validate entry fee - use provided entryFee or default to event entry_fee
+    const selectedEntryFee = entryFee || event.entry_fee;
+    const validEntryFees = [100, 200, 500, 1000];
+    
+    if (!validEntryFees.includes(selectedEntryFee)) {
+        return res.status(400).json({
+            error: 'Invalid entry fee. Must be one of: ' + validEntryFees.join(', ')
+        });
+    }
+    
     // Validate prediction - updated to use "Higher" and "Lower" options
     if (prediction !== 'Higher' && prediction !== 'Lower') {
         console.log('DEBUG: Invalid prediction value', { prediction });
@@ -1316,7 +1326,7 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     }
   
     // Validate bet amount against event constraints
-    if (entryFee < event.min_bet || entryFee > event.max_bet) {
+    if (selectedEntryFee < event.min_bet || selectedEntryFee > event.max_bet) {
         return res.status(400).json({
             error: `Bet amount must be between ${event.min_bet} and ${event.max_bet} points`
         });
@@ -1368,14 +1378,14 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         }
         
         const user = userQuery.rows[0];
-        console.log('DEBUG: User points check', { userId, userPoints: user.points, entryFee: entryFee, sufficient: user.points >= entryFee });
+        console.log('DEBUG: User points check', { userId, userPoints: user.points, entryFee: selectedEntryFee, sufficient: user.points >= selectedEntryFee });
         console.log('User points vs entry fee:', {
           userPoints: user.points,
-          entryFee: entryFee,
-          comparison: user.points >= entryFee
+          entryFee: selectedEntryFee,
+          comparison: user.points >= selectedEntryFee
         });
-        if (user.points < entryFee) {
-            console.log('DEBUG: Insufficient points', { userId, userPoints: user.points, entryFee: entryFee });
+        if (user.points < selectedEntryFee) {
+            console.log('DEBUG: Insufficient points', { userId, userPoints: user.points, entryFee: selectedEntryFee });
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Insufficient points' });
         }
@@ -1393,7 +1403,7 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         }
 
         // Insert bet into participants table
-        console.log('DEBUG: Inserting bet into participants table', { eventId, userId, prediction, amount: entryFee });
+        console.log('DEBUG: Inserting bet into participants table', { eventId, userId, prediction, amount: selectedEntryFee });
         
         // First, check if the amount column exists in the participants table
         try {
@@ -1432,15 +1442,15 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
             `INSERT INTO participants (event_id, user_id, prediction, amount)
              VALUES ($1, $2, $3, $4)
              RETURNING *`,
-            [eventId, userId, prediction, entryFee]
+            [eventId, userId, prediction, selectedEntryFee]
         );
         console.log('DEBUG: Bet inserted successfully', { newBet });
 
         // Deduct the bet amount from the user's points
-        console.log('DEBUG: Deducting bet amount from user points', { userId, amount: entryFee });
+        console.log('DEBUG: Deducting bet amount from user points', { userId, amount: selectedEntryFee });
         await client.query(
             'UPDATE users SET points = points - $1 WHERE id = $2',
-            [entryFee, userId]
+            [selectedEntryFee, userId]
         );
         console.log('DEBUG: Entry fee deducted successfully');
         

@@ -575,6 +575,167 @@
   font-weight: bold;
 }
 
+/* Entry fee selection */
+.entry-fee-selection {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: var(--dark-card-bg);
+  border-radius: 8px;
+  border: 1px solid #555555;
+}
+
+.entry-fee-label {
+  display: block;
+  text-align: center;
+  margin-bottom: 15px;
+  color: var(--dark-text);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.entry-fee-options {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.entry-fee-option {
+  padding: 10px 15px;
+  border: 2px solid var(--orange-primary);
+  border-radius: 6px;
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+.entry-fee-option:hover:not(:disabled) {
+  background-color: var(--orange-primary);
+  color: #000;
+  transform: translateY(-2px);
+}
+
+.entry-fee-option.selected {
+  background-color: var(--orange-primary);
+  color: #000;
+  box-shadow: 0 0 0 2px var(--dark-bg), 0 0 0 4px var(--orange-primary);
+}
+
+.entry-fee-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  background-color: #555555;
+  color: #888888;
+  border-color: #555555;
+}
+
+/* Potential rewards display */
+.potential-rewards {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: var(--dark-card-bg);
+  border-radius: 8px;
+  border: 1px solid #555555;
+}
+
+.potential-rewards-label {
+  text-align: center;
+  margin-bottom: 10px;
+  color: var(--dark-text);
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.potential-rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.potential-reward-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background-color: rgba(255, 165, 0, 0.1);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.potential-reward-item .fee {
+  color: var(--orange-primary);
+  font-weight: bold;
+}
+
+.potential-reward-item .reward {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  .potential-rewards-grid {
+    grid-template-columns: 1fr;
+  }
+/* Event detail potential rewards */
+.potential-rewards-section {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: var(--dark-card-bg);
+  border-radius: 8px;
+  border: 1px solid #555555;
+}
+
+.potential-rewards-title {
+  text-align: center;
+  color: var(--orange-primary);
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.3rem;
+}
+
+.potential-rewards-explanation {
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--dark-text-secondary);
+  font-style: italic;
+}
+
+.potential-rewards-section .potential-rewards-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.potential-rewards-section .potential-reward-item {
+  padding: 12px;
+  font-size: 1rem;
+}
+
+.potential-rewards-section .potential-reward-item .fee {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 5px;
+}
+
+.potential-rewards-section .potential-reward-item .reward {
+  display: block;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .potential-rewards-section .potential-rewards-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .potential-rewards-section .potential-reward-item .fee,
+  .potential-rewards-section .potential-reward-item .reward {
+    font-size: 1rem;
+  }
+}
+}
+
 /* Price display */
 .price-display {
   display: flex;

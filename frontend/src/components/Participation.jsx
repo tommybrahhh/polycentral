@@ -5,6 +5,7 @@ const Participation = ({ event }) => {
   const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
   const [userPoints, setUserPoints] = useState(0);
   const [isEventActive, setIsEventActive] = useState(true);
+  const [selectedEntryFee, setSelectedEntryFee] = useState(event.entry_fee || 100);
 
   // Load user points from localStorage
   React.useEffect(() => {
@@ -18,15 +19,15 @@ const Participation = ({ event }) => {
   }, [event]);
 
   const canPlaceBet = () => {
-    return isEventActive && userPoints >= event.entry_fee;
+    return isEventActive && userPoints >= selectedEntryFee;
   };
 
   const getErrorMessage = () => {
     if (!isEventActive) {
       return 'This event has ended. No more bets can be placed.';
     }
-    if (event.entry_fee > userPoints) {
-      return `Insufficient points. You need ${event.entry_fee - userPoints} more points.`;
+    if (selectedEntryFee > userPoints) {
+      return `Insufficient points. You need ${selectedEntryFee - userPoints} more points.`;
     }
     return '';
   };
@@ -39,7 +40,7 @@ const Participation = ({ event }) => {
       if (!token) throw new Error('User not authenticated');
       
       // Validate entry fee structure
-      if (typeof event.entry_fee !== 'number' || event.entry_fee < 100) {
+      if (typeof selectedEntryFee !== 'number' || selectedEntryFee < 100) {
         throw new Error('Invalid entry fee configuration');
       }
       
@@ -61,7 +62,7 @@ const Participation = ({ event }) => {
       
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
-        { prediction }, // Don't send amount - it's determined by the event
+        { prediction, entryFee: selectedEntryFee },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -80,7 +81,7 @@ const Participation = ({ event }) => {
           points: userResponse.data.points,
           lastBet: {
             eventId: event.id,
-            amount: event.entry_fee,
+            amount: selectedEntryFee,
             timestamp: new Date().toISOString()
           }
         };
@@ -94,7 +95,7 @@ const Participation = ({ event }) => {
         console.error('Failed to fetch updated user data:', userError);
         // Fallback to local calculation if server fetch fails
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        userData.points = userData.points - event.entry_fee;
+        userData.points = userData.points - selectedEntryFee;
         localStorage.setItem('user', JSON.stringify(userData));
         setUserPoints(userData.points);
         
@@ -161,9 +162,26 @@ const Participation = ({ event }) => {
       {/* User Balance Information */}
       <div className="user-info-display">
         Your Balance: {userPoints.toLocaleString()} points /
-        <span className={userPoints >= event.entry_fee ? '' : 'insufficient-points'}>
-          Entry: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'} points
+        <span className={userPoints >= selectedEntryFee ? '' : 'insufficient-points'}>
+          Entry: {typeof selectedEntryFee === 'number' ? selectedEntryFee : 'N/A'} points
         </span>
+      </div>
+      
+      {/* Entry Fee Selection */}
+      <div className="entry-fee-selection">
+        <label className="entry-fee-label">Entry Fee:</label>
+        <div className="entry-fee-options">
+          {[100, 200, 500, 1000].map((fee) => (
+            <button
+              key={fee}
+              className={`entry-fee-option ${selectedEntryFee === fee ? 'selected' : ''}`}
+              onClick={() => setSelectedEntryFee(fee)}
+              disabled={fee > userPoints || !isEventActive}
+            >
+              {fee} points
+            </button>
+          ))}
+        </div>
       </div>
       
       {/* Error Message */}

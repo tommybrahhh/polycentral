@@ -134,6 +134,25 @@ const EventCard = ({ event }) => {
             <span className="whitespace-nowrap">Entry: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'}</span>
           </div>
         </div>
+        <div className="potential-rewards">
+          <div className="potential-rewards-label">Potential Rewards:</div>
+          <div className="potential-rewards-grid">
+            {([100, 200, 500, 1000]).map(fee => {
+              // Calculate potential reward based on current prize pool
+              // If you're the only participant, you get the whole pot plus your bet back
+              // If there are other participants, your share depends on the total amount bet by winners
+              const potentialReward = event.prize_pool ?
+                Math.floor(fee + (event.prize_pool * (fee / (event.prize_pool + fee)))) :
+                fee * 2;
+              return (
+                <div key={fee} className="potential-reward-item">
+                  <span className="fee">{fee}p</span>
+                  <span className="reward">→ {potentialReward.toLocaleString()}p</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
         <div className="sparkline-container">
           <svg className="sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
             <path d="M0,15 L10,12 L20,14 L30,10 L40,12 L50,8 L60,10 L70,6 L80,8 L90,7 L100,9"

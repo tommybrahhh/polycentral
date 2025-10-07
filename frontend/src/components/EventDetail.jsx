@@ -84,6 +84,30 @@ const EventDetail = () => {
             <p>{event.description}</p>
           </div>
           
+          {/* Potential Rewards */}
+          <div className="potential-rewards-section">
+            <h3 className="potential-rewards-title">Potential Rewards</h3>
+            <div className="potential-rewards-explanation">
+              Higher entry fees result in proportionally higher rewards when you win.
+            </div>
+            <div className="potential-rewards-grid">
+              {([100, 200, 500, 1000]).map(fee => {
+                // Calculate potential reward based on current prize pool
+                // If you're the only participant, you get the whole pot plus your bet back
+                // If there are other participants, your share depends on the total amount bet by winners
+                const potentialReward = event.prize_pool ?
+                  Math.floor(fee + (event.prize_pool * (fee / (event.prize_pool + fee)))) :
+                  fee * 2;
+                return (
+                  <div key={fee} className="potential-reward-item">
+                    <span className="fee">{fee} points entry</span>
+                    <span className="reward">→ Up to {potentialReward.toLocaleString()} points</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
           {/* Participation Component */}
           <Participation event={event} />
           
