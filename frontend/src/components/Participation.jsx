@@ -174,7 +174,7 @@ const Participation = ({ event }) => {
       {/* Prediction Buttons */}
       <div className="prediction-buttons-container">
         <button
-          className="prediction-button higher"
+          className="prediction-button higher button button-primary"
           onClick={() => handleBet('Higher')}
           disabled={!canPlaceBet() || betStatus === 'success'}
         >
@@ -182,7 +182,7 @@ const Participation = ({ event }) => {
           Higher
         </button>
         <button
-          className="prediction-button lower"
+          className="prediction-button lower button button-primary"
           onClick={() => handleBet('Lower')}
           disabled={!canPlaceBet() || betStatus === 'success'}
         >

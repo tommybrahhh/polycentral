@@ -13,6 +13,13 @@ const EventCard = ({ event }) => {
     return timeDiff > 0 && timeDiff <= oneHour;
   };
 
+  // Helper function to determine if an event is expired
+  const isEventExpired = (event) => {
+    const now = new Date();
+    const endTime = new Date(event.end_time);
+    return now >= endTime;
+  };
+
   // CountdownTimer component
   const CountdownTimer = ({ endTime }) => {
     const [timeLeft, setTimeLeft] = React.useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -87,6 +94,11 @@ const EventCard = ({ event }) => {
     );
   };
 
+  // Don't render expired events
+  if (isEventExpired(event)) {
+    return null;
+  }
+
   return (
     <div className="card" onClick={() => navigate(`/events/${event.id}`)}>
       <div className="card-header">
@@ -125,10 +137,10 @@ const EventCard = ({ event }) => {
         <div className="sparkline-container">
           <svg className="sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
             <path d="M0,15 L10,12 L20,14 L30,10 L40,12 L50,8 L60,10 L70,6 L80,8 L90,7 L100,9"
-                  stroke="var(--aero-primary-accent)"
+                  stroke="var(--orange-primary)"
                   strokeWidth="2"
                   fill="none"
-                  filter="drop-shadow(0 0 4px rgba(255, 140, 0, 0.5))" />
+                  filter="drop-shadow(0 0 4px rgba(255, 165, 0, 0.5))" />
           </svg>
         </div>
       </div>

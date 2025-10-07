@@ -2,4 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --dark-bg: #1a1a1a;
+  --dark-card-bg: #2d2d2d;
+  --dark-text: #f0f0f0;
+  --dark-text-secondary: #cccccc;
+  --orange-primary: #FFA500;
+  --orange-secondary: #FF8C00;
+  --orange-accent: #FFD700;
+}
+
+body {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+}
+
 /* Your existing CSS rules can go here */

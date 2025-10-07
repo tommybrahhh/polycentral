@@ -51,7 +51,7 @@ const EventDetail = () => {
           <div className="chart-container">
             <svg className="chart" viewBox="0 0 100 40" preserveAspectRatio="none">
               <path d="M0,30 L20,25 L40,35 L60,20 L80,25 L100,15"
-                    stroke="var(--aero-primary-accent)"
+                    stroke="var(--orange-primary)"
                     strokeWidth="3"
                     fill="none"
                     filter="url(#glow)" />

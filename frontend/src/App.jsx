@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './index.css';
+import './basic-styles.css';
 import RegisterForm from './RegisterForm';
 import LoginForm from './LoginForm';
 import EventList from './components/EventList';
