@@ -113,6 +113,58 @@ const App = () => {
     };
   }, []);
 
+  // Create particle effects
+  useEffect(() => {
+    const particlesContainer = document.getElementById('particles-container');
+    if (!particlesContainer) return;
+
+    const createParticle = () => {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      
+      // Random position
+      const posX = Math.random() * 100;
+      const posY = Math.random() * 100;
+      particle.style.left = `${posX}%`;
+      particle.style.top = `${posY}%`;
+      
+      // Random size
+      const size = Math.random() * 3 + 1;
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      
+      // Random animation duration
+      const duration = Math.random() * 10 + 10;
+      particle.style.animationDuration = `${duration}s`;
+      
+      // Random delay
+      const delay = Math.random() * 5;
+      particle.style.animationDelay = `${delay}s`;
+      
+      particlesContainer.appendChild(particle);
+      
+      // Remove particle after animation completes
+      setTimeout(() => {
+        if (particle.parentNode) {
+          particle.parentNode.removeChild(particle);
+        }
+      }, duration * 1000);
+    };
+
+    // Create initial particles
+    for (let i = 0; i < 20; i++) {
+      setTimeout(createParticle, i * 300);
+    }
+
+    // Create particles periodically
+    const particleInterval = setInterval(createParticle, 500);
+
+    // Clean up
+    return () => {
+      clearInterval(particleInterval);
+    };
+  }, []);
+
   return (
     <Router>
       <div className="app-container main-container">
@@ -167,7 +219,7 @@ const App = () => {
                         
                         // Show success toast
                         const toast = document.createElement('div');
-                        toast.className = 'toast toast-success show bg-success-500 text-white';
+                        toast.className = 'toast toast-success show';
                         toast.textContent = response.data.message;
                         document.body.appendChild(toast);
                         
@@ -180,7 +232,7 @@ const App = () => {
                         
                         // Show error toast
                         const toast = document.createElement('div');
-                        toast.className = 'toast toast-error show bg-danger-500 text-white';
+                        toast.className = 'toast toast-error show';
                         toast.textContent = 'Failed to claim points: ' + (error.response?.data?.message || error.message);
                         document.body.appendChild(toast);
                         
@@ -206,7 +258,7 @@ const App = () => {
                     
                     // Show success toast
                     const toast = document.createElement('div');
-                    toast.className = 'toast toast-success show bg-success-500 text-white';
+                    toast.className = 'toast toast-success show';
                     toast.textContent = 'Successfully logged out';
                     document.body.appendChild(toast);
                     
@@ -252,6 +304,9 @@ const App = () => {
       {showLoginModal && (
         <LoginForm onClose={() => setShowLoginModal(false)} />
       )}
+      
+      {/* Particle effect container */}
+      <div className="particles" id="particles-container"></div>
     </Router>
   );
 };
