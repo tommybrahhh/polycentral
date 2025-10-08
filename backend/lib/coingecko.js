@@ -68,5 +68,68 @@ module.exports = {
       // to catch and log it with its more detailed error handling logic.
       throw error;
     }
+  },
+
+  // Helper function to calculate price ranges for Bitcoin predictions
+  calculatePriceRanges(initialPrice) {
+    const percent3 = initialPrice * 0.03;
+    const percent5 = initialPrice * 0.05;
+    
+    return {
+      "0-3% up": {
+        min: initialPrice,
+        max: initialPrice + percent3
+      },
+      "3-5% up": {
+        min: initialPrice + percent3,
+        max: initialPrice + percent5
+      },
+      "5%+ up": {
+        min: initialPrice + percent5,
+        max: null  // No upper limit
+      },
+      "0-3% down": {
+        min: initialPrice - percent3,
+        max: initialPrice
+      },
+      "3-5% down": {
+        min: initialPrice - percent5,
+        max: initialPrice - percent3
+      },
+      "5%+ down": {
+        min: null,  // No lower limit
+        max: initialPrice - percent5
+      }
+    };
+  },
+
+  // Helper function to determine which price range a final price falls into
+  determinePriceRange(initialPrice, finalPrice) {
+    const ranges = this.calculatePriceRanges(initialPrice);
+    
+    for (const [rangeName, range] of Object.entries(ranges)) {
+      const { min, max } = range;
+      
+      // Handle special cases for null boundaries
+      if (min === null && max !== null) {
+        // "5%+ down" case - price must be below max
+        if (finalPrice < max) {
+          return rangeName;
+        }
+      } else if (min !== null && max === null) {
+        // "5%+ up" case - price must be above min
+        if (finalPrice > min) {
+          return rangeName;
+        }
+      } else if (min !== null && max !== null) {
+        // Regular range case - price must be within range (inclusive)
+        if (finalPrice >= min && finalPrice <= max) {
+          return rangeName;
+        }
+      }
+    }
+    
+    // Fallback - should not happen with proper ranges
+    return "0-3% up";
   }
 };

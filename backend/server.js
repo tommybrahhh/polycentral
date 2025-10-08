@@ -688,7 +688,18 @@ async function createEvent(initialPrice) {
 
   // Generate formatted title with date and crypto symbol
   const eventDate = new Date().toISOString().split('T')[0];
-  const title = `${process.env.CRYPTO_ID || 'bitcoin'} Price Prediction ${eventDate}`;
+  const title = `How will Bitcoin close on ${eventDate}?`;
+  
+  // Create price range options
+  const priceRanges = coingecko.calculatePriceRanges(initialPrice);
+  const options = [
+    { id: 'range_0_3_up', label: `Up ${priceRanges.up3.toFixed(2)} - ${priceRanges.up5.toFixed(2)}`, value: '0-3% up' },
+    { id: 'range_3_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '3-5% up' },
+    { id: 'range_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '>5% up' },
+    { id: 'range_0_3_down', label: `Down ${priceRanges.down3.toFixed(2)} - ${priceRanges.down5.toFixed(2)}`, value: '0-3% down' },
+    { id: 'range_3_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '3-5% down' },
+    { id: 'range_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '>5% down' }
+  ];
   
   // Look up event type 'prediction'
   const typeQuery = await pool.query(`SELECT id FROM event_types WHERE name = 'prediction'`);
@@ -698,9 +709,9 @@ async function createEvent(initialPrice) {
   const eventTypeId = typeQuery.rows[0].id;
 
   await pool.query(
-    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending', $8)`,
-    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee]
+    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee, options)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending', $8, $9)`,
+    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee, JSON.stringify(options)]
   );
 }
 
@@ -738,8 +749,16 @@ async function resolvePendingEvents() {
         
         console.log(`Resolved event ${event.id} with final price: $${finalPrice}`);
         
-        // Determine outcome based on price comparison
-        const outcome = finalPrice > event.initial_price ? 'Higher' : 'Lower';
+        // Determine outcome based on price range
+        const correctAnswer = coingecko.determinePriceRange(event.initial_price, finalPrice);
+        
+        // Update event with correct answer
+        await pool.query(
+          `UPDATE events
+           SET correct_answer = $1
+           WHERE id = $2`,
+          [correctAnswer, event.id]
+        );
         
         // Calculate total pot from all participants
         const { rows: [potData] } = await pool.query(
@@ -753,7 +772,7 @@ async function resolvePendingEvents() {
           // Get all winners with their bet amounts
           const { rows: winners } = await pool.query(
             `SELECT user_id, amount FROM participants WHERE event_id = $1 AND prediction = $2`,
-            [event.id, outcome]
+            [event.id, correctAnswer]
           );
           
           if (winners.length > 0) {
@@ -933,9 +952,9 @@ const validateEntryFee = (req, res, next) => {
 };
 
 app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) => {
-    const { title, description, options, entry_fee, start_time, end_time, location, capacity } = req.body;
-    if (!title || !description || !options || entry_fee === undefined) {
-        return res.status(400).json({ error: 'Required fields: title, description, options, entry_fee' });
+    const { title, description, entry_fee, start_time, end_time, location, capacity } = req.body;
+    if (!title || !description || entry_fee === undefined) {
+        return res.status(400).json({ error: 'Required fields: title, description, entry_fee' });
     }
     // Use current time if start_time not provided
     const startTime = start_time ? new Date(start_time) : new Date();
@@ -966,6 +985,17 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
 
         // Get current price for the cryptocurrency
         const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
+        
+        // Create price range options
+        const priceRanges = coingecko.calculatePriceRanges(currentPrice);
+        const options = [
+            { id: 'range_0_3_up', label: `Up ${priceRanges.up3.toFixed(2)} - ${priceRanges.up5.toFixed(2)}`, value: '0-3% up' },
+            { id: 'range_3_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '3-5% up' },
+            { id: 'range_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '>5% up' },
+            { id: 'range_0_3_down', label: `Down ${priceRanges.down3.toFixed(2)} - ${priceRanges.down5.toFixed(2)}`, value: '0-3% down' },
+            { id: 'range_3_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '3-5% down' },
+            { id: 'range_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '>5% down' }
+        ];
 
         // Pre-flight table check with database-specific queries
         let tableExists;
@@ -1039,7 +1069,13 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
   const userId = req.userId;
   const { prediction, entryFee } = req.body;
 
-  if (!['higher', 'lower'].includes(prediction)) {
+  // Validate prediction - updated to use price range options
+  const validPredictions = [
+      '0-3% up', '3-5% up', '>5% up',
+      '0-3% down', '3-5% down', '>5% down'
+  ];
+  
+  if (!validPredictions.includes(prediction)) {
     return res.status(400).json({ error: 'Invalid prediction value' });
   }
 
@@ -1114,7 +1150,7 @@ switch(error.message) {
     res.status(402).json({ error: 'Insufficient balance for entry fee' });
     break;
   case 'INVALID_PREDICTION':
-    res.status(400).json({ error: 'Prediction must be "Higher" or "Lower"' });
+    res.status(400).json({ error: 'Invalid prediction value' });
     break;
   default:
     console.error('Participation error:', error);
@@ -1300,10 +1336,15 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         });
     }
     
-    // Validate prediction - updated to use "Higher" and "Lower" options
-    if (prediction !== 'Higher' && prediction !== 'Lower') {
+    // Validate prediction - updated to use price range options
+    const validPredictions = [
+        '0-3% up', '3-5% up', '>5% up',
+        '0-3% down', '3-5% down', '>5% down'
+    ];
+    
+    if (!validPredictions.includes(prediction)) {
         console.log('DEBUG: Invalid prediction value', { prediction });
-        return res.status(400).json({ error: 'Prediction must be "Higher" or "Lower"' });
+        return res.status(400).json({ error: 'Invalid prediction value' });
     }
   
     // Get event details including pot system configuration
@@ -1548,6 +1589,7 @@ app.get('/api/events/active', async (req, res) => {
         e.final_price,
         e.status,
         e.resolution_status,
+        e.correct_answer,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
         et.name as event_type
@@ -1569,6 +1611,16 @@ app.get('/api/events/active', async (req, res) => {
         const endTime = event.end_time ? new Date(event.end_time) : new Date();
         const startTime = event.start_time ? new Date(event.start_time) : new Date();
         
+        // Add price range information for active events
+        let priceRanges = null;
+        if ((event.status === 'active' || event.resolution_status === 'pending') && event.initial_price) {
+          try {
+            priceRanges = coingecko.calculatePriceRanges(event.initial_price);
+          } catch (error) {
+            console.error('Failed to calculate price ranges:', error);
+          }
+        }
+        
         return {
           ...event,
           end_time: endTime.toISOString(),
@@ -1579,7 +1631,8 @@ app.get('/api/events/active', async (req, res) => {
           current_participants: event.current_participants || 0,
           entry_fee: event.entry_fee || 0,
           initial_price: event.initial_price || 0,
-          final_price: event.final_price || null
+          final_price: event.final_price || null,
+          price_ranges: priceRanges
         };
       } catch (transformError) {
         console.error('Error transforming event data:', transformError, event);
@@ -1594,7 +1647,8 @@ app.get('/api/events/active', async (req, res) => {
           current_participants: event.current_participants || 0,
           entry_fee: event.entry_fee || 0,
           initial_price: event.initial_price || 0,
-          final_price: event.final_price || null
+          final_price: event.final_price || null,
+          price_ranges: null
         };
       }
     });
@@ -1644,6 +1698,11 @@ app.get('/api/events/:id', async (req, res) => {
     if (event.status === 'active' || event.resolution_status === 'pending') {
       try {
         event.current_price = await coingecko.getCurrentPrice(event.crypto_symbol || 'bitcoin');
+        
+        // Add price range information for active events
+        if (event.initial_price) {
+          event.price_ranges = coingecko.calculatePriceRanges(event.initial_price);
+        }
       } catch (error) {
         console.error('Failed to fetch current price:', error);
         event.current_price = null;
@@ -1869,11 +1928,12 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
          e.resolution_status,
          e.start_time,
          e.end_time,
+         e.correct_answer,
          p.prediction,
          CASE
            WHEN e.resolution_status = 'resolved' THEN
              CASE
-               WHEN (e.final_price > e.initial_price AND p.prediction = 'Higher') OR (e.final_price < e.initial_price AND p.prediction = 'Lower') THEN 'win'
+               WHEN p.prediction = e.correct_answer THEN 'win'
                ELSE 'loss'
              END
            ELSE 'pending'
