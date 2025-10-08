@@ -693,12 +693,12 @@ async function createEvent(initialPrice) {
   // Create price range options
   const priceRanges = coingecko.calculatePriceRanges(initialPrice);
   const options = [
-    { id: 'range_0_3_up', label: `Up ${priceRanges.up3.toFixed(2)} - ${priceRanges.up5.toFixed(2)}`, value: '0-3% up' },
-    { id: 'range_3_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '3-5% up' },
-    { id: 'range_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '>5% up' },
-    { id: 'range_0_3_down', label: `Down ${priceRanges.down3.toFixed(2)} - ${priceRanges.down5.toFixed(2)}`, value: '0-3% down' },
-    { id: 'range_3_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '3-5% down' },
-    { id: 'range_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '>5% down' }
+    { id: 'range_0_3_up', label: '0-3% up', value: '0-3% up' },
+    { id: 'range_3_5_up', label: '3-5% up', value: '3-5% up' },
+    { id: 'range_5_up', label: '5%+ up', value: '5%+ up' },
+    { id: 'range_0_3_down', label: '0-3% down', value: '0-3% down' },
+    { id: 'range_3_5_down', label: '3-5% down', value: '3-5% down' },
+    { id: 'range_5_down', label: '5%+ down', value: '5%+ down' }
   ];
   
   // Look up event type 'prediction'
@@ -989,12 +989,12 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
         // Create price range options
         const priceRanges = coingecko.calculatePriceRanges(currentPrice);
         const options = [
-            { id: 'range_0_3_up', label: `Up ${priceRanges.up3.toFixed(2)} - ${priceRanges.up5.toFixed(2)}`, value: '0-3% up' },
-            { id: 'range_3_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '3-5% up' },
-            { id: 'range_5_up', label: `Up ${priceRanges.up5.toFixed(2)} +`, value: '>5% up' },
-            { id: 'range_0_3_down', label: `Down ${priceRanges.down3.toFixed(2)} - ${priceRanges.down5.toFixed(2)}`, value: '0-3% down' },
-            { id: 'range_3_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '3-5% down' },
-            { id: 'range_5_down', label: `Down ${priceRanges.down5.toFixed(2)} -`, value: '>5% down' }
+          { id: 'range_0_3_up', label: '0-3% up', value: '0-3% up' },
+          { id: 'range_3_5_up', label: '3-5% up', value: '3-5% up' },
+          { id: 'range_5_up', label: '>5% up', value: '>5% up' },
+          { id: 'range_0_3_down', label: '0-3% down', value: '0-3% down' },
+          { id: 'range_3_5_down', label: '3-5% down', value: '3-5% down' },
+          { id: 'range_5_down', label: '>5% down', value: '>5% down' }
         ];
 
         // Pre-flight table check with database-specific queries
@@ -1071,8 +1071,8 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
 
   // Validate prediction - updated to use price range options
   const validPredictions = [
-      '0-3% up', '3-5% up', '>5% up',
-      '0-3% down', '3-5% down', '>5% down'
+      '0-3% up', '3-5% up', '5%+ up',
+      '0-3% down', '3-5% down', '5%+ down'
   ];
   
   if (!validPredictions.includes(prediction)) {
@@ -1338,8 +1338,8 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     
     // Validate prediction - updated to use price range options
     const validPredictions = [
-        '0-3% up', '3-5% up', '>5% up',
-        '0-3% down', '3-5% down', '>5% down'
+        '0-3% up', '3-5% up', '5%+ up',
+        '0-3% down', '3-5% down', '5%+ down'
     ];
     
     if (!validPredictions.includes(prediction)) {

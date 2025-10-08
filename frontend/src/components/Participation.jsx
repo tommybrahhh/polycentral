@@ -6,6 +6,7 @@ const Participation = ({ event }) => {
   const [userPoints, setUserPoints] = useState(0);
   const [isEventActive, setIsEventActive] = useState(true);
   const [selectedEntryFee, setSelectedEntryFee] = useState(event.entry_fee || 100);
+  const [selectedPrediction, setSelectedPrediction] = useState(null);
 
   // Load user points from localStorage
   React.useEffect(() => {
@@ -17,6 +18,32 @@ const Participation = ({ event }) => {
     const endTime = new Date(event.end_time);
     setIsEventActive(now < endTime && event.status === 'active');
   }, [event]);
+
+  // Parse event options if they exist
+  const eventOptions = React.useMemo(() => {
+    if (event.options) {
+      try {
+        // If options is a string, parse it as JSON
+        if (typeof event.options === 'string') {
+          return JSON.parse(event.options);
+        }
+        // If already an object, return as is
+        return event.options;
+      } catch (e) {
+        console.error('Failed to parse event options:', e);
+        return [];
+      }
+    }
+    // Fallback to default options if none provided
+    return [
+      { id: 'range_0_3_up', label: '0-3% Up', value: '0-3% up' },
+      { id: 'range_3_5_up', label: '3-5% Up', value: '3-5% up' },
+      { id: 'range_5_up', label: '5%+ Up', value: '>5% up' },
+      { id: 'range_0_3_down', label: '0-3% Down', value: '0-3% down' },
+      { id: 'range_3_5_down', label: '3-5% Down', value: '3-5% down' },
+      { id: 'range_5_down', label: '5%+ Down', value: '>5% down' }
+    ];
+  }, [event.options]);
 
   const canPlaceBet = () => {
     return isEventActive && userPoints >= selectedEntryFee;
@@ -32,8 +59,13 @@ const Participation = ({ event }) => {
     return '';
   };
 
-  // Update handleBet function to use selected bet amount
-  const handleBet = async (prediction) => {
+  const handleBet = async () => {
+    if (!selectedPrediction) {
+      setBetStatus('error');
+      setTimeout(() => setBetStatus(null), 3000);
+      return;
+    }
+    
     try {
       // Get auth token from localStorage
       const token = localStorage.getItem('auth_token');
@@ -62,11 +94,12 @@ const Participation = ({ event }) => {
       
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
-        { prediction, entryFee: selectedEntryFee },
+        { prediction: selectedPrediction, entryFee: selectedEntryFee },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
       setBetStatus('success');
+      setSelectedPrediction(null); // Reset selection after successful bet
       
       // Fetch updated user data from the server to ensure points are accurate
       try {
@@ -191,21 +224,24 @@ const Participation = ({ event }) => {
       
       {/* Prediction Buttons */}
       <div className="prediction-buttons-container">
+        <div className="prediction-options-grid">
+          {eventOptions.map((option) => (
+            <button
+              key={option.id || option.value}
+              className={`prediction-button ${selectedPrediction === option.value ? 'selected' : ''} ${option.value.includes('up') ? 'up' : 'down'}`}
+              onClick={() => setSelectedPrediction(option.value)}
+              disabled={!canPlaceBet() || betStatus === 'success'}
+            >
+              {option.label || option.value}
+            </button>
+          ))}
+        </div>
         <button
-          className="prediction-button higher button button-primary"
-          onClick={() => handleBet('Higher')}
-          disabled={!canPlaceBet() || betStatus === 'success'}
+          className="place-bet-button button button-primary"
+          onClick={handleBet}
+          disabled={!canPlaceBet() || betStatus === 'success' || !selectedPrediction}
         >
-          <span className="arrow-icon">↑</span>
-          Higher
-        </button>
-        <button
-          className="prediction-button lower button button-primary"
-          onClick={() => handleBet('Lower')}
-          disabled={!canPlaceBet() || betStatus === 'success'}
-        >
-          <span className="arrow-icon">↓</span>
-          Lower
+          Place Bet
         </button>
       </div>
       

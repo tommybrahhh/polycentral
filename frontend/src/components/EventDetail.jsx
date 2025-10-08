@@ -67,6 +67,43 @@ const EventDetail = () => {
             </svg>
           </div>
           
+          {/* Price Ranges Display */}
+          {event.initial_price && (
+            <div className="price-ranges-display">
+              <h3 className="price-ranges-title">Possible Outcomes</h3>
+              <div className="price-ranges-grid">
+                {event.price_ranges && (
+                  <>
+                    <div className="price-range-item up">
+                      <div className="range-label">0-3% Up</div>
+                      <div className="range-value">${event.initial_price?.toFixed(2)} - ${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'}</div>
+                    </div>
+                    <div className="price-range-item up">
+                      <div className="range-label">3-5% Up</div>
+                      <div className="range-value">${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'} - ${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}</div>
+                    </div>
+                    <div className="price-range-item up">
+                      <div className="range-label">5%+ Up</div>
+                      <div className="range-value">${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}+</div>
+                    </div>
+                    <div className="price-range-item down">
+                      <div className="range-label">0-3% Down</div>
+                      <div className="range-value">${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'} - ${event.initial_price?.toFixed(2)}</div>
+                    </div>
+                    <div className="price-range-item down">
+                      <div className="range-label">3-5% Down</div>
+                      <div className="range-value">${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'} - ${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'}</div>
+                    </div>
+                    <div className="price-range-item down">
+                      <div className="range-label">5%+ Down</div>
+                      <div className="range-value">&lt; ${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'}</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* Metadata Bar */}
           <div className="metadata-bar">
             <div className="metadata-item">

@@ -873,4 +873,138 @@
     max-width: 250px;
     justify-content: center;
   }
+/* Enhanced prediction options styles */
+.prediction-options-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .prediction-options-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .prediction-options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prediction-button.up {
+  color: #4caf50;
+}
+
+.prediction-button.down {
+  color: #f44336;
+}
+
+.prediction-button.selected {
+  background-color: var(--orange-primary);
+  color: #000;
+  box-shadow: 0 0 0 2px var(--dark-bg), 0 0 0 4px var(--orange-primary);
+}
+
+.place-bet-button {
+  padding: 15px 30px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 8px;
+  border: 2px solid var(--orange-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--orange-primary);
+  color: #000;
+  margin-top: 10px;
+}
+
+.place-bet-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(255, 165, 0, 0.4);
+  border-color: var(--orange-secondary);
+  background-color: var(--orange-secondary);
+}
+
+.place-bet-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+}
+/* Price ranges display styles */
+.price-ranges-display {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: var(--dark-card-bg);
+  border-radius: 8px;
+  border: 1px solid #555555;
+}
+
+.price-ranges-title {
+  text-align: center;
+  color: var(--orange-primary);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.price-ranges-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .price-ranges-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .price-ranges-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.price-range-item {
+  padding: 15px;
+  border-radius: 6px;
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid #555555;
+}
+
+.price-range-item.up {
+  border-color: #4caf50;
+}
+
+.price-range-item.down {
+  border-color: #f44336;
+}
+
+.range-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: var(--dark-text);
+}
+
+.price-range-item.up .range-label {
+  color: #4caf50;
+}
+
+.price-range-item.down .range-label {
+  color: #f44336;
+}
+
+.range-value {
+  font-size: 0.9rem;
+  color: var(--dark-text-secondary);
 }

@@ -135,22 +135,58 @@ const EventCard = ({ event }) => {
           </div>
         </div>
         <div className="potential-rewards">
-          <div className="potential-rewards-label">Potential Rewards:</div>
-          <div className="potential-rewards-grid">
-            {([100, 200, 500, 1000]).map(fee => {
-              // Calculate potential reward based on current prize pool
-              // If you're the only participant, you get the whole pot plus your bet back
-              // If there are other participants, your share depends on the total amount bet by winners
-              const potentialReward = event.prize_pool ?
-                Math.floor(fee + (event.prize_pool * (fee / (event.prize_pool + fee)))) :
-                fee * 2;
-              return (
-                <div key={fee} className="potential-reward-item">
-                  <span className="fee">{fee}p</span>
-                  <span className="reward">→ {potentialReward.toLocaleString()}p</span>
+          <div className="potential-rewards-label">Price Prediction Ranges:</div>
+          <div className="price-ranges-preview">
+            {event.options && typeof event.options === 'string' ? (
+              <div className="price-ranges-preview-content">
+                {(() => {
+                  try {
+                    const options = JSON.parse(event.options);
+                    const upRanges = options.filter(opt => opt.value.includes('up'));
+                    const downRanges = options.filter(opt => opt.value.includes('down'));
+                    
+                    return (
+                      <>
+                        <div className="price-range-group up">
+                          <span className="price-range-label">Up</span>
+                          {upRanges.map((range, index) => (
+                            <span key={index} className="price-range-badge">
+                              {range.label}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="price-range-group down">
+                          <span className="price-range-label">Down</span>
+                          {downRanges.map((range, index) => (
+                            <span key={index} className="price-range-badge">
+                              {range.label}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  } catch (e) {
+                    console.error('Failed to parse event options:', e);
+                    return null;
+                  }
+                })()}
+              </div>
+            ) : (
+              <div className="price-ranges-preview-content">
+                <div className="price-range-group up">
+                  <span className="price-range-label">Up</span>
+                  <span className="price-range-badge">0-3% Up</span>
+                  <span className="price-range-badge">3-5% Up</span>
+                  <span className="price-range-badge">5%+ Up</span>
                 </div>
-              );
-            })}
+                <div className="price-range-group down">
+                  <span className="price-range-label">Down</span>
+                  <span className="price-range-badge">0-3% Down</span>
+                  <span className="price-range-badge">3-5% Down</span>
+                  <span className="price-range-badge">5%+ Down</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="sparkline-container">
