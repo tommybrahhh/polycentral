@@ -315,9 +315,9 @@ button[type="button"]:not(.glow-button):active {
 /* Enhanced card styling for events with neon effects */
 .card {
   border: 2px solid var(--orange-primary);
-  border-radius: 16px;
-  padding: 25px;
-  margin: 25px 0;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
   background: var(--dark-card-bg);
   background-image:
     radial-gradient(circle at 10% 20%, rgba(255, 165, 0, 0.05) 0%, transparent 50%),
@@ -1317,17 +1317,17 @@ button[type="button"]:not(.glow-button):active {
 }
 
 /* Chart container */
-.chart-container {
-  margin: 20px 0;
-  padding: 20px;
+.chart-container.compact {
+  margin: 12px 0;
+  padding: 12px;
   background-color: var(--dark-card-bg);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid #555555;
 }
 
-.chart {
+.chart-container.compact .chart {
   width: 100%;
-  height: 80px;
+  height: 60px;
 }
 
 /* Metadata bar */
@@ -1440,35 +1440,39 @@ button[type="button"]:not(.glow-button):active {
 .prediction-options-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 @media (max-width: 768px) {
   .prediction-options-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
   }
 }
 
 @media (max-width: 480px) {
   .prediction-options-grid {
     grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
 
 .prediction-button.up {
   color: #4caf50;
+  font-size: 0.95rem;
 }
 
 .prediction-button.down {
   color: #f44336;
+  font-size: 0.95rem;
 }
 
 .prediction-button.selected {
   background-color: #ff8c00;
   color: #000;
-  border: 4px solid #ff8c00;
-  box-shadow: 0 0 0 4px rgba(255, 165, 0, 0.5), 0 0 10px rgba(255, 165, 0, 0.7);
+  border: 2px solid #ff8c00;
+  box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.3), 0 0 8px rgba(255, 165, 0, 0.5);
   transform: translateY(-1px);
   animation: pulse 0.5s ease-out;
 }
@@ -1524,28 +1528,40 @@ button[type="button"]:not(.glow-button):active {
 
 .price-ranges-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.price-range-item {
+  padding: 8px 12px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 165, 0, 0.1);
+}
+
+.price-range-item.up {
+  background-color: rgba(76, 175, 80, 0.08);
+  border-color: rgba(76, 175, 80, 0.2);
+}
+
+.price-range-item.down {
+  background-color: rgba(244, 67, 54, 0.08);
+  border-color: rgba(244, 67, 54, 0.2);
+}
+
+.price-range-item .range-label {
+  font-size: 0.9rem;
+}
+
+.price-range-item .range-value {
+  font-size: 0.85rem;
+  color: var(--dark-text-secondary);
 }
 
 @media (max-width: 768px) {
   .price-ranges-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .price-ranges-grid {
     grid-template-columns: 1fr;
   }
-}
-
-.price-range-item {
-  padding: 15px;
-  border-radius: 6px;
-  text-align: center;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid #555555;
 }
 
 .price-range-item.up {

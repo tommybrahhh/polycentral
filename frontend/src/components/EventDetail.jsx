@@ -48,11 +48,11 @@ const EventDetail = () => {
           </div>
           
           {/* Chart Visualization */}
-          <div className="chart-container">
-            <svg className="chart" viewBox="0 0 100 40" preserveAspectRatio="none">
-              <path d="M0,30 L20,25 L40,35 L60,20 L80,25 L100,15"
+          <div className="chart-container compact">
+            <svg className="chart" viewBox="0 0 100 30" preserveAspectRatio="none">
+              <path d="M0,25 L20,20 L40,25 L60,15 L80,20 L100,10"
                     stroke="var(--orange-primary)"
-                    strokeWidth="3"
+                    strokeWidth="2"
                     fill="none"
                     filter="url(#glow)" />
               <defs>

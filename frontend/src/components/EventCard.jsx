@@ -102,24 +102,22 @@ const EventCard = ({ event }) => {
   return (
     <div className="card" onClick={() => navigate(`/events/${event.id}`)}>
       <div className="card-header">
-        <div className="event-header">
-          <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-            <h3 className="event-title">{event.title}</h3>
-          </div>
-          <div className="event-meta">
-            <div className="event-info">
-              <span className="participants">👥 {event.current_participants} participants</span>
-              <div className={`status-indicator ${isEventClosingSoon(event) ? 'status-closing' : 'status-active'}`}>
-                <span className="status-dot"></span>
-                • {isEventClosingSoon(event) ? 'Closing Soon' : 'Active'}
-              </div>
-            </div>
-            <div className="prediction-sentiment-bar">
-              <div className="sentiment-fill higher" style={{ width: '70%' }}></div>
-              <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
+        <div className="event-header flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h3 className="event-title text-lg">{event.title}</h3>
+          <div className="flex items-center gap-4">
+            <span className="participants text-sm">👥{event.current_participants}</span>
+            <div className={`status-indicator text-sm ${isEventClosingSoon(event) ? 'status-closing' : 'status-active'}`}>
+              <span className="status-dot"></span>
+              {isEventClosingSoon(event) ? 'Closing' : 'Active'}
             </div>
             <CountdownTimer endTime={event.end_time} />
           </div>
+        </div>
+        <div className="prediction-sentiment-bar mt-2">
+          <div className="sentiment-fill higher" style={{ width: '70%' }}></div>
+          <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
+        </div>
+      </div>
         </div>
       </div>
       <div className="card-body">
