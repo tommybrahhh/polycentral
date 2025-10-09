@@ -31,131 +31,103 @@ const EventDetail = () => {
 
   return (
     <div className="event-detail-container">
-      <div className="card">
-        <div className="card-body">
+      {/* Main card container for the new layout */}
+      <div className="card event-detail-card">
+        <div className="event-detail-header">
           <h2 className="event-title">{event.title}</h2>
-          
-          {/* Price Display */}
-          <div className="price-display">
-            <div className="price-column">
-              <div className="price-label">Current Price</div>
-              <div className="price-value">${event.current_price?.toLocaleString() || 'N/A'}</div>
-            </div>
-            <div className="price-column">
-              <div className="price-label">Initial Price</div>
-              <div className="price-value">${event.initial_price?.toLocaleString() || 'N/A'}</div>
-            </div>
-          </div>
-          
-          {/* Chart Visualization */}
-          <div className="chart-container compact">
-            <svg className="chart" viewBox="0 0 100 30" preserveAspectRatio="none">
-              <path d="M0,25 L20,20 L40,25 L60,15 L80,20 L100,10"
-                    stroke="var(--orange-primary)"
-                    strokeWidth="2"
-                    fill="none"
-                    filter="url(#glow)" />
-              <defs>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                  <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
-                </filter>
-              </defs>
-            </svg>
-          </div>
-          
-          {/* Price Ranges Display */}
-          {event.initial_price && (
-            <div className="price-ranges-display">
-              <h3 className="price-ranges-title">Possible Outcomes</h3>
-              <div className="price-ranges-grid">
-                {event.price_ranges && (
-                  <>
-                    <div className="price-range-item up">
-                      <div className="range-label">0-3% Up</div>
-                      <div className="range-value">${event.initial_price?.toFixed(2)} - ${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'}</div>
-                    </div>
-                    <div className="price-range-item up">
-                      <div className="range-label">3-5% Up</div>
-                      <div className="range-value">${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'} - ${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}</div>
-                    </div>
-                    <div className="price-range-item up">
-                      <div className="range-label">5%+ Up</div>
-                      <div className="range-value">${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}+</div>
-                    </div>
-                    <div className="price-range-item down">
-                      <div className="range-label">0-3% Down</div>
-                      <div className="range-value">${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'} - ${event.initial_price?.toFixed(2)}</div>
-                    </div>
-                    <div className="price-range-item down">
-                      <div className="range-label">3-5% Down</div>
-                      <div className="range-value">${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'} - ${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'}</div>
-                    </div>
-                    <div className="price-range-item down">
-                      <div className="range-label">5%+ Down</div>
-                      <div className="range-value">&lt; ${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'}</div>
-                    </div>
-                  </>
-                )}
+          <p className="description">{event.description}</p>
+        </div>
+
+        {/* New two-column layout */}
+        <div className="event-detail-layout">
+
+          {/* --- LEFT COLUMN: Information & Context --- */}
+          <div className="info-column">
+            <h3 className="column-title">Event Data</h3>
+
+            {/* Price Display */}
+            <div className="price-display">
+              <div className="price-column">
+                <div className="price-label">Current Price</div>
+                <div className="price-value">${event.current_price?.toLocaleString() || 'N/A'}</div>
+              </div>
+              <div className="price-column">
+                <div className="price-label">Initial Price</div>
+                <div className="price-value">${event.initial_price?.toLocaleString() || 'N/A'}</div>
               </div>
             </div>
-          )}
-          
-          {/* Metadata Bar */}
-          <div className="metadata-bar">
-            <div className="metadata-item">
-              <span className="icon">🎫</span>
-              <span className="hidden sm:inline">Entry: </span>{typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'}
+            
+            {/* Chart Visualization */}
+            <div className="chart-container compact">
+              <svg className="chart" viewBox="0 0 100 30" preserveAspectRatio="none">
+                <path d="M0,25 L20,20 L40,25 L60,15 L80,20 L100,10"
+                      stroke="var(--orange-primary)"
+                      strokeWidth="2"
+                      fill="none"
+                      filter="url(#glow)" />
+                <defs>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+              </svg>
             </div>
-            <div className="metadata-item">
-              <span className="icon">💰</span>
-              Pot: ${event.prize_pool?.toLocaleString() || 0}
-            </div>
-          </div>
-          
-          {/* Event Description */}
-          <div className="event-description">
-            <p>{event.description}</p>
-          </div>
-          
-          {/* Potential Rewards */}
-          <div className="potential-rewards-section">
-            <h3 className="potential-rewards-title">Potential Rewards</h3>
-            <div className="potential-rewards-explanation">
-              Higher entry fees result in proportionally higher rewards when you win.
-            </div>
-            <div className="potential-rewards-grid">
-              {([100, 200, 500, 1000]).map(fee => {
-                // Calculate potential reward based on current prize pool
-                // If you're the only participant, you get the whole pot plus your bet back
-                // If there are other participants, your share depends on the total amount bet by winners
-                const potentialReward = event.prize_pool ?
-                  Math.floor(fee + (event.prize_pool * (fee / (event.prize_pool + fee)))) :
-                  fee * 2;
-                return (
-                  <div key={fee} className="potential-reward-item">
-                    <span className="fee">{fee} points entry</span>
-                    <span className="reward">→ Up to {potentialReward.toLocaleString()} points</span>
+
+            {/* Price Ranges / Possible Outcomes */}
+            {event.initial_price && event.price_ranges && (
+              <div className="price-ranges-display">
+                <h3 className="price-ranges-title">Possible Outcomes</h3>
+                <div className="price-ranges-grid">
+                  {/* UP Ranges */}
+                  <div className="price-range-item up">
+                    <div className="range-label">0-3% Up</div>
+                    <div className="range-value">${event.initial_price?.toFixed(2)} - ${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'}</div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="price-range-item up">
+                    <div className="range-label">3-5% Up</div>
+                    <div className="range-value">${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'} - ${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}</div>
+                  </div>
+                  <div className="price-range-item up">
+                    <div className="range-label">5%+ Up</div>
+                    <div className="range-value">${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}+</div>
+                  </div>
+                  {/* DOWN Ranges */}
+                  <div className="price-range-item down">
+                    <div className="range-label">0-3% Down</div>
+                    <div className="range-value">${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'} - ${event.initial_price?.toFixed(2)}</div>
+                  </div>
+                  <div className="price-range-item down">
+                    <div className="range-label">3-5% Down</div>
+                    <div className="range-value">${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'} - ${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'}</div>
+                  </div>
+                  <div className="price-range-item down">
+                    <div className="range-label">5%+ Down</div>
+                    <div className="range-value">< ${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          
-          {/* Participation Component */}
-          <Participation event={event} />
-          
-          {/* Resolution Status */}
-          {event.status === 'resolved' && (
-            <div className="resolution-info">
-              <strong>Result:</strong> {event.correct_answer} -
-              Final Price: ${event.final_price?.toLocaleString()}
-            </div>
-          )}
+
+          {/* --- RIGHT COLUMN: Betting Actions --- */}
+          <div className="action-column">
+            <h3 className="column-title">Place Your Bet</h3>
+            {/* The Participation component is now nested here */}
+            <Participation event={event} />
+          </div>
         </div>
+
+        {/* Resolution Status (if applicable) */}
+        {event.status === 'resolved' && (
+          <div className="resolution-info">
+            <strong>Result:</strong> {event.correct_answer} -
+            Final Price: ${event.final_price?.toLocaleString()}
+          </div>
+        )}
       </div>
     </div>
   );

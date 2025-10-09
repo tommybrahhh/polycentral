@@ -1709,3 +1709,73 @@ button[type="button"]:not(.glow-button):active {
 .card-body .sparkline-container {
   display: none;
 }
+/* --- New Styles for Event Detail Page --- */
+
+.event-detail-card {
+  cursor: default; /* This is not a clickable card, so remove pointer */
+  padding: 24px;
+}
+
+.event-detail-card:hover {
+  transform: none; /* Disable hover effect */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: var(--orange-primary);
+}
+
+.event-detail-header {
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 165, 0, 0.2);
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+.event-detail-header .event-title {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.event-detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.column-title {
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+  color: var(--dark-text);
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+}
+
+.info-column .price-display,
+.info-column .price-ranges-display {
+  margin: 0 0 20px 0; /* Standardize margins */
+}
+
+.action-column {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Make the Participation component fit perfectly */
+.action-column .participation-container {
+  /* The child component already provides structure, so we don't need much here */
+}
+
+/* Responsive adjustments for the detail page */
+@media (max-width: 992px) {
+  .event-detail-layout {
+    grid-template-columns: 1fr; /* Stack columns on smaller screens */
+    gap: 40px;
+  }
+  
+  .action-column {
+    padding: 15px;
+  }
+}
