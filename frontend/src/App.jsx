@@ -169,11 +169,12 @@ const App = () => {
     <Router>
       <div className="app-container main-container">
         <nav className="main-nav">
-          <div className="nav-links">
-            <Link to="/events" className="nav-link">Events</Link>
-          </div>
-          {/* --- User Status Display --- */}
-          <div className="user-status">
+          <div className="nav-container">
+            <div className="nav-links">
+              <Link to="/events" className="nav-link">Events</Link>
+            </div>
+            {/* --- User Status Display --- */}
+            <div className="user-status">
             {username ? (
               <div className="user-info flex flex-col sm:flex-row items-center gap-4">
                 <span className="username text-primary-700 font-medium">Hello, {username}!</span>
@@ -287,6 +288,7 @@ const App = () => {
                 </button>
               </div>
             )}
+          </div>
           </div>
         </nav>
 

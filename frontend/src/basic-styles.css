@@ -119,10 +119,16 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+.nav-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
 .nav-links {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   gap: 10px;
 }
 
@@ -186,10 +192,12 @@
   align-items: center;
   gap: 15px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .user-info {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 15px;
   background: rgba(255, 165, 0, 0.1);
@@ -208,8 +216,30 @@
 
 .points-display {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
+}
+
+/* Mobile layout for user info */
+@media (max-width: 768px) {
+  .user-info {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  
+  .points-display {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  
+  .user-status {
+    justify-content: flex-end;
+    width: 100%;
+  }
 }
 
 .points-balance {
@@ -309,25 +339,17 @@ button[type="button"]:not(.glow-button):active {
   left: -2px;
   right: -2px;
   bottom: -2px;
-  background: linear-gradient(45deg, var(--orange-primary), var(--orange-neon), var(--orange-primary));
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  opacity: 0;
   z-index: -1;
-  transition: opacity var(--animation-medium);
-  animation: rotate-border 3s linear infinite;
-}
-
-.card:hover::before {
-  opacity: 1;
 }
 
 .card:hover {
-  transform: translateY(-8px) scale(1.02);
+  transform: translateY(-4px);
   box-shadow:
-    0 16px 48px rgba(255, 165, 0, 0.3),
-    0 0 40px rgba(255, 107, 53, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  border-color: var(--orange-neon);
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: #555555;
 }
 
 .card:active {
@@ -777,23 +799,6 @@ button[type="button"]:not(.glow-button):active {
   align-items: center;
 }
   
-/* Extra small devices (phones, less than 480px) */
-@media (max-width: 480px) {
-  .user-info {
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 12px;
-  }
-  
-  .points-display {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .user-status {
-    justify-content: center;
-  }
-}
   
 
 .modal-header h2 {
@@ -1429,6 +1434,8 @@ button[type="button"]:not(.glow-button):active {
     max-width: 250px;
     justify-content: center;
   }
+}
+
 /* Enhanced prediction options styles */
 .prediction-options-grid {
   display: grid;
@@ -1497,7 +1504,7 @@ button[type="button"]:not(.glow-button):active {
   transform: none;
   box-shadow: none;
 }
-}
+
 /* Price ranges display styles */
 .price-ranges-display {
   margin: 20px 0;
