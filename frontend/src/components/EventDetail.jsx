@@ -106,7 +106,7 @@ const EventDetail = () => {
                   </div>
                   <div className="price-range-item down">
                     <div className="range-label">5%+ Down</div>
-                    <div className="range-value">< ${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'}</div>
+                    <div className="range-value">{"<"} ${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'}</div>
                   </div>
                 </div>
               </div>
