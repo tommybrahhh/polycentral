@@ -686,9 +686,9 @@ async function createEvent(initialPrice) {
   const entryFee = 100;
   console.log('Creating event with entry fee:', entryFee, 'and initial price:', initialPrice);
 
-  // Generate formatted title with date and crypto symbol
+  // Generate formatted title with closing price question and creation price
   const eventDate = new Date().toISOString().split('T')[0];
-  const title = `How will Bitcoin close on ${eventDate}?`;
+  const title = `Which will be the closing price of Bitcoin at the end of the day? (Creation price: $${initialPrice.toFixed(2)})`;
   
   // Create price range options
   const priceRanges = coingecko.calculatePriceRanges(initialPrice);
