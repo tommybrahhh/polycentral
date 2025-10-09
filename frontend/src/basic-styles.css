@@ -222,23 +222,23 @@
 }
 
 /* Mobile layout for user info */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .user-info {
     flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
-    padding: 8px 12px;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
   }
   
   .points-display {
     flex-direction: column;
-    align-items: flex-end;
+    width: 100%;
     gap: 8px;
   }
   
-  .user-status {
-    justify-content: flex-end;
+  .points-display > * {
     width: 100%;
+    justify-content: center;
   }
 }
 
