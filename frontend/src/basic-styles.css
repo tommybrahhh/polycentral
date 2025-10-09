@@ -1599,3 +1599,113 @@ button[type="button"]:not(.glow-button):active {
   font-size: 0.9rem;
   color: var(--dark-text-secondary);
 }
+/* --- New Styles for Enhanced Event Card Body --- */
+
+/* Restyling the card body for better padding and flow */
+.card-body {
+  padding: 0 16px 16px 16px; /* Adjust padding to be tighter */
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Add space between elements */
+}
+
+.card .description {
+  font-size: 0.9rem;
+  margin-bottom: 0; /* Remove default margin */
+}
+
+/* Key Event Stats Bar */
+.event-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 165, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 165, 0, 0.2);
+  padding: 12px 0;
+}
+
+.stat-item {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--dark-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* Interactive Prediction Options Preview */
+.prediction-options-preview {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.options-preview-title {
+  text-align: center;
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--orange-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.option-chip {
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all var(--animation-medium);
+  border: 1px solid transparent;
+}
+
+.card:hover .option-chip {
+    transform: scale(1.03);
+}
+
+.option-chip-up {
+  background-color: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+.option-chip-down {
+  background-color: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #f44336;
+}
+
+/* Card Action Footer with prominent button */
+.card-action-footer {
+  margin-top: auto; /* Pushes the button to the bottom */
+  text-align: center;
+}
+
+.card-action-footer .button {
+  width: 100%;
+}
+
+/* Remove redundant old styles that are now replaced */
+.card-body .event-details,
+.card-body .potential-rewards,
+.card-body .sparkline-container {
+  display: none;
+}

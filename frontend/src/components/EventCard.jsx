@@ -131,79 +131,58 @@ const EventCard = ({ event }) => {
       </div>
       <div className="card-body">
         <p className="description">{event.description}</p>
-        <div className="event-details">
-          <div className="detail">
-            <span className="icon">💰</span>
-            Pot: ${event.prize_pool?.toLocaleString() || 0}
+        
+        {/* Key Event Stats Bar */}
+        <div className="event-stats">
+          <div className="stat-item">
+            <span className="stat-label">Prize Pool</span>
+            <span className="stat-value">💰 ${event.prize_pool?.toLocaleString() || 0}</span>
           </div>
-          <div className="detail flex items-center gap-1">
-            <span className="icon">🎫</span>
-            <span className="whitespace-nowrap">Entry: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'}</span>
-          </div>
-        </div>
-        <div className="potential-rewards">
-          <div className="potential-rewards-label">Price Prediction Ranges:</div>
-          <div className="price-ranges-preview">
-            {event.options && typeof event.options === 'string' ? (
-              <div className="price-ranges-preview-content">
-                {(() => {
-                  try {
-                    const options = JSON.parse(event.options);
-                    const upRanges = options.filter(opt => opt.value.includes('up'));
-                    const downRanges = options.filter(opt => opt.value.includes('down'));
-                    
-                    return (
-                      <>
-                        <div className="price-range-group up">
-                          <span className="price-range-label">Up</span>
-                          {upRanges.map((range, index) => (
-                            <span key={index} className="price-range-badge">
-                              {range.label}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="price-range-group down">
-                          <span className="price-range-label">Down</span>
-                          {downRanges.map((range, index) => (
-                            <span key={index} className="price-range-badge">
-                              {range.label}
-                            </span>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  } catch (e) {
-                    console.error('Failed to parse event options:', e);
-                    return null;
-                  }
-                })()}
-              </div>
-            ) : (
-              <div className="price-ranges-preview-content">
-                <div className="price-range-group up">
-                  <span className="price-range-label">Up</span>
-                  <span className="price-range-badge">0-3% Up</span>
-                  <span className="price-range-badge">3-5% Up</span>
-                  <span className="price-range-badge">5%+ Up</span>
-                </div>
-                <div className="price-range-group down">
-                  <span className="price-range-label">Down</span>
-                  <span className="price-range-badge">0-3% Down</span>
-                  <span className="price-range-badge">3-5% Down</span>
-                  <span className="price-range-badge">5%+ Down</span>
-                </div>
-              </div>
-            )}
+          <div className="stat-item">
+            <span className="stat-label">Entry Fee</span>
+            <span className="stat-value">🎫 {typeof event.entry_fee === 'number' ? `${event.entry_fee} PTS` : 'N/A'}</span>
           </div>
         </div>
-        <div className="sparkline-container">
-          <svg className="sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-            <path d="M0,15 L10,12 L20,14 L30,10 L40,12 L50,8 L60,10 L70,6 L80,8 L90,7 L100,9"
-                  stroke="var(--orange-primary)"
-                  strokeWidth="2"
-                  fill="none"
-                  filter="drop-shadow(0 0 4px rgba(255, 165, 0, 0.5))" />
-          </svg>
+        
+        {/* Interactive Prediction Options Preview */}
+        <div className="prediction-options-preview">
+          <h4 className="options-preview-title">Prediction Options</h4>
+          {event.options && typeof event.options === 'string' ? (
+            <div className="options-grid">
+              {(() => {
+                try {
+                  const options = JSON.parse(event.options);
+                  return options.map((option, index) => (
+                    <div key={index} className={`option-chip ${option.value.includes('up') ? 'option-chip-up' : 'option-chip-down'}`}>
+                      {option.label}
+                    </div>
+                  ));
+                } catch (e) {
+                  console.error('Failed to parse event options:', e);
+                  return <div className="text-sm text-gray-400">Options not available</div>;
+                }
+              })()}
+            </div>
+          ) : (
+             <div className="options-grid">
+                <div className="option-chip option-chip-up">0-3% Up</div>
+                <div className="option-chip option-chip-up">3-5% Up</div>
+                <div className="option-chip option-chip-up">5%+ Up</div>
+                <div className="option-chip option-chip-down">0-3% Down</div>
+                <div className="option-chip option-chip-down">3-5% Down</div>
+                <div className="option-chip option-chip-down">5%+ Down</div>
+             </div>
+          )}
+        </div>
+        
+        {/* Call to Action Button */}
+        <div className="card-action-footer">
+          <button className="button button-primary" onClick={(e) => {
+            e.stopPropagation(); // Prevent card's onClick from firing twice
+            navigate(`/events/${event.id}`);
+          }}>
+            View & Place Bet
+          </button>
         </div>
       </div>
     </div>
