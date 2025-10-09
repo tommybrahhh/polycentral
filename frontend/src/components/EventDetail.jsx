@@ -8,6 +8,7 @@ const EventDetail = () => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedEntryFee, setSelectedEntryFee] = useState(event?.entry_fee || 100);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -77,6 +78,35 @@ const EventDetail = () => {
               </svg>
             </div>
 
+            {/* Community Sentiment Pool */}
+            {(event.up_bet_percentage || event.down_bet_percentage) && (
+              <div className="sentiment-pool">
+                <h3 className="column-title">Community Sentiment</h3>
+                <div className="sentiment-bars">
+                  <div className="sentiment-bar up">
+                    <div className="sentiment-label">Bullish</div>
+                    <div className="sentiment-percentage">
+                      {(event.up_bet_percentage ?? 0).toFixed(1)}%
+                    </div>
+                    <div
+                      className="sentiment-progress"
+                      style={{ width: `${event.up_bet_percentage ?? 0}%` }}
+                    />
+                  </div>
+                  <div className="sentiment-bar down">
+                    <div className="sentiment-label">Bearish</div>
+                    <div className="sentiment-percentage">
+                      {(event.down_bet_percentage ?? 0).toFixed(1)}%
+                    </div>
+                    <div
+                      className="sentiment-progress"
+                      style={{ width: `${event.down_bet_percentage ?? 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Price Ranges / Possible Outcomes */}
             {event.initial_price && event.price_ranges && (
               <div className="price-ranges-display">
@@ -116,8 +146,24 @@ const EventDetail = () => {
           {/* --- RIGHT COLUMN: Betting Actions --- */}
           <div className="action-column">
             <h3 className="column-title">Place Your Bet</h3>
+            
+            {/* Dynamic Rewards Display */}
+            <div className="rewards-container">
+              <h4 className="rewards-title">Potential Reward</h4>
+              <div className="reward-value">
+                ${(selectedEntryFee * 1.8).toFixed(2)}
+              </div>
+              <div className="reward-note">
+                Based on {selectedEntryFee} SATS entry
+              </div>
+            </div>
+
             {/* The Participation component is now nested here */}
-            <Participation event={event} />
+            <Participation
+              event={event}
+              selectedEntryFee={selectedEntryFee}
+              setSelectedEntryFee={setSelectedEntryFee}
+            />
           </div>
         </div>
 

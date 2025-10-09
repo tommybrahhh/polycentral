@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import axios from 'axios';
 
-const Participation = ({ event }) => {
+const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
   const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
   const [userPoints, setUserPoints] = useState(0);
   const [isEventActive, setIsEventActive] = useState(true);
-  const [selectedEntryFee, setSelectedEntryFee] = useState(event.entry_fee || 100);
   const [selectedPrediction, setSelectedPrediction] = useState(null);
 
   // Load user points from localStorage
@@ -254,6 +254,13 @@ const Participation = ({ event }) => {
       )}
     </div>
   );
+};
+
+
+Participation.propTypes = {
+  event: PropTypes.object.isRequired,
+  selectedEntryFee: PropTypes.number.isRequired,
+  setSelectedEntryFee: PropTypes.func.isRequired
 };
 
 export default Participation;

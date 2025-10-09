@@ -1779,3 +1779,110 @@ button[type="button"]:not(.glow-button):active {
     padding: 15px;
   }
 }
+
+/* ===== Enhanced Event Detail Components ===== */
+.event-detail-card {
+  background: var(--dark-card-bg);
+  border: 2px solid var(--orange-primary);
+  border-radius: 16px;
+  margin: 20px auto;
+  max-width: 1200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.event-detail-header {
+  padding: 32px;
+  border-bottom: 2px solid rgba(255, 165, 0, 0.2);
+  text-align: center;
+}
+
+.event-detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  padding: 32px;
+}
+
+.column-title {
+  color: var(--orange-primary);
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.column-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--orange-primary), transparent);
+}
+
+.info-column {
+  padding-right: 40px;
+  border-right: 1px solid rgba(255, 165, 0, 0.1);
+}
+
+.action-column {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 165, 0, 0.2);
+}
+
+.entry-fee-selection {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 24px 0;
+}
+
+.entry-fee-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.entry-fee-option {
+  background: rgba(255, 165, 0, 0.05);
+  border: 2px solid rgba(255, 165, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--animation-medium);
+}
+
+.entry-fee-option.selected {
+  background: linear-gradient(135deg, var(--orange-primary), var(--orange-neon));
+  color: #000;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3);
+}
+
+.participation-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@keyframes pulse-glow {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; box-shadow: 0 0 20px rgba(255,165,0,0.5); }
+  100% { opacity: 0.8; }
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; box-shadow: 0 0 20px rgba(255,165,0,0.5); }
+  100% { opacity: 0.8; }
+}
