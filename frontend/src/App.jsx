@@ -176,7 +176,7 @@ const App = () => {
             {/* --- User Status Display --- */}
             <div className="user-status">
             {username ? (
-              <div className="user-info flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+              <div className="user-info flex flex-row items-center gap-6">
                 <span className="username text-primary-700 font-medium whitespace-nowrap">Hello, {username}!</span>
                 <div className="points-display flex flex-row items-center gap-4">
                   <div className="points-balance text-sm sm:text-base bg-primary-50 px-3 py-1 rounded-full whitespace-nowrap">
