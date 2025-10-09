@@ -108,8 +108,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  padding: 15px 0;
-  margin-bottom: 30px;
+  padding: 10px 0;
+  margin-bottom: 15px;
   background: var(--glass-backdrop);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -121,13 +121,15 @@
 
 .nav-container {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
 }
 
 .nav-links {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin-bottom: 0;
   gap: 10px;
 }
@@ -188,11 +190,10 @@
 /* User status with enhanced styling */
 .user-status {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   gap: 15px;
-  flex-wrap: wrap;
-  width: 100%;
+  flex-wrap: nowrap;
 }
 
 .user-info {
@@ -375,8 +376,8 @@ button[type="button"]:not(.glow-button):active {
 
 .event-title {
   color: var(--orange-primary);
-  font-size: 1.5rem;
-  margin: 0 0 10px 0;
+  font-size: 1.3rem;
+  margin: 0 0 8px 0;
 }
 
 .event-meta {
@@ -908,22 +909,22 @@ button[type="button"]:not(.glow-button):active {
 }
 
 .prediction-button {
-  padding: 18px 35px;
-  font-size: 1.3rem;
-  font-weight: 700;
-  border-radius: 12px;
-  border: 2px solid var(--orange-primary);
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--orange-primary);
   cursor: pointer;
   transition: all var(--animation-medium);
-  min-width: 140px;
-  max-width: 200px;
+  min-width: 120px;
+  max-width: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   font-family: 'Orbitron', sans-serif;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
   background: rgba(26, 26, 26, 0.8);
@@ -1010,30 +1011,30 @@ button[type="button"]:not(.glow-button):active {
 
 /* Enhanced place bet button */
 .place-bet-button {
-  padding: 18px 35px;
-  font-size: 1.3rem;
-  font-weight: 700;
-  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 8px;
   border: none;
   cursor: pointer;
   transition: all var(--animation-medium);
-  min-width: 160px;
+  min-width: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   background: linear-gradient(135deg, var(--orange-primary), var(--orange-neon));
   color: #000;
   font-family: 'Orbitron', sans-serif;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
   box-shadow:
-    0 4px 20px rgba(255, 165, 0, 0.4),
+    0 4px 15px rgba(255, 165, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  animation: neon-glow 3s ease-in-out infinite;
-  margin-top: 20px;
+  animation: pulse-glow 2s ease-in-out infinite;
+  margin-top: 15px;
 }
 
 .place-bet-button::before {
@@ -1194,10 +1195,10 @@ button[type="button"]:not(.glow-button):active {
 
 .potential-rewards-label {
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--dark-text);
-  font-weight: bold;
-  font-size: 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .potential-rewards-grid {
@@ -1369,7 +1370,7 @@ button[type="button"]:not(.glow-button):active {
   }
   
   .card {
-    padding: 15px;
+    padding: 12px;
   }
   
   .event-title {
@@ -1381,21 +1382,28 @@ button[type="button"]:not(.glow-button):active {
     gap: 10px;
   }
   
-  .user-status {
-    text-align: center;
-  }
   
-  .user-info {
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px;
-  }
-  
-  .points-display {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
+    .user-status {
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .user-info {
+      flex-direction: row;
+      gap: 10px;
+      padding: 10px;
+    }
+    
+    .points-display {
+      flex-direction: row;
+      gap: 10px;
+    }
+    
+    .auth-buttons {
+      flex-direction: row;
+      gap: 10px;
+    }
   .nav-links {
     flex-wrap: wrap;
   }
@@ -1478,21 +1486,21 @@ button[type="button"]:not(.glow-button):active {
 }
 
 .place-bet-button {
-  padding: 15px 30px;
-  font-size: 1.2rem;
-  font-weight: bold;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
   border-radius: 8px;
-  border: 2px solid var(--orange-primary);
+  border: 1px solid var(--orange-primary);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--animation-medium);
   min-width: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--orange-primary);
+  background: linear-gradient(135deg, var(--orange-primary), var(--orange-neon));
   color: #000;
-  margin-top: 10px;
+  margin-top: 15px;
 }
 
 .place-bet-button:hover:not(:disabled) {

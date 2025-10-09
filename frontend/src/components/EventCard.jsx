@@ -100,13 +100,24 @@ const EventCard = ({ event }) => {
   }
 
   return (
-    <div className="card" onClick={() => navigate(`/events/${event.id}`)}>
+    <div
+      className="card"
+      onClick={() => navigate(`/events/${event.id}`)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Event: ${event.title}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          navigate(`/events/${event.id}`);
+        }
+      }}
+    >
       <div className="card-header">
         <div className="event-header flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h3 className="event-title text-lg">{event.title}</h3>
+          <h3 className="event-title">{event.title}</h3>
           <div className="flex items-center gap-4">
-            <span className="participants text-sm">👥{event.current_participants}</span>
-            <div className={`status-indicator text-sm ${isEventClosingSoon(event) ? 'status-closing' : 'status-active'}`}>
+            <span className="participants" aria-label={`${event.current_participants} participants`}>👥{event.current_participants}</span>
+            <div className={`status-indicator ${isEventClosingSoon(event) ? 'status-closing' : 'status-active'}`}>
               <span className="status-dot"></span>
               {isEventClosingSoon(event) ? 'Closing' : 'Active'}
             </div>
@@ -118,8 +129,6 @@ const EventCard = ({ event }) => {
           <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
         </div>
       </div>
-        </div>
-      </div>
       <div className="card-body">
         <p className="description">{event.description}</p>
         <div className="event-details">
@@ -127,7 +136,7 @@ const EventCard = ({ event }) => {
             <span className="icon">💰</span>
             Pot: ${event.prize_pool?.toLocaleString() || 0}
           </div>
-          <div className="detail flex items-center gap-1 text-sm sm:text-base">
+          <div className="detail flex items-center gap-1">
             <span className="icon">🎫</span>
             <span className="whitespace-nowrap">Entry: {typeof event.entry_fee === 'number' ? event.entry_fee : 'N/A'}</span>
           </div>
