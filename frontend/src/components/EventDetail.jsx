@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import Participation from './Participation';
+import ParticipationChart from './ParticipationChart';
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -58,24 +59,10 @@ const EventDetail = () => {
               </div>
             </div>
             
-            {/* Chart Visualization */}
-            <div className="chart-container compact">
-              <svg className="chart" viewBox="0 0 100 30" preserveAspectRatio="none">
-                <path d="M0,25 L20,20 L40,25 L60,15 L80,20 L100,10"
-                      stroke="var(--orange-primary)"
-                      strokeWidth="2"
-                      fill="none"
-                      filter="url(#glow)" />
-                <defs>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                    <feMerge>
-                      <feMergeNode in="coloredBlur"/>
-                      <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                  </filter>
-                </defs>
-              </svg>
+            {/* Participation Trend Chart */}
+            <div className="participation-chart">
+              <h3 className="column-title">Participation Trend</h3>
+              <ParticipationChart eventId={id} />
             </div>
 
             {/* Community Sentiment Pool */}

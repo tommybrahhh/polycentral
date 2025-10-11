@@ -1318,6 +1318,22 @@ button[type="button"]:not(.glow-button):active {
   color: var(--orange-primary);
 }
 
+/* Participation chart styles */
+.participation-chart {
+  background: var(--dark-card-bg);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 165, 0, 0.1);
+}
+
+.chart-container {
+  position: relative;
+  height: 400px;
+  width: 100%;
+}
+
 /* Chart container */
 .chart-container.compact {
   margin: 12px 0;
@@ -1325,6 +1341,16 @@ button[type="button"]:not(.glow-button):active {
   background-color: var(--dark-card-bg);
   border-radius: 6px;
   border: 1px solid #555555;
+}
+
+@media (max-width: 768px) {
+  .participation-chart {
+    padding: 0.5rem;
+  }
+  
+  .chart-container {
+    height: 300px;
+  }
 }
 
 .chart-container.compact .chart {

@@ -44,6 +44,7 @@ function getDatabaseType() {
 const dbType = getDatabaseType();
 
 // Continue with the rest of the setup
+const WebSocket = require('ws');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -1046,6 +1047,7 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
           );
           console.debug('Event creation successful', newEvent);
           res.status(201).json(newEvent);
+          broadcastParticipation(eventId);
         } catch (error) {
           console.error(`Event creation failed: ${error.message}`, {
             query: `INSERT INTO events (title, description, options, entry_fee, start_time, end_time, location, max_participants, current_participants, prize_pool, status, event_type_id, crypto_symbol, initial_price) VALUES ('${title}', '${description}', '${JSON.stringify(options)}', ${entry_fee}, '${startTime}', '${endTime}', '${location || 'Global'}', ${capacity || 100}, 0, 0, 'active', ${eventTypeId}, '${process.env.DEFAULT_CRYPTO_SYMBOL || 'btc'}', ${currentPrice})`,
@@ -1666,6 +1668,36 @@ app.get('/api/events/active', async (req, res) => {
 });
 
 // GET event details
+// Get participation history for chart
+app.get('/api/events/:id/participations', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { interval = 'hour' } = req.query;
+    
+    const validIntervals = ['minute', 'hour', 'day'];
+    if (!validIntervals.includes(interval)) {
+      return res.status(400).json({ error: 'Invalid interval' });
+    }
+
+    const query = `
+      SELECT
+        date_trunc($1, created_at) AS time_bucket,
+        COUNT(*) AS participation_count
+      FROM participants
+      WHERE event_id = $2
+      GROUP BY time_bucket
+      ORDER BY time_bucket
+    `;
+
+    const { rows } = await pool.query(query, [interval, id]);
+    res.json(rows);
+    
+  } catch (error) {
+    console.error('Error fetching participation history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/events/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -2050,6 +2082,26 @@ async function startServer() {
     
     // Try to start the server on the specified port or an alternative port
     const server = await startServerOnAvailablePort();
+        
+    // Create WebSocket server
+    const wss = new WebSocket.Server({ server });
+    const clients = new Set();
+    
+    wss.on('connection', (ws) => {
+      clients.add(ws);
+      ws.on('close', () => clients.delete(ws));
+    });
+    
+    // Broadcast participation updates
+    function broadcastParticipation(eventId) {
+      clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({ type: 'participationUpdate', eventId }));
+        }
+      });
+    }
+    
+    // Add broadcast to bet placement endpoint
     
     // Create initial event after server has started
     await createInitialEvent();
