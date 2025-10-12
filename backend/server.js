@@ -781,13 +781,62 @@ async function resolvePendingEvents() {
             const totalWinnerAmount = winners.reduce((sum, winner) => sum + winner.amount, 0);
             
             // Award proportional share of pot to each winner
+            // Record winner outcomes and distribute points
             for (const winner of winners) {
               const winnerShare = Math.floor((winner.amount / totalWinnerAmount) * totalPot);
+              const client = await pool.connect();
+              try {
+                await client.query('BEGIN');
+                
+                // Update user points
+                await client.query(
+                  `UPDATE users SET points = points + $1 WHERE id = $2`,
+                  [winnerShare, winner.user_id]
+                );
+                
+                // Record winning outcome
+                await client.query(
+                  `INSERT INTO event_outcomes (participant_id, result, points_awarded)
+                   VALUES ($1, 'win', $2)`,
+                  [winner.id, winnerShare]
+                );
+                
+                await client.query('COMMIT');
+              } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+              } finally {
+                client.release();
+              }
+            }
+
+            // Record losing outcomes
+            const losers = await pool.query(
+              `SELECT p.id FROM participants p
+               WHERE p.event_id = $1 AND p.prediction != $2`,
+              [event.id, correctAnswer]
+            );
+            
+            for (const loser of losers.rows) {
               await pool.query(
-                `UPDATE users SET points = points + $1 WHERE id = $2`,
-                [winnerShare, winner.user_id]
+                `INSERT INTO event_outcomes (participant_id, result, points_awarded)
+                 VALUES ($1, 'loss', 0)`,
+                [loser.id]
               );
             }
+
+            // Add audit log entry
+            await pool.query(
+              `INSERT INTO audit_logs (event_id, action, details)
+               VALUES ($1, 'event_resolution', $2)`,
+              [event.id, JSON.stringify({
+                 totalParticipants: participants.rows.length,
+                 totalWinners: winners.length,
+                 totalPot: totalPot,
+                 distributed: totalWinnerAmount,
+                 resolvedAt: new Date().toISOString()
+               })]
+            );
             
             console.log(`Distributed ${totalPot} points to ${winners.length} winners for event ${event.id}`);
           } else {
@@ -1953,15 +2002,19 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
     
     const { rows } = await pool.query(
       `SELECT
-         e.id,
+         e.id AS event_id,
          e.title,
          e.initial_price,
          e.final_price,
+         e.crypto_symbol,
          e.resolution_status,
          e.start_time,
          e.end_time,
          e.correct_answer,
          p.prediction,
+         p.amount AS entry_fee,
+         o.result,
+         o.points_awarded,
          CASE
            WHEN e.resolution_status = 'resolved' THEN
              CASE
@@ -1969,10 +2022,12 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
                ELSE 'loss'
              END
            ELSE 'pending'
-         END as result,
-         e.entry_fee
+         END AS resolution_state,
+         a.details AS resolution_details
        FROM participants p
        JOIN events e ON p.event_id = e.id
+       LEFT JOIN event_outcomes o ON p.id = o.participant_id
+       LEFT JOIN audit_logs a ON e.id = a.event_id AND a.action = 'event_resolution'
        WHERE p.user_id = $1
        ORDER BY e.start_time DESC`,
       [userId]
