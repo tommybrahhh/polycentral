@@ -1318,21 +1318,6 @@ button[type="button"]:not(.glow-button):active {
   color: var(--orange-primary);
 }
 
-/* Participation chart styles */
-.participation-chart {
-  background: var(--dark-card-bg);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin: 1rem 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border: 1px solid rgba(255, 165, 0, 0.1);
-}
-
-.chart-container {
-  position: relative;
-  height: 400px;
-  width: 100%;
-}
 
 /* Chart container */
 .chart-container.compact {
@@ -1625,116 +1610,6 @@ button[type="button"]:not(.glow-button):active {
   font-size: 0.9rem;
   color: var(--dark-text-secondary);
 }
-/* --- New Styles for Enhanced Event Card Body --- */
-
-/* Restyling the card body for better padding and flow */
-.card-body {
-  padding: 0 16px 16px 16px; /* Adjust padding to be tighter */
-  display: flex;
-  flex-direction: column;
-  gap: 16px; /* Add space between elements */
-}
-
-.card .description {
-  font-size: 0.9rem;
-  margin-bottom: 0; /* Remove default margin */
-}
-
-/* Key Event Stats Bar */
-.event-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  border-top: 1px solid rgba(255, 165, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 165, 0, 0.2);
-  padding: 12px 0;
-}
-
-.stat-item {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-label {
-  font-size: 0.8rem;
-  color: var(--dark-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.stat-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--dark-text);
-  font-family: 'Orbitron', sans-serif;
-}
-
-/* Interactive Prediction Options Preview */
-.prediction-options-preview {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.options-preview-title {
-  text-align: center;
-  margin: 0 0 12px 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--orange-primary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.options-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 8px;
-}
-
-.option-chip {
-  padding: 6px 8px;
-  border-radius: 6px;
-  text-align: center;
-  font-size: 0.85rem;
-  font-weight: 600;
-  transition: all var(--animation-medium);
-  border: 1px solid transparent;
-}
-
-.card:hover .option-chip {
-    transform: scale(1.03);
-}
-
-.option-chip-up {
-  background-color: rgba(76, 175, 80, 0.1);
-  border-color: rgba(76, 175, 80, 0.3);
-  color: #4caf50;
-}
-
-.option-chip-down {
-  background-color: rgba(244, 67, 54, 0.1);
-  border-color: rgba(244, 67, 54, 0.3);
-  color: #f44336;
-}
-
-/* Card Action Footer with prominent button */
-.card-action-footer {
-  margin-top: auto; /* Pushes the button to the bottom */
-  text-align: center;
-}
-
-.card-action-footer .button {
-  width: 100%;
-}
-
-/* Remove redundant old styles that are now replaced */
-.card-body .event-details,
-.card-body .potential-rewards,
-.card-body .sparkline-container {
-  display: none;
-}
 /* --- New Styles for Event Detail Page --- */
 
 .event-detail-card {
@@ -1911,4 +1786,73 @@ button[type="button"]:not(.glow-button):active {
   0% { opacity: 0.8; }
   50% { opacity: 1; box-shadow: 0 0 20px rgba(255,165,0,0.5); }
   100% { opacity: 0.8; }
+}
+/* Definitive Styles for Professional Betting Dashboard */
+.betting-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 2rem;
+  padding: 2rem;
+  background: var(--dark-bg);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.dashboard-main {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-rows: auto 1fr;
+}
+
+.odds-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--dark-card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--orange-primary);
+}
+
+.live-market-widget {
+  background: linear-gradient(135deg, var(--orange-primary), #ff6b35);
+  color: #000;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(255,107,53,0.3);
+}
+
+.risk-management-panel {
+  background: var(--dark-card-bg);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--orange-primary);
+}
+
+.trading-tools {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 2rem;
+}
+
+.order-form {
+  background: var(--dark-card-bg);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--orange-primary);
+}
+
+.market-depth-chart {
+  height: 400px;
+  background: var(--dark-card-bg);
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.professional-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
 }

@@ -191,66 +191,67 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
   };
 
   return (
-    <div className="participation-container">
-      {/* User Balance Information */}
-      <div className="user-info-display">
-        Your Balance: {userPoints.toLocaleString()} points /
-        <span className={userPoints >= selectedEntryFee ? '' : 'insufficient-points'}>
-          Entry: {typeof selectedEntryFee === 'number' ? selectedEntryFee : 'N/A'} points
+    <div className="betting-interface">
+      <div className="balance-display">
+        <span className="balance-amount">{userPoints.toLocaleString()} points</span>
+        <span className={`entry-fee ${userPoints >= selectedEntryFee ? '' : 'low-balance'}`}>
+          Entry Fee: {selectedEntryFee?.toLocaleString() || 'N/A'}
         </span>
       </div>
-      
-      {/* Entry Fee Selection */}
-      <div className="entry-fee-selection">
-        <label className="entry-fee-label">Entry Fee:</label>
-        <div className="entry-fee-options">
+
+      <div className="entry-fee-section">
+        <h3 className="fee-select-title">Select Entry Stake</h3>
+        <div className="stake-grid">
           {[100, 200, 500, 1000].map((fee) => (
             <button
               key={fee}
-              className={`entry-fee-option ${selectedEntryFee === fee ? 'selected' : ''}`}
+              className={`stake-option ${selectedEntryFee === fee ? 'active' : ''}`}
               onClick={() => setSelectedEntryFee(fee)}
               disabled={fee > userPoints || !isEventActive}
             >
-              {fee} points
+              {fee.toLocaleString()}
             </button>
           ))}
         </div>
       </div>
-      
-      {/* Error Message */}
+
       {getErrorMessage() && (
-        <div className="form-error">{getErrorMessage()}</div>
+        <div className="error-banner">{getErrorMessage()}</div>
       )}
-      
-      {/* Prediction Buttons */}
-      <div className="prediction-buttons-container">
-        <div className="prediction-options-grid">
+
+      <div className="prediction-section">
+        <div className="prediction-grid">
           {eventOptions.map((option) => (
             <button
               key={option.id || option.value}
-              className={`prediction-button ${selectedPrediction === option.value ? 'selected' : ''} ${option.value.includes('up') ? 'up' : 'down'}`}
+              className={`prediction-card ${selectedPrediction === option.value ? 'selected' : ''} ${
+                option.value.includes('up') ? 'bullish' : 'bearish'
+              }`}
               onClick={() => setSelectedPrediction(option.value)}
               disabled={!canPlaceBet() || betStatus === 'success'}
             >
-              {option.label || option.value}
+              <span className="prediction-label">{option.label || option.value}</span>
+              <span className="odds-indicator">2.5x</span>
             </button>
           ))}
         </div>
+
         <button
-          className="place-bet-button button button-primary"
+          className={`cta-bet-button ${!selectedPrediction ? 'disabled' : ''}`}
           onClick={handleBet}
           disabled={!canPlaceBet() || betStatus === 'success' || !selectedPrediction}
         >
-          Place Bet
+          {selectedPrediction ? `Confirm ${selectedEntryFee}pt Bet` : 'Select Prediction'}
         </button>
       </div>
-      
-      {/* Status Messages */}
+
       {betStatus === 'success' && (
-        <div className="form-success">Bet placed successfully!</div>
-      )}
-      {betStatus === 'error' && (
-        <div className="form-error">Failed to place bet. Try again.</div>
+        <div className="success-overlay">
+          <div className="success-message">
+            <div className="confetti-animation"></div>
+            Bet Placed Successfully!
+          </div>
+        </div>
       )}
     </div>
   );

@@ -17,10 +17,10 @@ export default function ParticipationChart({ eventId }) {
         datasets: [{
           label: 'Participants',
           data: data.map(entry => entry.participation_count),
-          borderColor: 'rgb(59, 130, 246)',
+          borderColor: 'hsl(39, 100%, 50%)',
           tension: 0.1,
           fill: true,
-          backgroundColor: 'rgba(59, 130, 246, 0.2)'
+          backgroundColor: 'hsla(39, 100%, 50%, 0.2)'
         }]
       };
       

@@ -9,7 +9,7 @@ const EventDetail = () => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedEntryFee, setSelectedEntryFee] = useState(event?.entry_fee || 100);
+  const [selectedEntryFee, setSelectedEntryFee] = useState(100);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -60,9 +60,14 @@ const EventDetail = () => {
             </div>
             
             {/* Participation Trend Chart */}
-            <div className="participation-chart">
-              <h3 className="column-title">Participation Trend</h3>
-              <ParticipationChart eventId={id} />
+            <div className="betting-section">
+              <h3 className="column-title">Prize Pool Growth</h3>
+              <div className="chart-container">
+                <ParticipationChart
+                  eventId={id}
+                  style={{ height: '400px', width: '100%' }}
+                />
+              </div>
             </div>
 
             {/* Community Sentiment Pool */}
@@ -138,7 +143,7 @@ const EventDetail = () => {
             <div className="rewards-container">
               <h4 className="rewards-title">Potential Reward</h4>
               <div className="reward-value">
-                ${(selectedEntryFee * 1.8).toFixed(2)}
+                ${(selectedEntryFee * (event.prize_pool / 100)).toFixed(2)}
               </div>
               <div className="reward-note">
                 Based on {selectedEntryFee} SATS entry
