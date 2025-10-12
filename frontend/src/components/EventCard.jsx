@@ -153,7 +153,7 @@ const EventCard = ({ event }) => {
                 try {
                   const options = JSON.parse(event.options);
                   return options.map((option, index) => (
-                    <div key={index} className={`option-chip ${option.value.includes('up') ? 'option-chip-up' : 'option-chip-down'}`}>
+                    <div key={index} className={`action-button option-chip ${option.value.includes('up') ? 'option-chip-up' : 'option-chip-down'}`}>
                       {option.label}
                     </div>
                   ));

@@ -205,7 +205,7 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
           {[100, 200, 500, 1000].map((fee) => (
             <button
               key={fee}
-              className={`stake-option ${selectedEntryFee === fee ? 'active' : ''}`}
+              className={`action-button ${selectedEntryFee === fee ? 'active' : ''}`}
               onClick={() => setSelectedEntryFee(fee)}
               disabled={fee > userPoints || !isEventActive}
             >

@@ -1103,9 +1103,15 @@ button[type="button"]:not(.glow-button):active {
   flex-wrap: wrap;
 }
 
-.entry-fee-option {
-  padding: 12px 20px;
+.action-button {
+  padding: 12px 24px;
   border: 2px solid var(--orange-primary);
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all var(--animation-medium);
+  position: relative;
+  overflow: hidden;
   border-radius: 10px;
   background: rgba(26, 26, 26, 0.8);
   color: var(--dark-text);
@@ -1753,13 +1759,19 @@ button[type="button"]:not(.glow-button):active {
 }
 
 .entry-fee-option {
-  background: rgba(255, 165, 0, 0.05);
-  border: 2px solid rgba(255, 165, 0, 0.2);
+  background: transparent;
+  border: 2px solid var(--orange-primary);
+  color: var(--orange-primary);
+  font-weight: 600;
+  padding: 12px 20px;
   border-radius: 8px;
-  padding: 12px;
-  text-align: center;
-  cursor: pointer;
   transition: all var(--animation-medium);
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
 }
 
 .entry-fee-option.selected {
