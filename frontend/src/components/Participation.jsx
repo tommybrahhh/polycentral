@@ -193,10 +193,15 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
   return (
     <div className="betting-interface">
       <div className="balance-display">
-        <span className="balance-amount">{userPoints.toLocaleString()} points</span>
-        <span className={`entry-fee ${userPoints >= selectedEntryFee ? '' : 'low-balance'}`}>
-          Entry Fee: {selectedEntryFee?.toLocaleString() || 'N/A'}
-        </span>
+        <div className="balance-amount">{userPoints.toLocaleString()} points</div>
+        <div className="fee-breakdown">
+          <span className="entry-fee ${userPoints >= selectedEntryFee ? '' : 'low-balance'}">
+            Entry: {selectedEntryFee?.toLocaleString()}
+          </span>
+          <span className="platform-fee">
+            (5% fee: {Math.floor(selectedEntryFee * 0.05)?.toLocaleString()})
+          </span>
+        </div>
       </div>
 
       <div className="entry-fee-section">
@@ -232,6 +237,9 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
             >
               <span className="prediction-label">{option.label || option.value}</span>
               <span className="odds-indicator">2.5x</span>
+              <div className="fee-disclaimer">
+                * Includes 5% platform fee
+              </div>
             </button>
           ))}
         </div>

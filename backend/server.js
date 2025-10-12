@@ -767,7 +767,15 @@ async function resolvePendingEvents() {
           [event.id]
         );
         
-        const totalPot = potData.total_pot || 0;
+        // Calculate platform fee (5%) and remaining pot
+        const platformFee = Math.floor(totalPot * 0.05);
+        const remainingPot = totalPot - platformFee;
+        
+        // Update event with platform fee
+        await client.query(
+          'UPDATE events SET platform_fee = platform_fee + $1 WHERE id = $2',
+          [platformFee, event.id]
+        );
         
         if (totalPot > 0) {
           // Get all winners with their bet amounts
@@ -783,7 +791,13 @@ async function resolvePendingEvents() {
             // Award proportional share of pot to each winner
             // Record winner outcomes and distribute points
             for (const winner of winners) {
-              const winnerShare = Math.floor((winner.amount / totalWinnerAmount) * totalPot);
+              const winnerShare = Math.floor((winner.amount / totalWinnerAmount) * remainingPot);
+              
+              // Record fee contribution for this participant
+              await client.query(
+                'INSERT INTO platform_fees (event_id, participant_id, fee_amount) VALUES ($1, $2, $3)',
+                [event.id, winner.id, Math.floor(winner.amount * 0.05)]
+              );
               const client = await pool.connect();
               try {
                 await client.query('BEGIN');
@@ -833,7 +847,9 @@ async function resolvePendingEvents() {
                  totalParticipants: participants.rows.length,
                  totalWinners: winners.length,
                  totalPot: totalPot,
+                 platformFee: platformFee,
                  distributed: totalWinnerAmount,
+                 feePerParticipant: Math.floor(winner.amount * 0.05),
                  resolvedAt: new Date().toISOString()
                })]
             );
