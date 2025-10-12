@@ -1,0 +1,114 @@
+.profile-history {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.history-list {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.history-item {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid transparent;
+}
+
+.history-item.win {
+  border-left-color: #4CAF50;
+  background-color: #f8fff8;
+}
+
+.history-item.loss {
+  border-left-color: #f44336;
+  background-color: #fff6f6;
+}
+
+.history-item.pending {
+  border-left-color: #ffc107;
+  background-color: #fffcf5;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.event-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.event-date {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.5rem 0;
+  padding: 0.3rem 0;
+}
+
+.detail-row span:first-child {
+  color: #666;
+}
+
+.detail-row span:last-child {
+  font-weight: 500;
+}
+
+.won .points {
+  color: #4CAF50;
+}
+
+.lost .result {
+  color: #f44336;
+}
+
+.pending .result {
+  color: #ffc107;
+}
+
+.resolution-details {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.price-movement {
+  display: flex;
+  gap: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.correct-answer {
+  margin-top: 0.5rem;
+  font-style: italic;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .profile-history {
+    padding: 1rem;
+  }
+  
+  .event-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .event-date {
+    font-size: 0.8rem;
+  }
+}
