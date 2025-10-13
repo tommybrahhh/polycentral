@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import ProfilePage from './pages/ProfilePage';
 import './index.css';
 import './basic-styles.css';
 import RegisterForm from './RegisterForm';
@@ -172,6 +173,9 @@ const App = () => {
           <div className="nav-container">
             <div className="nav-links">
               <Link to="/events" className="nav-link">Events</Link>
+              {username && (
+                <Link to="/profile" className="nav-link">Profile</Link>
+              )}
             </div>
             {/* --- User Status Display --- */}
             <div className="user-status">
@@ -295,6 +299,7 @@ const App = () => {
         <Routes>
           <Route path="/events" element={<EventList />} />
           <Route path="/events/:id" element={<EventDetail />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/" element={<EventList />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
