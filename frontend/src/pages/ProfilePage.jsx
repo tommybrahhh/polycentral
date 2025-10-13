@@ -8,7 +8,7 @@ import './ProfilePage.css';
 const ProfilePage = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
-  const { data: history } = useFetch('/api/user/event-history');
+  const { data: history } = useFetch('/api/user/history');
   const navigate = useNavigate();
 
   const tabs = [
