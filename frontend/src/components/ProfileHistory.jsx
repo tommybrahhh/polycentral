@@ -4,8 +4,11 @@ import './ProfileHistory.css';
 
 const ProfileHistory = ({ history }) => {
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    return date.toLocaleDateString('en-US', options);
   };
 
   return (
@@ -15,23 +18,23 @@ const ProfileHistory = ({ history }) => {
         {history.map((entry) => (
           <div key={entry.event_id} className={`history-item ${entry.resolution_state}`}>
             <div className="event-header">
-              <span className="event-title">{entry.title}</span>
-              <span className="event-date">{formatDate(entry.end_time)}</span>
+              <span className="event-title">{entry.title || 'Untitled Event'}</span>
+              <span className="event-date">{formatDate(entry.end_time) || 'N/A'}</span>
             </div>
             
             <div className="event-details">
               <div className="detail-row">
                 <span>Prediction:</span>
-                <span className="prediction">{entry.prediction}</span>
+                <span className="prediction">{entry.prediction || 'N/A'}</span>
               </div>
               <div className="detail-row">
                 <span>Entry Fee:</span>
-                <span className="entry-fee">-{entry.entry_fee} pts</span>
+                <span className="entry-fee">-{entry.entry_fee || 0} pts</span>
               </div>
               {entry.resolution_state === 'win' && (
                 <div className="detail-row won">
                   <span>Points Won:</span>
-                  <span className="points">+{entry.points_awarded} pts</span>
+                  <span className="points">+{entry.points_awarded || entry.entry_fee || 0} pts</span>
                 </div>
               )}
               {entry.resolution_state === 'loss' && (
@@ -51,12 +54,12 @@ const ProfileHistory = ({ history }) => {
             {entry.resolution_details && (
               <div className="resolution-details">
                 <div className="price-movement">
-                  <span>Initial Price: ${entry.initial_price}</span>
+                  <span>Initial Price: ${entry.initial_price || 'N/A'}</span>
                   <span> → </span>
-                  <span>Final Price: ${entry.final_price}</span>
+                  <span>Final Price: ${entry.final_price || 'N/A'}</span>
                 </div>
                 <div className="correct-answer">
-                  Correct Prediction: {entry.correct_answer}
+                  Correct Prediction: {entry.correct_answer || 'N/A'}
                 </div>
               </div>
             )}
@@ -71,10 +74,10 @@ ProfileHistory.propTypes = {
   history: PropTypes.arrayOf(
     PropTypes.shape({
       event_id: PropTypes.number.isRequired,
-      title: PropTypes.string.isRequired,
-      end_time: PropTypes.string.isRequired,
-      prediction: PropTypes.string.isRequired,
-      entry_fee: PropTypes.number.isRequired,
+      title: PropTypes.string,
+      end_time: PropTypes.string,
+      prediction: PropTypes.string,
+      entry_fee: PropTypes.number,
       points_awarded: PropTypes.number,
       resolution_state: PropTypes.oneOf(['win', 'loss', 'pending']).isRequired,
       initial_price: PropTypes.number,

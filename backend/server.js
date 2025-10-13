@@ -719,8 +719,9 @@ async function createEvent(initialPrice) {
 // --- Event Resolution Job ---
 async function resolvePendingEvents() {
   try {
-    console.log('Resolving pending events...');
+    console.log('🔍 Resolving pending events...');
     const now = new Date();
+    console.log(`🔍 Resolution timestamp: ${now.toISOString()}`);
     
     // Find events ready for resolution
     const { rows: events } = await pool.query(
@@ -730,15 +731,21 @@ async function resolvePendingEvents() {
     );
 
     if (events.length === 0) {
-      console.log('No pending events to resolve');
+      console.log('🔍 No pending events to resolve');
       return;
     }
 
-    console.log(`Found ${events.length} events to resolve`);
+    console.log(`🔍 Found ${events.length} events to resolve`);
+    console.log(`🔍 Events to resolve: ${events.map(e => e.id).join(', ')}`);
     
     for (const event of events) {
       try {
+        console.log(`🔍 Resolving event ${event.id}...`);
+        console.log(`🔍 Event ${event.id} initial price: $${event.initial_price}`);
+        console.log(`🔍 Event ${event.id} end time: ${event.end_time}`);
+        
         const finalPrice = await coingecko.getHistoricalPrice(process.env.CRYPTO_ID || 'bitcoin', event.end_time);
+        console.log(`🔍 Event ${event.id} final price from CoinGecko: $${finalPrice}`);
         
         // Update event with final price
         await pool.query(
@@ -748,10 +755,11 @@ async function resolvePendingEvents() {
           [finalPrice, event.id]
         );
         
-        console.log(`Resolved event ${event.id} with final price: $${finalPrice}`);
+        console.log(`🔍 Resolved event ${event.id} with final price: $${finalPrice}`);
         
         // Determine outcome based on price range
         const correctAnswer = coingecko.determinePriceRange(event.initial_price, finalPrice);
+        console.log(`🔍 Event ${event.id} correct answer: ${correctAnswer}`);
         
         // Update event with correct answer
         await pool.query(
@@ -762,120 +770,161 @@ async function resolvePendingEvents() {
         );
         
         // Calculate total pot from all participants
+        console.log(`🔍 Calculating total pot for event ${event.id}...`);
         const { rows: [potData] } = await pool.query(
           `SELECT SUM(amount) as total_pot FROM participants WHERE event_id = $1`,
           [event.id]
         );
+        console.log(`🔍 Event ${event.id} total pot: ${potData.total_pot}`);
         
         // Calculate platform fee (5%) and remaining pot
-        const platformFee = Math.floor(totalPot * 0.05);
-        const remainingPot = totalPot - platformFee;
+        const platformFee = Math.floor(potData.total_pot * 0.05);
+        const remainingPot = potData.total_pot - platformFee;
+        console.log(`🔍 Event ${event.id} platform fee (5%): ${platformFee}`);
+        console.log(`🔍 Event ${event.id} remaining pot after fee: ${remainingPot}`);
         
         // Update event with platform fee
-        await client.query(
+        console.log(`🔍 Updating event ${event.id} with platform fee...`);
+        await pool.query(
           'UPDATE events SET platform_fee = platform_fee + $1 WHERE id = $2',
           [platformFee, event.id]
         );
+        console.log(`🔍 Event ${event.id} platform fee updated successfully`);
         
-        if (totalPot > 0) {
-          // Get all winners with their bet amounts
+        if (potData.total_pot > 0) {
+          // Get all winners with their bet amounts and participant IDs
           const { rows: winners } = await pool.query(
-            `SELECT user_id, amount FROM participants WHERE event_id = $1 AND prediction = $2`,
+            `SELECT id, user_id, amount FROM participants WHERE event_id = $1 AND prediction = $2`,
             [event.id, correctAnswer]
           );
           
           if (winners.length > 0) {
             // Calculate total amount bet by winners
+            console.log(`🔍 Event ${event.id} calculating total amount bet by winners...`);
             const totalWinnerAmount = winners.reduce((sum, winner) => sum + winner.amount, 0);
+            console.log(`🔍 Event ${event.id} total amount bet by winners: ${totalWinnerAmount}`);
             
             // Award proportional share of pot to each winner
             // Record winner outcomes and distribute points
             for (const winner of winners) {
+              console.log(`🔍 Calculating share for winner ${winner.user_id} (participant ${winner.id})...`);
+              console.log(`🔍 Winner ${winner.user_id} bet amount: ${winner.amount}`);
               const winnerShare = Math.floor((winner.amount / totalWinnerAmount) * remainingPot);
+              console.log(`🔍 Winner ${winner.user_id} share: ${winnerShare}`);
               
               // Record fee contribution for this participant
-              await client.query(
+              const winnerFee = Math.floor(winner.amount * 0.05);
+              console.log(`🔍 Recording platform fee for winner ${winner.user_id}: ${winnerFee}`);
+              await pool.query(
                 'INSERT INTO platform_fees (event_id, participant_id, fee_amount) VALUES ($1, $2, $3)',
-                [event.id, winner.id, Math.floor(winner.amount * 0.05)]
+                [event.id, winner.id, winnerFee]
               );
+              
+              
+              // Use a transaction for each winner to ensure consistency
               const client = await pool.connect();
               try {
+                console.log(`🔍 Distributing points to winner ${winner.user_id}...`);
                 await client.query('BEGIN');
                 
                 // Update user points
+                console.log(`🔍 Adding ${winnerShare} points to user ${winner.user_id}`);
                 await client.query(
                   `UPDATE users SET points = points + $1 WHERE id = $2`,
                   [winnerShare, winner.user_id]
                 );
                 
                 // Record winning outcome
+                console.log(`🔍 Recording winning outcome for participant ${winner.id}`);
                 await client.query(
                   `INSERT INTO event_outcomes (participant_id, result, points_awarded)
                    VALUES ($1, 'win', $2)`,
                   [winner.id, winnerShare]
                 );
                 
+                // Add diagnostic logging
+                console.log(`🔍 Inserted event_outcome for winner: participant_id=${winner.id}, result=win, points_awarded=${winnerShare}`);
+                
                 await client.query('COMMIT');
+                console.log(`🔍 Transaction committed for winner ${winner.user_id}`);
               } catch (error) {
                 await client.query('ROLLBACK');
-                throw error;
+                console.log(`❌ Transaction rolled back for winner ${winner.user_id} due to error:`, error);
+                // Continue with other winners even if one fails
+                continue;
               } finally {
                 client.release();
               }
             }
 
             // Record losing outcomes
+            console.log(`🔍 Identifying losers for event ${event.id}`);
             const losers = await pool.query(
-              `SELECT p.id FROM participants p
+              `SELECT p.id, p.user_id FROM participants p
                WHERE p.event_id = $1 AND p.prediction != $2`,
               [event.id, correctAnswer]
             );
+            console.log(`🔍 Event ${event.id} losers found: ${losers.rows.length}`);
             
             for (const loser of losers.rows) {
+              console.log(`🔍 Recording losing outcome for participant ${loser.id} (user ${loser.user_id})`);
               await pool.query(
                 `INSERT INTO event_outcomes (participant_id, result, points_awarded)
                  VALUES ($1, 'loss', 0)`,
                 [loser.id]
               );
+              
+              // Add diagnostic logging
+              console.log(`🔍 Inserted event_outcome for loser: participant_id=${loser.id}, result=loss, points_awarded=0`);
             }
 
+            // Get all participants for the audit log
+            console.log(`🔍 Getting all participants for audit log of event ${event.id}`);
+            const { rows: participants } = await pool.query(
+              'SELECT * FROM participants WHERE event_id = $1',
+              [event.id]
+            );
+            console.log(`🔍 Event ${event.id} total participants: ${participants.length}`);
+            
             // Add audit log entry
+            console.log(`🔍 Adding audit log entry for event ${event.id}`);
             await pool.query(
               `INSERT INTO audit_logs (event_id, action, details)
                VALUES ($1, 'event_resolution', $2)`,
               [event.id, JSON.stringify({
-                 totalParticipants: participants.rows.length,
+                 totalParticipants: participants.length,
                  totalWinners: winners.length,
-                 totalPot: totalPot,
+                 totalPot: potData.total_pot,
                  platformFee: platformFee,
-                 distributed: totalWinnerAmount,
-                 feePerParticipant: Math.floor(winner.amount * 0.05),
+                 distributed: remainingPot,
+                 feePerParticipant: winners.length > 0 ? Math.floor(winners[0].amount * 0.05) : 0,
                  resolvedAt: new Date().toISOString()
                })]
             );
+            console.log(`🔍 Audit log entry added for event ${event.id}`);
             
-            console.log(`Distributed ${totalPot} points to ${winners.length} winners for event ${event.id}`);
+            console.log(`✅ Distributed ${potData.total_pot} points to ${winners.length} winners for event ${event.id}`);
           } else {
-            console.log(`No winners for event ${event.id}, pot not distributed`);
+            console.log(`🔍 No winners for event ${event.id}, pot not distributed`);
           }
         } else {
-          console.log(`Event ${event.id} has no pot to distribute`);
+          console.log(`🔍 Event ${event.id} has no pot to distribute`);
         }
       } catch (error) {
         // --- START OF NEW, MORE DETAILED LOGGING ---
         if (error.response) {
             // This means the CoinGecko server responded with an error (like 429)
-            console.error(`Failed to resolve event ${event.id}. API Error: Status ${error.response.status} - ${error.response.statusText}. Data:`, error.response.data);
+            console.error(`❌ Failed to resolve event ${event.id}. API Error: Status ${error.response.status} - ${error.response.statusText}. Data:`, error.response.data);
             // We'll skip this event for now and let the cron job try again later.
         } else {
             // This is for other errors, like a network failure
-            console.error(`Failed to resolve event ${event.id} with a non-API error:`, error.message);
+            console.error(`❌ Failed to resolve event ${event.id} with a non-API error:`, error.message);
         }
         // --- END OF NEW LOGGING ---
       }
     }
   } catch (error) {
-    console.error('Error in resolvePendingEvents:', error);
+    console.error('❌ Error in resolvePendingEvents:', error);
   }
 }
 
@@ -926,6 +975,29 @@ const authenticateToken = (req, res, next) => {
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
 app.get('/', (req, res) => res.json({ status: 'OK' }));
+
+// Temporary debug endpoint to check users
+app.get('/api/debug/users', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id, username, email, points FROM users LIMIT 10');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Temporary debug endpoint to generate a test token
+app.get('/api/debug/token/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const token = jwt.sign({ userId: parseInt(userId) }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '7d' });
+    res.json({ token, userId });
+  } catch (error) {
+    console.error('Error generating token:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 app.post('/api/auth/register', async (req, res) => {
   console.log('Registration request received:', req.body);
@@ -2016,6 +2088,19 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     
+    // First, let's check what participants this user has
+    const participantCheck = await pool.query(
+      `SELECT id, event_id, prediction, amount FROM participants WHERE user_id = $1`,
+      [userId]
+    );
+    console.log(`Participants for user ${userId}:`, JSON.stringify(participantCheck.rows, null, 2));
+    
+    // Then check what's in the event_outcomes table for debugging
+    const outcomeCheck = await pool.query(
+      `SELECT * FROM event_outcomes LIMIT 10`
+    );
+    console.log('Event outcomes table contents (first 10 rows):', JSON.stringify(outcomeCheck.rows, null, 2));
+    
     const { rows } = await pool.query(
       `SELECT
          e.id AS event_id,
@@ -2048,6 +2133,9 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
        ORDER BY e.start_time DESC`,
       [userId]
     );
+    
+    // Add diagnostic logging
+    console.log(`User history query for user ${userId}:`, JSON.stringify(rows, null, 2));
     
     res.json(rows);
   } catch (error) {
