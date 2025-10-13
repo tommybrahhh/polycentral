@@ -19,21 +19,33 @@ const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
 module.exports = {
   async getCurrentPrice(cryptoId) {
     return withRetry(async () => {
-      const response = await axios.get(`${API_URL}/simple/price`, {
-        params: {
-          ids: cryptoId,
-          vs_currencies: 'usd'
-        },
-        headers: {
-          'x-cg-demo-api-key': API_KEY
+      try {
+        const response = await axios.get(`${API_URL}/simple/price`, {
+          params: {
+            ids: cryptoId,
+            vs_currencies: 'usd'
+          },
+          headers: {
+            'x-cg-demo-api-key': API_KEY
+          },
+          timeout: 10000 // 10 second timeout
+        });
+        
+        if (!response.data[cryptoId]) {
+          throw new Error(`No price data for ${cryptoId}`);
         }
-      });
-      
-      if (!response.data[cryptoId]) {
-        throw new Error(`No price data for ${cryptoId}`);
+        
+        return response.data[cryptoId].usd;
+      } catch (error) {
+        console.error('CoinGecko API error:', {
+          message: error.message,
+          code: error.code,
+          status: error.response?.status,
+          data: error.response?.data,
+          timestamp: new Date().toISOString()
+        });
+        throw error;
       }
-      
-      return response.data[cryptoId].usd;
     });
   },
 

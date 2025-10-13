@@ -2162,26 +2162,6 @@ app.post('/api/events/resolve', authenticateAdmin, async (req, res) => {
 
 cron.schedule('0 * * * *', () => resolvePendingEvents()); // Run hourly at minute 0
 
-app.use((err, req, res, next) => {
-    console.error('💥 Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-});
-
-app.use((req, res) => {
-    console.log('404 - Endpoint not found:', req.method, req.originalUrl);
-    res.status(404).json({
-      error: 'Endpoint not found',
-      path: req.originalUrl,
-      availableRoutes: [
-        '/api/health',
-        '/api/events/active',
-        '/api/events',
-        '/api/auth/register',
-        '/api/auth/login'
-      ]
-    });
-});
-
 // --- Initial Event Creation Function ---
 async function createInitialEvent() {
   try {
@@ -2200,21 +2180,46 @@ async function createInitialEvent() {
 }
 
 // --- Daily Event Creation Function ---
+// Add monitoring variables
+let lastEventCreationAttempt = null;
+let lastEventCreationSuccess = null;
+
 async function createDailyEvent() {
+  lastEventCreationAttempt = new Date();
+  
   try {
     console.log('Creating daily Bitcoin prediction event...');
     const currentPrice = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
     console.log('Daily event creation triggered with price:', currentPrice);
     await createEvent(currentPrice);
     console.log("Created new Bitcoin event with initial price: $" + currentPrice);
+    lastEventCreationSuccess = new Date();
   } catch (error) {
-    console.error('Error creating daily event:', error);
+    console.error('Error creating daily event:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Try fallback with default price
+    try {
+      console.log('Attempting fallback event creation with default price...');
+      await createEvent(50000); // Default price
+      console.log("Created fallback Bitcoin event with default price: $50000");
+      lastEventCreationSuccess = new Date();
+    } catch (fallbackError) {
+      console.error('Fallback event creation also failed:', {
+        message: fallbackError.message,
+        stack: fallbackError.stack,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 }
 
 // Schedule cron jobs
-cron.schedule('0 0 * * *', createDailyEvent);
-cron.schedule('0 0 * * *', resolvePendingEvents); // This means "at minute 0 of every hour"
+cron.schedule('0 0 * * *', createDailyEvent); // Run daily at midnight UTC
+cron.schedule('0 0 * * *', resolvePendingEvents); // Run daily at midnight UTC
 
 
 // --- Admin Manual Event Creation Endpoint ---
@@ -2228,6 +2233,17 @@ app.post('/api/admin/events/create', authenticateAdmin, async (req, res) => {
     console.error('Admin event creation failed:', error);
     res.status(500).json({ error: 'Failed to create event' });
   }
+});
+
+// Add monitoring endpoint for event creation status
+app.get('/api/admin/events/status', authenticateAdmin, async (req, res) => {
+  // Reference the global variables (defined near createDailyEvent)
+  res.json({
+    lastAttempt: lastEventCreationAttempt,
+    lastSuccess: lastEventCreationSuccess,
+    timeSinceLastAttempt: lastEventCreationAttempt ? Date.now() - lastEventCreationAttempt.getTime() : null,
+    timeSinceLastSuccess: lastEventCreationSuccess ? Date.now() - lastEventCreationSuccess.getTime() : null
+  });
 });
 
 async function startServer() {
@@ -2338,6 +2354,28 @@ async function startServerOnAvailablePort() {
 }
 
 startServer();
+
+app.use((err, req, res, next) => {
+    console.error('💥 Server error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+});
+
+app.use((req, res) => {
+    console.log('404 - Endpoint not found:', req.method, req.originalUrl);
+    res.status(404).json({
+      error: 'Endpoint not found',
+      path: req.originalUrl,
+      availableRoutes: [
+        '/api/health',
+        '/api/events/active',
+        '/api/events',
+        '/api/auth/register',
+        '/api/auth/login',
+        '/api/admin/events/create',
+        '/api/admin/events/status'
+      ]
+    });
+});
 
 process.on('SIGINT', () => {
     console.log("\nShutting down server...");
