@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const LoginForm = ({ onClose }) => {
+const LoginForm = ({ onClose, onAuthentication }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -66,7 +66,14 @@ const LoginForm = ({ onClose }) => {
         // Store user info in localStorage
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Update app state
+        // Update app state through callback
+        if (onAuthentication) {
+          console.log('Calling onAuthentication callback with:', data.user);
+          onAuthentication(data.user);
+          console.log('onAuthentication callback executed');
+        }
+        
+        // Close the modal
         if (onClose) onClose();
       } else {
         const errorData = await response.json();

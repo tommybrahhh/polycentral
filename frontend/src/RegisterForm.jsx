@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const RegisterForm = ({ onClose }) => {
+const RegisterForm = ({ onClose, onAuthentication }) => {
   const [showModal, setShowModal] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
@@ -113,9 +113,16 @@ const RegisterForm = ({ onClose }) => {
         // Store user info in localStorage
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Update app state to reflect logged-in user
-        // The App component will handle this via context or state
-        navigate('/events');
+        // Update app state through callback
+        if (onAuthentication) {
+          console.log('Calling onAuthentication callback with:', data.user);
+          onAuthentication(data.user);
+          console.log('onAuthentication callback executed');
+        }
+        
+        // Close the modal
+        if (onClose) onClose();
+        
       } else {
         const errorData = await response.json();
         

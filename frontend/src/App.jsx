@@ -17,6 +17,14 @@ const App = () => {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // Handle authentication updates from login/register forms
+  const handleAuthentication = (userData) => {
+    console.log('handleAuthentication called with:', userData);
+    setUsername(userData.username);
+    setPoints(userData.points);
+    console.log('Username and points updated in state');
+  };
+
   // This function checks if a wallet is connected when the app loads
   const checkIfWalletIsConnected = async () => {
     try {
@@ -306,10 +314,10 @@ const App = () => {
       </div>
       
       {showRegisterModal && (
-        <RegisterForm onClose={() => setShowRegisterModal(false)} />
+        <RegisterForm onClose={() => setShowRegisterModal(false)} onAuthentication={handleAuthentication} />
       )}
       {showLoginModal && (
-        <LoginForm onClose={() => setShowLoginModal(false)} />
+        <LoginForm onClose={() => setShowLoginModal(false)} onAuthentication={handleAuthentication} />
       )}
       
       {/* Particle effect container */}
