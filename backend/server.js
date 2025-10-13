@@ -2246,6 +2246,97 @@ app.get('/api/admin/events/status', authenticateAdmin, async (req, res) => {
   });
 });
 
+// Admin endpoint to get total platform fees
+app.get('/api/admin/platform-fees/total', authenticateAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT COALESCE(SUM(platform_fee), 0) as total_fees FROM events');
+    const totalFees = parseInt(result.rows[0].total_fees) || 0;
+    res.json({ total_platform_fees: totalFees });
+  } catch (error) {
+    console.error('Error fetching total platform fees:', error);
+    res.status(500).json({ error: 'Failed to fetch total platform fees' });
+  }
+});
+
+// Admin endpoint to transfer platform fees to a user
+app.post('/api/admin/platform-fees/transfer', authenticateAdmin, async (req, res) => {
+  const { userId, amount, reason } = req.body;
+  
+  // Validate input
+  if (!userId || !amount) {
+    return res.status(400).json({ error: 'userId and amount are required' });
+  }
+  
+  if (typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ error: 'amount must be a positive number' });
+  }
+  
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Get total platform fees
+    const totalFeesResult = await client.query('SELECT COALESCE(SUM(platform_fee), 0) as total_fees FROM events');
+    const totalFees = parseInt(totalFeesResult.rows[0].total_fees) || 0;
+    
+    if (amount > totalFees) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Insufficient platform fees',
+        available: totalFees
+      });
+    }
+    
+    // Check if user exists
+    const userResult = await client.query('SELECT id, username, points FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = userResult.rows[0];
+    const userBeforePoints = user.points;
+    
+    // Transfer points to user
+    await client.query(
+      'UPDATE users SET points = points + $1 WHERE id = $2',
+      [amount, userId]
+    );
+    
+    // Log the transfer in audit_logs
+    await client.query(
+      `INSERT INTO audit_logs (action, details) VALUES ('platform_fee_transfer', $1)`,
+      [JSON.stringify({
+        admin_id: req.adminId || 'unknown',
+        user_id: userId,
+        user_username: user.username,
+        amount: amount,
+        reason: reason || 'Admin transfer',
+        user_points_before: userBeforePoints,
+        user_points_after: userBeforePoints + amount,
+        timestamp: new Date().toISOString()
+      })]
+    );
+    
+    await client.query('COMMIT');
+    
+    res.json({
+      success: true,
+      amount_transferred: amount,
+      user_id: userId,
+      user_username: user.username,
+      user_points_before: userBeforePoints,
+      user_points_after: userBeforePoints + amount
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error transferring platform fees:', error);
+    res.status(500).json({ error: 'Failed to transfer platform fees' });
+  } finally {
+    client.release();
+  }
+});
+
 async function startServer() {
   try {
     // Initialize database before starting server
@@ -2372,7 +2463,9 @@ app.use((req, res) => {
         '/api/auth/register',
         '/api/auth/login',
         '/api/admin/events/create',
-        '/api/admin/events/status'
+        '/api/admin/events/status',
+        '/api/admin/platform-fees/total',
+        '/api/admin/platform-fees/transfer'
       ]
     });
 });
