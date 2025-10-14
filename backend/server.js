@@ -1991,7 +1991,7 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
           if (hoursSinceLastClaim < 24) {
             console.log('User attempted to claim points within 24 hours');
             return res.status(400).json({
-              error: 'You can only claim free points once every 24 hours',
+              error: 'You already claimed free points today',
               hoursRemaining: Math.ceil(24 - hoursSinceLastClaim),
               lastClaimed: lastClaimed,
               currentTime: now
