@@ -9,13 +9,17 @@ const ProfilePage = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
   const { data: history } = useFetch('/api/user/history');
-  const { data: userData } = useFetch('/api/user/profile');
+  const { data: userData } = useFetch('/api/user/profile', {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    }
+  });
   const navigate = useNavigate();
 
   const tabs = [
     { id: 'account', label: 'Account Settings' },
     { id: 'activity', label: 'Activity History' },
-    ...(userData?.is_admin ? [{ id: 'controlpanel', label: 'Control Panel' }] : [])
+    ...(userData?.is_admin ? [{ id: 'controlpanel', label: 'Control Panel' }] : []),
   ];
 
   return (

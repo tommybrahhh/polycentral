@@ -57,6 +57,32 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 8080;
 
+// Middleware to authenticate admin API key
+const authenticateAdmin = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    // Verify JWT token first
+    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
+        if (err) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+
+        // Check if user is admin
+        const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [user.userId]);
+        if (rows.length === 0 || !rows[0].is_admin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        req.userId = user.userId;
+        next();
+    });
+};
+
+// Create admin router and apply middleware
+const adminRouter = express.Router();
+adminRouter.use(authenticateAdmin);
+
 // --- Middleware Setup ---
 app.use(helmet());
 // Set allowed origins for CORS
@@ -102,6 +128,9 @@ app.use((req, res, next) => {
   }
 });
 app.use(express.urlencoded({ extended: true }));
+
+// Mount admin router
+app.use('/api/admin', adminRouter);
 
 // --- Database Setup ---
 const fs = require('fs').promises;
@@ -947,28 +976,6 @@ async function resolvePendingEvents() {
 
 // --- API Routes, Cron Job, and Server Startup ---
 // (I am including the full working code below for completeness)
-
-// Middleware to authenticate admin API key
-const authenticateAdmin = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    // Verify JWT token first
-    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
-        if (err) {
-            return res.status(401).json({ error: 'Invalid token' });
-        }
-
-        // Check if user is admin
-        const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [user.userId]);
-        if (rows.length === 0 || !rows[0].is_admin) {
-            return res.status(403).json({ error: 'Admin access required' });
-        }
-
-        req.userId = user.userId;
-        next();
-    });
-};
 
 const authenticateToken = (req, res, next) => {
     console.log('Authentication middleware called for path:', req.originalUrl);
@@ -2249,7 +2256,7 @@ cron.schedule('0 0 * * *', resolvePendingEvents); // Run daily at midnight UTC
 
 // --- Admin Manual Event Creation Endpoint ---
 // This endpoint allows admin to manually trigger event creation
-app.post('/api/admin/events/create', authenticateAdmin, async (req, res) => {
+adminRouter.post('/events/create', async (req, res) => {
   try {
     console.log('Admin manually triggering event creation...');
     await createDailyEvent();
@@ -2272,7 +2279,7 @@ app.get('/api/admin/events/status', authenticateAdmin, async (req, res) => {
 });
 
 // Admin endpoint to get total platform fees
-app.get('/api/admin/platform-fees/total', authenticateAdmin, async (req, res) => {
+adminRouter.get('/platform-fees/total', async (req, res) => {
   try {
     const result = await pool.query('SELECT COALESCE(SUM(platform_fee), 0) as total_fees FROM events');
     const totalFees = parseInt(result.rows[0].total_fees) || 0;
@@ -2284,7 +2291,7 @@ app.get('/api/admin/platform-fees/total', authenticateAdmin, async (req, res) =>
 });
 
 // Admin endpoint to transfer platform fees to a user
-app.post('/api/admin/platform-fees/transfer', authenticateAdmin, async (req, res) => {
+adminRouter.post('/platform-fees/transfer', async (req, res) => {
   const { userId, amount, reason } = req.body;
   
   // Validate input
@@ -2359,6 +2366,42 @@ app.post('/api/admin/platform-fees/transfer', authenticateAdmin, async (req, res
     res.status(500).json({ error: 'Failed to transfer platform fees' });
   } finally {
     client.release();
+  }
+});
+
+/**
+ * @api {get} /api/admin/metrics Get platform metrics
+ * @apiName GetMetrics
+ * @apiGroup Admin
+ * @apiHeader {String} Authorization Admin access token
+ *
+ * @apiSuccess {Number} totalEvents Total number of events
+ * @apiSuccess {Number} activeEvents Number of active events (unresolved)
+ * @apiSuccess {Number} completedEvents Number of completed events
+ * @apiSuccess {Number} totalFees Total platform fees collected
+ */
+adminRouter.get('/metrics', async (req, res) => {
+  try {
+    const totalEventsQuery = await pool.query('SELECT COUNT(*) FROM events');
+    const activeEventsQuery = await pool.query(
+      'SELECT COUNT(*) FROM events WHERE "resolvedAt" IS NULL'
+    );
+    const completedEventsQuery = await pool.query(
+      'SELECT COUNT(*) FROM events WHERE "resolvedAt" IS NOT NULL'
+    );
+    const totalFeesQuery = await pool.query(
+      'SELECT COALESCE(SUM("platformFee"), 0) FROM events'
+    );
+
+    res.json({
+      totalEvents: parseInt(totalEventsQuery.rows[0].count),
+      activeEvents: parseInt(activeEventsQuery.rows[0].count),
+      completedEvents: parseInt(completedEventsQuery.rows[0].count),
+      totalFees: parseInt(totalFeesQuery.rows[0].coalesce)
+    });
+  } catch (error) {
+    console.error('Error fetching metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch metrics' });
   }
 });
 
