@@ -1,6 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const { Pool } = require('pg');
 const app = express();
+
+// Database connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Trust Railway proxy
 app.set('trust proxy', 1);
@@ -9,6 +16,12 @@ app.set('trust proxy', 1);
 console.log('🔧 Environment Variables:');
 console.log('CORS_ORIGINS:', process.env.CORS_ORIGINS);
 console.log('NODE_ENV:', process.env.NODE_ENV);
+
+// Validate required environment variables
+if (!process.env.DATABASE_URL) {
+  console.error('❌ FATAL ERROR: DATABASE_URL environment variable is required');
+  process.exit(1);
+}
 
 // Configure CORS with environment variables and debug logging
 const allowedOrigins = process.env.CORS_ORIGINS?.split(',')?.map(o => o.trim()) || [
@@ -53,6 +66,10 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Database integrity checks
+function getDatabaseType() {
+  return process.env.DATABASE_URL?.includes('postgres') ? 'postgres' : 'sqlite';
+}
+
 async function ensurePlatformFeesTableIntegrity() {
   const dbType = getDatabaseType();
   if (dbType !== 'sqlite') return; // Only needed for SQLite
