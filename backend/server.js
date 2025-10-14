@@ -2384,13 +2384,15 @@ adminRouter.get('/metrics', async (req, res) => {
   try {
     const totalEventsQuery = await pool.query('SELECT COUNT(*) FROM events');
     const activeEventsQuery = await pool.query(
-      'SELECT COUNT(*) FROM events WHERE "resolvedAt" IS NULL'
+      'SELECT COUNT(*) FROM events WHERE resolution_status = $1',
+      ['pending']
     );
     const completedEventsQuery = await pool.query(
-      'SELECT COUNT(*) FROM events WHERE "resolvedAt" IS NOT NULL'
+      'SELECT COUNT(*) FROM events WHERE resolution_status = $1',
+      ['resolved']
     );
     const totalFeesQuery = await pool.query(
-      'SELECT COALESCE(SUM("platformFee"), 0) FROM events'
+      'SELECT COALESCE(SUM(platform_fee), 0) FROM events'
     );
 
     res.json({
