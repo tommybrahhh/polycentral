@@ -2518,6 +2518,41 @@ adminRouter.get('/events', async (req, res) => {
   }
 });
 
+// Admin endpoint to get event participants
+adminRouter.get('/events/:id/participants', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    
+    // Validate event ID
+    if (!eventId || isNaN(eventId)) {
+      return res.status(400).json({ error: 'Invalid event ID' });
+    }
+
+    // Get participants for the event with user information
+    const { rows: participants } = await pool.query(`
+      SELECT
+        p.id,
+        p.user_id,
+        u.username,
+        p.prediction,
+        p.amount,
+        p.created_at,
+        o.result as outcome,
+        o.points_awarded
+      FROM participants p
+      LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN event_outcomes o ON p.id = o.participant_id
+      WHERE p.event_id = $1
+      ORDER BY p.created_at DESC
+    `, [eventId]);
+
+    res.json(participants);
+  } catch (error) {
+    console.error('Error fetching event participants:', error);
+    res.status(500).json({ error: 'Failed to fetch event participants' });
+  }
+});
+
 // Admin endpoint for event templates (placeholder - returns empty array for now)
 adminRouter.get('/event-templates', async (req, res) => {
   try {
