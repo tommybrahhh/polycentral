@@ -4,7 +4,7 @@ import useFetch from '../../hooks/useFetch';
 import adminApi from '../../services/adminApi';
 import { useNavigate } from 'react-router-dom';
 
-const AdminControlPanel = ({ setActiveTab }) => {
+const AdminControlPanel = () => {
   const navigate = useNavigate();
   const { data: users } = useFetch(() => getAllUsers());
   const { data: events, refetch: refetchEvents } = useFetch(() => getAllEvents());
@@ -40,8 +40,8 @@ const AdminControlPanel = ({ setActiveTab }) => {
     }).format(amount || 0);
 
   const handleResolveEvents = () => {
-    // Directly set the active tab to events
-    setActiveTab('events');
+    // Navigate to admin dashboard with events tab active
+    navigate('/admin?tab=events');
   };
 
   return (

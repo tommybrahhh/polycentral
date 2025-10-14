@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlatformFeesManagement from './PlatformFeesManagement';
 import UserManagement from './UserManagement';
 import EventManagement from './EventManagement';
 import useFetch from '../../hooks/useFetch';
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('fees');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'fees');
   const navigate = useNavigate();
   
   // Check if user is admin
@@ -28,6 +29,11 @@ const AdminDashboard = () => {
       window.removeEventListener('admin-tab-change', handleTabChange);
     };
   }, [userProfile, loading, error, navigate]);
+
+  // Update URL when tab changes
+  useEffect(() => {
+    navigate(`?tab=${activeTab}`, { replace: true });
+  }, [activeTab, navigate]);
 
   if (loading) return <div className="loading">Loading admin dashboard...</div>;
   if (error) return <div className="error">Error loading admin dashboard: {error}</div>;
