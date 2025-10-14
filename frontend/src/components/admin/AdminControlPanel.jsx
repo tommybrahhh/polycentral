@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { getAllUsers, getAllEvents, getPlatformFeesTotal, resolveEvent } from '../../services/adminApi';
 import useFetch from '../../hooks/useFetch';
 import adminApi from '../../services/adminApi';
+import { useNavigate } from 'react-router-dom';
 
 const AdminControlPanel = () => {
+  const navigate = useNavigate();
   const { data: users } = useFetch(() => getAllUsers());
   const { data: events, refetch: refetchEvents } = useFetch(() => getAllEvents());
   const { data: platformFees } = useFetch(() => getPlatformFeesTotal());
@@ -37,9 +39,25 @@ const AdminControlPanel = () => {
       currency: 'USD',
     }).format(amount || 0);
 
+  const handleResolveEvents = () => {
+    // Navigate to event management tab
+    const event = new CustomEvent('admin-tab-change', { detail: 'events' });
+    window.dispatchEvent(event);
+  };
+
   return (
     <div className="admin-control-panel p-6 space-y-6">
-      <h3 className="text-2xl font-bold text-gray-800">Admin Metrics Dashboard</h3>
+      <div className="flex justify-between items-center">
+        <h3 className="text-2xl font-bold text-gray-800">Admin Metrics Dashboard</h3>
+        {metrics?.pendingEvents > 0 && (
+          <button
+            onClick={handleResolveEvents}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+          >
+            Resolve Pending Events ({metrics.pendingEvents})
+          </button>
+        )}
+      </div>
 
       {error && (
         <div className="p-4 bg-red-50 text-red-700 rounded-lg">

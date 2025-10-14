@@ -16,6 +16,17 @@ const AdminDashboard = () => {
     if (!loading && !error && userProfile && !userProfile.is_admin) {
       navigate('/');
     }
+
+    // Listen for tab change events from other components
+    const handleTabChange = (event) => {
+      setActiveTab(event.detail);
+    };
+
+    window.addEventListener('admin-tab-change', handleTabChange);
+    
+    return () => {
+      window.removeEventListener('admin-tab-change', handleTabChange);
+    };
   }, [userProfile, loading, error, navigate]);
 
   if (loading) return <div className="loading">Loading admin dashboard...</div>;

@@ -2580,12 +2580,17 @@ adminRouter.get('/metrics', async (req, res) => {
     const totalFeesQuery = await pool.query(
       'SELECT COALESCE(SUM(platform_fee), 0) FROM events'
     );
+    const pendingEventsQuery = await pool.query(
+      'SELECT COUNT(*) FROM events WHERE resolution_status = $1 AND end_time < NOW()',
+      ['pending']
+    );
 
     res.json({
       totalEvents: parseInt(totalEventsQuery.rows[0].count),
       activeEvents: parseInt(activeEventsQuery.rows[0].count),
       completedEvents: parseInt(completedEventsQuery.rows[0].count),
-      totalFees: parseInt(totalFeesQuery.rows[0].coalesce)
+      totalFees: parseInt(totalFeesQuery.rows[0].coalesce),
+      pendingEvents: parseInt(pendingEventsQuery.rows[0].count)
     });
   } catch (error) {
     console.error('Error fetching metrics:', error);
