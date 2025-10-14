@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, getUserDetails, adjustUserPoints, updateUserRole, suspendUser, resetUserClaims } from '../../services/adminApi';
 
-const UserManagement = () => {
+const UserManagement = ({ activeTab, setActiveTab }) => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [loading, setLoading] = useState(true);

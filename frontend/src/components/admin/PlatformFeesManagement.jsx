@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getPlatformFeesTotal, getPlatformFeesHistory, transferPlatformFees, getPlatformFeesRules, updatePlatformFeesRules } from '../../services/adminApi';
 
-const PlatformFeesManagement = () => {
+const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
   const [totalFees, setTotalFees] = useState(0);
   const [transferHistory, setTransferHistory] = useState([]);
   const [feesRules, setFeesRules] = useState({});

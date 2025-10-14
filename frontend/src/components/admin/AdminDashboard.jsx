@@ -61,7 +61,7 @@ const AdminDashboard = () => {
       </div>
       
       <div className="admin-content">
-        <ActiveComponent />
+        <ActiveComponent activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
     </div>
   );

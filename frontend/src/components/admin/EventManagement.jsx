@@ -14,7 +14,7 @@ import {
   deleteEventTemplate
 } from '../../services/adminApi';
 
-const EventManagement = () => {
+const EventManagement = ({ activeTab, setActiveTab }) => {
   const [events, setEvents] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
