@@ -950,14 +950,24 @@ async function resolvePendingEvents() {
 
 // Middleware to authenticate admin API key
 const authenticateAdmin = (req, res, next) => {
-    
-
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token || token !== process.env.ADMIN_API_KEY) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
+    
+    // Verify JWT token first
+    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
+        if (err) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+
+        // Check if user is admin
+        const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [user.userId]);
+        if (rows.length === 0 || !rows[0].is_admin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        req.userId = user.userId;
+        next();
+    });
 };
 
 const authenticateToken = (req, res, next) => {
