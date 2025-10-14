@@ -6,11 +6,26 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Enhanced CORS configuration
+console.log('🔧 Environment Variables:');
+console.log('CORS_ORIGINS:', process.env.CORS_ORIGINS);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
+// Configure CORS with environment variables and debug logging
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',')?.map(o => o.trim()) || [];
+console.log('🔧 Allowed CORS Origins:', allowedOrigins);
+
+// Configure CORS middleware
+
 const corsOptions = {
-  origin: [
-    'https://polyc-seven.vercel.app',
-    'https://polycentral-production.up.railway.app'
-  ],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      console.log(`✅ Allowing request from: ${origin}`);
+      callback(null, true);
+    } else {
+      console.log(`❌ Blocking request from: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
@@ -19,9 +34,14 @@ const corsOptions = {
     'X-HTTP-Method-Override'
   ],
   credentials: true,
-  preflightContinue: false,
   optionsSuccessStatus: 204
 };
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`🌐 ${new Date().toISOString()} ${req.method} ${req.path} from ${req.headers.origin}`);
+  next();
+});
 
 app.use(cors(corsOptions));
 
