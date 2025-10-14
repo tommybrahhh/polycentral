@@ -2,13 +2,31 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// Configure CORS middleware
-app.use(cors({
-  origin: 'https://polyc-seven.vercel.app',
+// Trust Railway proxy
+app.set('trust proxy', 1);
+
+// Enhanced CORS configuration
+const corsOptions = {
+  origin: [
+    'https://polyc-seven.vercel.app',
+    'https://polycentral-production.up.railway.app'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'X-HTTP-Method-Override'
+  ],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
 // Database integrity checks
 async function ensurePlatformFeesTableIntegrity() {
