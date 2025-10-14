@@ -62,12 +62,27 @@ app.use(helmet());
 // Set allowed origins for CORS
 const raw = process.env.CORS_ORIGIN || 'https://polycentral-production.up.railway.app,https://polyc-seven.vercel.app,http://localhost:5173';
 const allowedOrigins = raw.split(',').map(o => o.trim()).filter(Boolean);
+
+console.log('✅ CORS allowed origins configured:', allowedOrigins);
+
 app.use(cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+        // Log the incoming origin for debugging
+        console.log('CORS check: Incoming request origin:', origin);
+
+        // Allow requests with no origin (like mobile apps or curl requests)
+        // or if the origin is in our allowed list
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.error('❌ CORS Error: Origin not allowed:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200 // For legacy browser support
 }));
 app.use((req, res, next) => {
     const start = Date.now();
