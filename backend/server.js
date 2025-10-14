@@ -1,4 +1,16 @@
-// Ensure platform_fees table has the correct structure
+const express = require('express');
+const cors = require('cors');
+const app = express();
+
+// Configure CORS middleware
+app.use(cors({
+  origin: 'https://polyc-seven.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Database integrity checks
 async function ensurePlatformFeesTableIntegrity() {
   const dbType = getDatabaseType();
   if (dbType !== 'sqlite') return; // Only needed for SQLite
