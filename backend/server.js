@@ -1991,7 +1991,7 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
           if (hoursSinceLastClaim < 24) {
             console.log('User attempted to claim points within 24 hours');
             return res.status(400).json({
-              error: 'You already claimed free points today',
+              message: 'You already claimed free points today',
               hoursRemaining: Math.ceil(24 - hoursSinceLastClaim),
               lastClaimed: lastClaimed,
               currentTime: now
@@ -2093,7 +2093,7 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, username, email, points FROM users WHERE id = $1',
+      'SELECT id, username, email, points, is_admin FROM users WHERE id = $1',
       [req.userId]
     );
     
