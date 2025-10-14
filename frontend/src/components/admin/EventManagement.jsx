@@ -13,6 +13,7 @@ import {
   updateEventTemplate,
   deleteEventTemplate
 } from '../../services/adminApi';
+import '../../../src/styles/admin.css';
 
 const EventManagement = ({ activeTab, setActiveTab }) => {
   const [events, setEvents] = useState([]);
