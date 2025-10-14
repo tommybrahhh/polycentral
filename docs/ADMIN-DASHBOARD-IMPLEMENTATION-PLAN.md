@@ -94,7 +94,7 @@ src/
   - Title, description, entry fee, start/end times
   - Prediction options and cryptocurrency settings
   - Participant limits and event categories
-- Add event resolution tools for manual resolution
+- Add event resolution tools for manual resolution with custom outcomes and final prices
 - Display event performance metrics and analytics
 - Manage event templates for quick creation
 - Implement event modification capabilities:
@@ -139,7 +139,8 @@ src/
 - `POST /api/admin/users/:id/reset-claims` - Reset user claim timer
 - `GET /api/admin/events` - Get all events with filtering options
 - `POST /api/admin/events` - Create new event with full parameters
-- `POST /api/admin/events/:id/resolve` - Manually resolve event
+- `POST /api/admin/events/:id/resolve` - Manually resolve event (automatic)
+- `POST /api/admin/events/:id/resolve-manual` - Manually resolve event with custom outcome
 - `PUT /api/admin/events/:id` - Update event details
 - `DELETE /api/admin/events/:id` - Delete event (future events only)
 - `POST /api/admin/events/:id/suspend` - Suspend/unsuspend event

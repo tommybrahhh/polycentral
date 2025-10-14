@@ -85,6 +85,13 @@ export const resolveEvent = (eventId) => {
   return adminApi.post(`/api/admin/events/${eventId}/resolve`);
 };
 
+export const resolveEventManual = (eventId, correctAnswer, finalPrice = null) => {
+  return adminApi.post(`/api/admin/events/${eventId}/resolve-manual`, {
+    correct_answer: correctAnswer,
+    final_price: finalPrice
+  });
+};
+
 export const suspendEvent = (eventId, isSuspended) => {
   return adminApi.post(`/api/admin/events/${eventId}/suspend`, { is_suspended: isSuspended });
 };

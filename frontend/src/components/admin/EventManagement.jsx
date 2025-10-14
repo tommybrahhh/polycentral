@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  getAllEvents, 
-  createEvent, 
-  updateEvent, 
-  deleteEvent, 
-  resolveEvent, 
-  suspendEvent, 
+import {
+  getAllEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  resolveEvent,
+  resolveEventManual,
+  suspendEvent,
   getEventParticipants,
   getEventTemplates,
   createEventTemplate,
@@ -44,6 +45,13 @@ const EventManagement = () => {
     entry_fee: 100,
     duration_hours: 24,
     crypto_symbol: 'btc'
+  });
+
+  // Manual resolution state
+  const [showManualResolution, setShowManualResolution] = useState(false);
+  const [manualResolutionData, setManualResolutionData] = useState({
+    correctAnswer: '',
+    finalPrice: ''
   });
   
   const [actionLoading, setActionLoading] = useState(false);
@@ -192,6 +200,37 @@ const EventManagement = () => {
       const toast = document.createElement('div');
       toast.className = 'toast toast-error show';
       toast.textContent = 'Failed to resolve event: ' + (err.response?.data?.message || err.message);
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleManualResolution = async (eventId) => {
+    try {
+      setActionLoading(true);
+      const { correctAnswer, finalPrice } = manualResolutionData;
+      
+      await resolveEventManual(
+        eventId,
+        correctAnswer,
+        finalPrice ? parseFloat(finalPrice) : null
+      );
+      
+      fetchData();
+      setShowManualResolution(false);
+      setManualResolutionData({ correctAnswer: '', finalPrice: '' });
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-success show';
+      toast.textContent = 'Event manually resolved successfully';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch (err) {
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-error show';
+      toast.textContent = 'Failed to manually resolve event: ' + (err.response?.data?.message || err.message);
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
     } finally {
@@ -399,13 +438,25 @@ const EventManagement = () => {
                       </button>
                     )}
                     {event.status === 'pending' && (
-                      <button 
-                        className="button button-success button-small"
-                        onClick={() => handleResolveEvent(event.id)}
-                        disabled={actionLoading}
-                      >
-                        Resolve
-                      </button>
+                      <>
+                        <button
+                          className="button button-success button-small"
+                          onClick={() => handleResolveEvent(event.id)}
+                          disabled={actionLoading}
+                        >
+                          Auto Resolve
+                        </button>
+                        <button
+                          className="button button-info button-small"
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setShowManualResolution(true);
+                          }}
+                          disabled={actionLoading}
+                        >
+                          Manual Resolve
+                        </button>
+                      </>
                     )}
                     <button 
                       className="button button-danger button-small"
@@ -766,6 +817,77 @@ const EventManagement = () => {
                   </div>
                 ) : (
                   <p>No participants yet</p>
+                )}
+         
+                {/* Manual Resolution Modal */}
+                {showManualResolution && selectedEvent && (
+                  <div className="modal-overlay" onClick={() => setShowManualResolution(false)}>
+                    <div className="modal-content medium" onClick={e => e.stopPropagation()}>
+                      <div className="modal-header">
+                        <h3>Manual Resolution: {selectedEvent.title}</h3>
+                        <button className="close-button" onClick={() => setShowManualResolution(false)}>×</button>
+                      </div>
+                      
+                      <div className="manual-resolution-form">
+                        <div className="form-group">
+                          <label htmlFor="correctAnswer">Correct Answer:</label>
+                          <select
+                            id="correctAnswer"
+                            value={manualResolutionData.correctAnswer}
+                            onChange={(e) => setManualResolutionData({
+                              ...manualResolutionData,
+                              correctAnswer: e.target.value
+                            })}
+                            required
+                          >
+                            <option value="">Select correct answer</option>
+                            <option value="Higher">Higher</option>
+                            <option value="Lower">Lower</option>
+                            <option value="0-3% up">0-3% up</option>
+                            <option value="3-5% up">3-5% up</option>
+                            <option value="5%+ up">5%+ up</option>
+                            <option value="0-3% down">0-3% down</option>
+                            <option value="3-5% down">3-5% down</option>
+                            <option value="5%+ down">5%+ down</option>
+                          </select>
+                        </div>
+                        
+                        <div className="form-group">
+                          <label htmlFor="finalPrice">Final Price (optional):</label>
+                          <input
+                            type="number"
+                            id="finalPrice"
+                            value={manualResolutionData.finalPrice}
+                            onChange={(e) => setManualResolutionData({
+                              ...manualResolutionData,
+                              finalPrice: e.target.value
+                            })}
+                            placeholder="Enter final price if applicable"
+                            step="0.01"
+                            min="0"
+                          />
+                        </div>
+                        
+                        <div className="form-actions">
+                          <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={() => setShowManualResolution(false)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-primary"
+                            onClick={() => handleManualResolution(selectedEvent.id)}
+                            disabled={actionLoading || !manualResolutionData.correctAnswer}
+                          >
+                            {actionLoading ? 'Resolving...' : 'Resolve Event'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 

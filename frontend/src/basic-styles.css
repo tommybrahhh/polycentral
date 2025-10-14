@@ -793,6 +793,14 @@ button[type="button"]:not(.glow-button):active {
   overflow-y: auto;
 }
 
+.modal-content.large {
+  max-width: 800px;
+}
+
+.modal-content.medium {
+  max-width: 600px;
+}
+
 .modal-header {
   padding: 20px;
   border-bottom: 1px solid #555555;

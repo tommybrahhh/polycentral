@@ -52,7 +52,9 @@ app.post('/api/events/test', authenticateAdmin, async (req, res) => {
 ```
 
 ### Event Resolution
-Events are automatically resolved after 23:59:59 of their creation day. The system compares the final Bitcoin price with the initial price to determine the outcome.
+Events are automatically resolved after 23:59:59 of their creation day. The system compares the final Bitcoin price with the initial price to determine the outcome. Additionally, admins can manually resolve events with custom outcomes.
+
+#### Automatic Resolution
 
 ```javascript
 // server.js
@@ -100,6 +102,207 @@ async function resolvePendingEvents() {
 
 // Cron job runs every 30 minutes to check for expired events
 cron.schedule('*/30 * * * *', resolvePendingEvents);
+
+#### Manual Event Resolution
+Admins can manually resolve events with custom outcomes and final prices. This is useful for testing, debugging, or when automatic resolution fails.
+
+```javascript
+// server.js - Manual resolution endpoint
+adminRouter.post('/events/:id/resolve-manual', async (req, res) => {
+  const { correct_answer, final_price } = req.body;
+  const eventId = req.params.id;
+
+  try {
+    // Validate input
+    if (!correct_answer) {
+      return res.status(400).json({ error: 'correct_answer is required' });
+    }
+
+    const validAnswers = ['Higher', 'Lower', '0-3% up', '3-5% up', '5%+ up', '0-3% down', '3-5% down', '5%+ down'];
+    if (!validAnswers.includes(correct_answer)) {
+      return res.status(400).json({
+        error: 'Invalid correct_answer. Must be one of: ' + validAnswers.join(', ')
+      });
+    }
+
+    if (final_price && (typeof final_price !== 'number' || final_price <= 0)) {
+      return res.status(400).json({ error: 'final_price must be a positive number if provided' });
+    }
+
+    const result = await manualResolveEvent(eventId, correct_answer, final_price);
+    res.json({ success: true, data: result });
+
+  } catch (error) {
+    console.error('Manual resolution error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Manual resolution function with point redistribution
+async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Get event details and validate
+    const eventQuery = await client.query(
+      'SELECT * FROM events WHERE id = $1 FOR UPDATE',
+      [eventId]
+    );
+    
+    if (eventQuery.rows.length === 0) {
+      throw new Error('Event not found');
+    }
+    
+    const event = eventQuery.rows[0];
+    
+    if (event.resolution_status === 'resolved') {
+      throw new Error('Event already resolved');
+    }
+
+    // Update event with manual resolution
+    const updateQuery = finalPrice
+      ? `UPDATE events SET correct_answer = $1, final_price = $2, resolution_status = 'resolved' WHERE id = $3 RETURNING *`
+      : `UPDATE events SET correct_answer = $1, resolution_status = 'resolved' WHERE id = $2 RETURNING *`;
+    
+    const updateParams = finalPrice
+      ? [correctAnswer, finalPrice, eventId]
+      : [correctAnswer, eventId];
+    
+    const { rows: [updatedEvent] } = await client.query(updateQuery, updateParams);
+
+    // Calculate total pot and distribute points to winners
+    const { rows: [potData] } = await client.query(
+      `SELECT SUM(amount) as total_pot FROM participants WHERE event_id = $1`,
+      [eventId]
+    );
+
+    const totalPot = potData.total_pot || 0;
+    
+    if (totalPot > 0) {
+      // Calculate platform fee (5%) and remaining pot
+      const platformFee = Math.floor(totalPot * 0.05);
+      const remainingPot = totalPot - platformFee;
+
+      // Update event with platform fee
+      await client.query(
+        'UPDATE events SET platform_fee = platform_fee + $1 WHERE id = $2',
+        [platformFee, eventId]
+      );
+
+      // Get winners and distribute points proportionally
+      const { rows: winners } = await client.query(
+        `SELECT id, user_id, amount FROM participants WHERE event_id = $1 AND prediction = $2`,
+        [eventId, correctAnswer]
+      );
+
+      if (winners.length > 0) {
+        const totalWinnerAmount = winners.reduce((sum, winner) => sum + winner.amount, 0);
+        
+        for (const winner of winners) {
+          const winnerShare = Math.floor((winner.amount / totalWinnerAmount) * remainingPot);
+          const winnerFee = Math.floor(winner.amount * 0.05);
+
+          // Record fee contribution
+          await client.query(
+            'INSERT INTO platform_fees (event_id, participant_id, fee_amount) VALUES ($1, $2, $3)',
+            [eventId, winner.id, winnerFee]
+          );
+
+          // Update user points and record outcome
+          await client.query(
+            `UPDATE users SET points = points + $1 WHERE id = $2`,
+            [winnerShare, winner.user_id]
+          );
+
+          await client.query(
+            `INSERT INTO event_outcomes (participant_id, result, points_awarded)
+             VALUES ($1, 'win', $2)`,
+            [winner.id, winnerShare]
+          );
+        }
+
+        // Record losing outcomes
+        const { rows: losers } = await client.query(
+          `SELECT p.id, p.user_id FROM participants p
+           WHERE p.event_id = $1 AND p.prediction != $2`,
+          [eventId, correctAnswer]
+        );
+
+        for (const loser of losers) {
+          await client.query(
+            `INSERT INTO event_outcomes (participant_id, result, points_awarded)
+             VALUES ($1, 'loss', 0)`,
+            [loser.id]
+          );
+        }
+
+        // Add audit log entry
+        await client.query(
+          `INSERT INTO audit_logs (event_id, action, details)
+           VALUES ($1, 'manual_event_resolution', $2)`,
+          [eventId, JSON.stringify({
+            totalParticipants: winners.length + losers.length,
+            totalWinners: winners.length,
+            totalPot: totalPot,
+            platformFee: platformFee,
+            distributed: remainingPot,
+            resolvedBy: 'admin',
+            resolvedAt: new Date().toISOString(),
+            correctAnswer: correctAnswer,
+            finalPrice: finalPrice
+          })]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    
+    // Broadcast resolution to all connected clients
+    broadcastEventResolution(eventId, {
+      correctAnswer,
+      finalPrice,
+      status: 'resolved'
+    });
+
+    return updatedEvent;
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+```
+
+**Manual Resolution API Endpoint:**
+- **URL**: `POST /api/admin/events/:id/resolve-manual`
+- **Authentication**: Admin JWT token required
+- **Request Body**:
+  ```json
+  {
+    "correct_answer": "Higher|Lower|0-3% up|3-5% up|5%+ up|0-3% down|3-5% down|5%+ down",
+    "final_price": 50000.00 // optional
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "event": { /* updated event object */ }
+    }
+  }
+  ```
+
+**Features:**
+- ✅ Point redistribution with 5% platform fee
+- ✅ Proportional distribution to winners based on bet amounts
+- ✅ Audit logging with detailed resolution information
+- ✅ Real-time WebSocket broadcast to all clients
+- ✅ Transaction safety with rollback on errors
+- ✅ Validation of input parameters
 ```
 
 ### API Endpoints
