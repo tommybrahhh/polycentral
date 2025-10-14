@@ -11,7 +11,11 @@ console.log('CORS_ORIGINS:', process.env.CORS_ORIGINS);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
 // Configure CORS with environment variables and debug logging
-const allowedOrigins = process.env.CORS_ORIGINS?.split(',')?.map(o => o.trim()) || [];
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',')?.map(o => o.trim()) || [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://polyc-seven.vercel.app'
+];
 console.log('🔧 Allowed CORS Origins:', allowedOrigins);
 
 // Configure CORS middleware
