@@ -1,10 +1,11 @@
 import React from 'react';
-import { getAllUsers, getAllEvents } from '../../services/adminApi';
+import { getAllUsers, getAllEvents, getPlatformFeesTotal, resolveEvent } from '../../services/adminApi';
 import useFetch from '../../hooks/useFetch';
 
 const AdminControlPanel = () => {
   const { data: users } = useFetch(() => getAllUsers());
-  const { data: events } = useFetch(() => getAllEvents());
+  const { data: events, refetch: refetchEvents } = useFetch(() => getAllEvents());
+  const { data: platformFees } = useFetch(() => getPlatformFeesTotal());
 
   return (
     <div className="admin-control-panel">
