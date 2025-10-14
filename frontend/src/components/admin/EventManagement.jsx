@@ -70,7 +70,9 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
         getEventTemplates()
       ]);
       
-      setEvents(eventsResponse.data);
+      // The events endpoint now returns { events: [], pagination: {} }
+      // Extract the events array from the response
+      setEvents(eventsResponse.data.events || eventsResponse.data);
       setTemplates(templatesResponse.data);
     } catch (err) {
       setError('Failed to load events and templates');
