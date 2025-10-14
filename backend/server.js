@@ -2445,6 +2445,90 @@ function broadcastEventResolution(eventId, resolutionData) {
   }
 }
 
+// Admin endpoint to get all events with pagination and filtering
+adminRouter.get('/events', async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '', status = 'all' } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Build base query
+    let query = `
+      SELECT
+        e.*,
+        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) as participant_count,
+        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) as total_pot
+      FROM events e
+    `;
+    const queryParams = [];
+    const whereConditions = [];
+
+    // Add search filter
+    if (search) {
+      whereConditions.push(`e.title ILIKE $${queryParams.length + 1}`);
+      queryParams.push(`%${search}%`);
+    }
+
+    // Add status filter
+    if (status !== 'all') {
+      if (status === 'pending') {
+        whereConditions.push(`e.resolution_status = $${queryParams.length + 1}`);
+        queryParams.push('pending');
+      } else if (status === 'resolved') {
+        whereConditions.push(`e.resolution_status = $${queryParams.length + 1}`);
+        queryParams.push('resolved');
+      } else if (status === 'active') {
+        whereConditions.push(`e.status = $${queryParams.length + 1}`);
+        queryParams.push('active');
+      }
+    }
+
+    // Add WHERE clause if there are conditions
+    if (whereConditions.length > 0) {
+      query += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+
+    // Add ordering and pagination
+    query += ` ORDER BY e.created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+    queryParams.push(limit, offset);
+
+    // Get events
+    const { rows: events } = await pool.query(query, queryParams);
+
+    // Get total count for pagination
+    let countQuery = `SELECT COUNT(*) FROM events e`;
+    if (whereConditions.length > 0) {
+      countQuery += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+    const { rows: countRows } = await pool.query(countQuery, queryParams.slice(0, -2));
+    const total = parseInt(countRows[0].count);
+
+    res.json({
+      events,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// Admin endpoint for event templates (placeholder - returns empty array for now)
+adminRouter.get('/event-templates', async (req, res) => {
+  try {
+    // For now, return empty array as templates functionality isn't implemented yet
+    res.json([]);
+  } catch (error) {
+    console.error('Error fetching event templates:', error);
+    res.status(500).json({ error: 'Failed to fetch event templates' });
+  }
+});
+
 // Admin endpoint for manual event resolution
 adminRouter.post('/events/:id/resolve-manual', async (req, res) => {
   const { correct_answer, final_price } = req.body;
