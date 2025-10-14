@@ -1868,3 +1868,53 @@ button[type="button"]:not(.glow-button):active {
   justify-content: flex-end;
   margin-top: 2rem;
 }
+
+/* User Dropdown Styles */
+.user-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background-color: var(--dark-card-bg);
+  border: 1px solid var(--orange-primary);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  min-width: 180px;
+  z-index: 1000;
+  display: none;
+}
+
+.user-dropdown:hover .dropdown-menu {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: var(--dark-text);
+  border-bottom: 1px solid rgba(255, 165, 0, 0.1);
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255, 165, 0, 0.1);
+  color: var(--orange-primary);
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.dropdown-item.button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 0;
+}

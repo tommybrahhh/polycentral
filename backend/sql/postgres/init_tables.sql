@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
     won_events INTEGER DEFAULT 0,
     last_claimed TIMESTAMP,
     last_login_date TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_suspended BOOLEAN DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_wallet

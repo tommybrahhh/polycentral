@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import ProfilePage from './pages/ProfilePage';
+import AdminDashboard from './components/admin/AdminDashboard';
+import AdminRoute from './components/admin/AdminRoute';
 import './index.css';
 import './basic-styles.css';
 import RegisterForm from './RegisterForm';
@@ -260,29 +262,40 @@ const App = () => {
                     <span className="claim-icon">🎁</span> Claim
                   </button>
                 </div>
-                <button
-                  className="button button-secondary bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200"
-                  onClick={() => {
-                    // Clear authentication data
-                    localStorage.removeItem('auth_token');
-                    localStorage.removeItem('user');
-                    setUsername('');
-                    setPoints(0);
-                    
-                    // Show success toast
-                    const toast = document.createElement('div');
-                    toast.className = 'toast toast-success show';
-                    toast.textContent = 'Successfully logged out';
-                    document.body.appendChild(toast);
-                    
-                    // Remove toast after 3 seconds
-                    setTimeout(() => {
-                      toast.remove();
-                    }, 3000);
-                  }}
-                >
-                  Logout
-                </button>
+                <div className="user-dropdown">
+                  <button className="button button-secondary bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200">
+                    Menu ▼
+                  </button>
+                  <div className="dropdown-menu">
+                    <Link to="/profile" className="dropdown-item">Profile</Link>
+                    {localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).is_admin && (
+                      <Link to="/admin" className="dropdown-item">Admin Dashboard</Link>
+                    )}
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        // Clear authentication data
+                        localStorage.removeItem('auth_token');
+                        localStorage.removeItem('user');
+                        setUsername('');
+                        setPoints(0);
+                        
+                        // Show success toast
+                        const toast = document.createElement('div');
+                        toast.className = 'toast toast-success show';
+                        toast.textContent = 'Successfully logged out';
+                        document.body.appendChild(toast);
+                        
+                        // Remove toast after 3 seconds
+                        setTimeout(() => {
+                          toast.remove();
+                        }, 3000);
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="auth-buttons flex gap-2">
@@ -308,6 +321,7 @@ const App = () => {
           <Route path="/events" element={<EventList />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/" element={<EventList />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

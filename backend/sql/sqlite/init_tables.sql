@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
     won_events INTEGER DEFAULT 0,
     last_claimed TEXT,
     last_login_date TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_suspended BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS event_types (

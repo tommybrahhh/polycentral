@@ -94,10 +94,10 @@ async function createTestEventForPotSplit() {
       } else {
         // Create user
         const newUser = await pool.query(
-          `INSERT INTO users (username, email, password_hash, points) 
-           VALUES ($1, $2, $3, $4) 
+          `INSERT INTO users (username, email, password_hash, points, is_admin, is_suspended)
+           VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id`,
-          [userData.username, userData.email, 'testhash', userData.points]
+          [userData.username, userData.email, 'testhash', userData.points, false, false]
         );
         userIds.push(newUser.rows[0].id);
         console.log(`✅ Created user ${userData.username}`);
