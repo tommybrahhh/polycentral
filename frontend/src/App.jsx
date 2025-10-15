@@ -268,9 +268,7 @@ const App = () => {
                   </button>
                   <div className="dropdown-menu">
                     <Link to="/profile" className="dropdown-item">Profile</Link>
-                    {userData?.is_admin && (
-                      <Link to="/admin" className="dropdown-item">Admin Dashboard</Link>
-                    )}
+                    <Link to="/admin" className="dropdown-item">Admin Dashboard</Link>
                     <button
                       className="dropdown-item"
                       onClick={() => {
