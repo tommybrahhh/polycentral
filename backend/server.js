@@ -3027,7 +3027,7 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
     await client.query(
       `INSERT INTO audit_logs (action, details) VALUES ('platform_fee_transfer', $1)`,
       [JSON.stringify({
-        admin_id: req.adminId || 'unknown',
+        admin_id: req.userId || 'unknown',
         user_id: userId,
         user_username: user.username,
         amount: amount,
