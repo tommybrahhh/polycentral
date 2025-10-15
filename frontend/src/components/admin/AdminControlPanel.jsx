@@ -44,18 +44,47 @@ const AdminControlPanel = () => {
     navigate('/admin?tab=events');
   };
 
+  const handleCreateEvent = () => {
+    // Navigate to admin dashboard with events tab active
+    navigate('/admin?tab=events');
+    // Trigger event creation modal after a short delay
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('admin-tab-change', { detail: 'events' }));
+      setTimeout(() => {
+        const createButton = document.querySelector('.button.button-primary');
+        if (createButton && createButton.textContent.includes('Create Event')) {
+          createButton.click();
+        }
+      }, 500);
+    }, 100);
+  };
+
   return (
     <div className="admin-control-panel p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-2xl font-bold text-gray-800">Admin Metrics Dashboard</h3>
-        {metrics?.pendingEvents > 0 && (
+        <h3 className="text-2xl font-bold text-gray-800">Admin Control Panel</h3>
+        <div className="flex gap-2">
+          {metrics?.pendingEvents > 0 && (
+            <button
+              onClick={handleResolveEvents}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+            >
+              Resolve Events ({metrics.pendingEvents})
+            </button>
+          )}
           <button
-            onClick={handleResolveEvents}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+            onClick={handleCreateEvent}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
           >
-            Resolve Pending Events ({metrics.pendingEvents})
+            Create Event
           </button>
-        )}
+          <button
+            onClick={() => navigate('/admin')}
+            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+          >
+            Full Admin Dashboard
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -64,7 +93,7 @@ const AdminControlPanel = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading ? (
           Array.from({ length: 4 }).map((_, idx) => (
             <div key={idx} className="animate-pulse p-4 bg-white rounded-lg shadow">
@@ -100,6 +129,30 @@ const AdminControlPanel = () => {
             </div>
           </>
         ) : null}
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6">
+        <h4 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            onClick={handleCreateEvent}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors text-center"
+          >
+            📝 Create New Event
+          </button>
+          <button
+            onClick={handleResolveEvents}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors text-center"
+          >
+            ⚡ Resolve Pending Events
+          </button>
+          <button
+            onClick={() => navigate('/admin?tab=users')}
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors text-center"
+          >
+            👥 Manage Users
+          </button>
+        </div>
       </div>
     </div>
   );
