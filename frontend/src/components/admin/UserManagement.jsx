@@ -26,7 +26,8 @@ const UserManagement = ({ activeTab, setActiveTab }) => {
         page: currentPage,
         search: searchTerm
       });
-      setUsers(response.data);
+      // The backend returns { users: [], pagination: {} } structure
+      setUsers(response.data.users || []);
     } catch (err) {
       setError('Failed to load users');
       console.error('Error fetching users:', err);
