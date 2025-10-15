@@ -22,19 +22,33 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
   // Parse event options if they exist
   const eventOptions = React.useMemo(() => {
     if (event.options) {
-      try {
-        // If options is a string, parse it as JSON
-        if (typeof event.options === 'string') {
-          return JSON.parse(event.options);
+        try {
+            let parsedOptions;
+            if (typeof event.options === 'string') {
+                parsedOptions = JSON.parse(event.options);
+            } else {
+                parsedOptions = event.options;
+            }
+
+            // FIX: Check if the options are just strings and convert them to objects
+            if (Array.isArray(parsedOptions) && typeof parsedOptions[0] === 'string') {
+                return parsedOptions.map(opt => ({
+                    id: opt.toLowerCase().replace(/ /g, '_'), // Create a simple ID
+                    label: opt,
+                    value: opt
+                }));
+            }
+            
+            // If it's already an array of objects, return it
+            if (Array.isArray(parsedOptions)) {
+                return parsedOptions;
+            }
+        } catch (e) {
+            console.error('Failed to parse event options:', e);
+            return []; // Return empty array on error
         }
-        // If already an object, return as is
-        return event.options;
-      } catch (e) {
-        console.error('Failed to parse event options:', e);
-        return [];
-      }
     }
-    // Fallback to default options if none provided
+    // Fallback to default options if none are provided
     return [
       { id: 'range_0_3_up', label: '0-3% Up', value: '0-3% up' },
       { id: 'range_3_5_up', label: '3-5% Up', value: '3-5% up' },
