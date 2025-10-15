@@ -15,7 +15,17 @@ const EventDetail = () => {
     const fetchEvent = async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/${id}`);
-        setEvent(response.data);
+        const eventData = response.data;
+        
+        // Ensure numeric values are properly converted from strings
+        if (eventData) {
+          eventData.initial_price = Number(eventData.initial_price) || 0;
+          eventData.final_price = Number(eventData.final_price) || 0;
+          eventData.current_price = Number(eventData.current_price) || 0;
+          eventData.prize_pool = Number(eventData.prize_pool) || 0;
+        }
+        
+        setEvent(eventData);
         setLoading(false);
       } catch (err) {
         console.error('Failed to fetch event:', err);
