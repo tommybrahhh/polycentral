@@ -2681,6 +2681,272 @@ adminRouter.get('/event-templates', async (req, res) => {
   }
 });
 
+// Admin user management endpoints
+adminRouter.get('/users', async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const offset = (page - 1) * limit;
+    
+    // Build base query with search functionality
+    let query = `
+      SELECT
+        id, username, email, points, is_admin, is_suspended,
+        total_events, won_events, last_login_date, created_at
+      FROM users
+    `;
+    const queryParams = [];
+    const whereConditions = [];
+    
+    // Add search filter
+    if (search) {
+      whereConditions.push(`(username ILIKE $${queryParams.length + 1} OR email ILIKE $${queryParams.length + 1})`);
+      queryParams.push(`%${search}%`);
+    }
+    
+    // Add WHERE clause if there are conditions
+    if (whereConditions.length > 0) {
+      query += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+    
+    // Add ordering and pagination
+    query += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+    queryParams.push(limit, offset);
+    
+    // Get users
+    const { rows: users } = await pool.query(query, queryParams);
+    
+    // Get total count for pagination
+    let countQuery = `SELECT COUNT(*) FROM users`;
+    if (whereConditions.length > 0) {
+      countQuery += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+    const { rows: countRows } = await pool.query(countQuery, queryParams.slice(0, -2));
+    const total = parseInt(countRows[0].count);
+    
+    res.json({
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+adminRouter.get('/users/:id', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // Validate user ID
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const { rows } = await pool.query(`
+      SELECT
+        id, username, email, points, is_admin, is_suspended,
+        total_events, won_events, last_login_date, created_at
+      FROM users
+      WHERE id = $1
+    `, [userId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ error: 'Failed to fetch user details' });
+  }
+});
+
+adminRouter.put('/users/:id/points', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { points, reason } = req.body;
+    
+    // Validate input
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    if (typeof points !== 'number') {
+      return res.status(400).json({ error: 'Points must be a number' });
+    }
+    
+    if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+      return res.status(400).json({ error: 'Reason is required' });
+    }
+    
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Get current points
+      const { rows: userRows } = await client.query(
+        'SELECT points, username FROM users WHERE id = $1 FOR UPDATE',
+        [userId]
+      );
+      
+      if (userRows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      const currentPoints = userRows[0].points;
+      const username = userRows[0].username;
+      const newPoints = currentPoints + points;
+      
+      // Update user points
+      await client.query(
+        'UPDATE users SET points = $1 WHERE id = $2',
+        [newPoints, userId]
+      );
+      
+      // Log the adjustment in audit_logs
+      await client.query(
+        `INSERT INTO audit_logs (action, details) VALUES ('points_adjustment', $1)`,
+        [JSON.stringify({
+          admin_id: req.userId,
+          user_id: userId,
+          user_username: username,
+          points_adjustment: points,
+          reason: reason.trim(),
+          points_before: currentPoints,
+          points_after: newPoints,
+          timestamp: new Date().toISOString()
+        })]
+      );
+      
+      await client.query('COMMIT');
+      
+      res.json({
+        success: true,
+        points_adjusted: points,
+        new_total: newPoints,
+        user_id: userId,
+        user_username: username
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error adjusting user points:', error);
+    res.status(500).json({ error: 'Failed to adjust user points' });
+  }
+});
+
+adminRouter.put('/users/:id/role', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { is_admin } = req.body;
+    
+    // Validate input
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    if (typeof is_admin !== 'boolean') {
+      return res.status(400).json({ error: 'is_admin must be a boolean' });
+    }
+    
+    const { rows } = await pool.query(
+      'UPDATE users SET is_admin = $1 WHERE id = $2 RETURNING id, username, is_admin',
+      [is_admin, userId]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({
+      success: true,
+      user_id: userId,
+      username: rows[0].username,
+      is_admin: rows[0].is_admin
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({ error: 'Failed to update user role' });
+  }
+});
+
+adminRouter.put('/users/:id/suspend', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { is_suspended } = req.body;
+    
+    // Validate input
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    if (typeof is_suspended !== 'boolean') {
+      return res.status(400).json({ error: 'is_suspended must be a boolean' });
+    }
+    
+    const { rows } = await pool.query(
+      'UPDATE users SET is_suspended = $1 WHERE id = $2 RETURNING id, username, is_suspended',
+      [is_suspended, userId]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({
+      success: true,
+      user_id: userId,
+      username: rows[0].username,
+      is_suspended: rows[0].is_suspended
+    });
+  } catch (error) {
+    console.error('Error updating user suspension status:', error);
+    res.status(500).json({ error: 'Failed to update user suspension status' });
+  }
+});
+
+adminRouter.post('/users/:id/reset-claims', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // Validate user ID
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const { rows } = await pool.query(
+      'UPDATE users SET last_claimed = NULL WHERE id = $1 RETURNING id, username',
+      [userId]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({
+      success: true,
+      user_id: userId,
+      username: rows[0].username,
+      message: 'User claims reset successfully'
+    });
+  } catch (error) {
+    console.error('Error resetting user claims:', error);
+    res.status(500).json({ error: 'Failed to reset user claims' });
+  }
+});
+
 // Admin endpoint for manual event resolution
 adminRouter.post('/events/:id/resolve-manual', async (req, res) => {
   const { correct_answer, final_price } = req.body;
