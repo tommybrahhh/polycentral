@@ -4,7 +4,6 @@ import PlatformFeesManagement from './PlatformFeesManagement';
 import UserManagement from './UserManagement';
 import EventManagement from './EventManagement';
 import useFetch from '../../hooks/useFetch';
-import '../../styles/admin.css';
 
 const AdminDashboard = () => {
   const [searchParams] = useSearchParams();

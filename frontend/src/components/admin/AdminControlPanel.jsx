@@ -60,27 +60,27 @@ const AdminControlPanel = () => {
   };
 
   return (
-    <div className="admin-control-panel p-6 space-y-6">
+    <div className="p-lg space-y-lg">
       <div className="flex justify-between items-center">
-        <h3 className="text-2xl font-bold text-gray-800">Admin Control Panel</h3>
-        <div className="flex gap-2">
+        <h3 className="text-primary">Admin Control Panel</h3>
+        <div className="flex gap-sm">
           {metrics?.pendingEvents > 0 && (
            <button
              onClick={handleResolveEvents}
-             className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
+             className="btn btn-primary"
            >
              Resolve Events ({metrics.pendingEvents})
            </button>
          )}
          <button
            onClick={handleCreateEvent}
-           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+           className="btn btn-primary"
          >
            Create Event
          </button>
          <button
            onClick={() => navigate('/admin')}
-           className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+           className="btn btn-secondary"
          >
            Full Admin Dashboard
          </button>
@@ -88,42 +88,42 @@ const AdminControlPanel = () => {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+        <div className="alert alert-danger">
           Error loading metrics: {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
         {loading ? (
           Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="animate-pulse p-4 bg-white rounded-lg shadow">
-              <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
-              <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+            <div key={idx} className="animate-pulse p-md bg-surface rounded-md">
+              <div className="h-sm bg-charcoal rounded w-1/3 mb-md"></div>
+              <div className="h-md bg-charcoal rounded w-2/3"></div>
             </div>
           ))
         ) : metrics ? (
           <>
-            <div className="p-4 bg-white rounded-lg shadow">
-              <h4 className="text-sm font-medium text-gray-500 mb-1">Total Events</h4>
-              <p className="text-2xl font-semibold text-gray-900">
+            <div className="card text-center">
+              <h4 className="text-secondary mb-sm">Total Events</h4>
+              <p className="text-primary font-bold text-xl">
                 {formatNumber(metrics.totalEvents)}
               </p>
             </div>
-            <div className="p-4 bg-white rounded-lg shadow">
-              <h4 className="text-sm font-medium text-gray-500 mb-1">Active Events</h4>
-              <p className="text-2xl font-semibold text-gray-900">
+            <div className="card text-center">
+              <h4 className="text-secondary mb-sm">Active Events</h4>
+              <p className="text-primary font-bold text-xl">
                 {formatNumber(metrics.activeEvents)}
               </p>
             </div>
-            <div className="p-4 bg-white rounded-lg shadow">
-              <h4 className="text-sm font-medium text-gray-500 mb-1">Completed Events</h4>
-              <p className="text-2xl font-semibold text-gray-900">
+            <div className="card text-center">
+              <h4 className="text-secondary mb-sm">Completed Events</h4>
+              <p className="text-primary font-bold text-xl">
                 {formatNumber(metrics.completedEvents)}
               </p>
             </div>
-            <div className="p-4 bg-white rounded-lg shadow">
-              <h4 className="text-sm font-medium text-gray-500 mb-1">Total Fees</h4>
-              <p className="text-2xl font-semibold text-green-600">
+            <div className="card text-center">
+              <h4 className="text-secondary mb-sm">Total Fees</h4>
+              <p className="text-success font-bold text-xl">
                 {formatCurrency(metrics.totalFees)}
               </p>
             </div>
@@ -131,24 +131,24 @@ const AdminControlPanel = () => {
         ) : null}
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h4 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="card p-lg">
+        <h4 className="text-center mb-md">Quick Actions</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
           <button
             onClick={handleCreateEvent}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors text-center"
+            className="btn btn-primary btn-lg"
           >
             📝 Create New Event
           </button>
           <button
             onClick={handleResolveEvents}
-            className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-3 rounded-lg font-semibold transition-colors text-center"
+            className="btn btn-primary btn-lg"
           >
             ⚡ Resolve Pending Events
           </button>
           <button
             onClick={() => navigate('/admin?tab=users')}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors text-center"
+            className="btn btn-primary btn-lg"
           >
             👥 Manage Users
           </button>

@@ -55,68 +55,66 @@ const EventDetail = () => {
   if (!event) return <div className="form-error">Event not found</div>;
 
   return (
-    <div className="event-detail-container">
-      {/* Main card container for the new layout */}
-      <div className="card event-detail-card">
-        <div className="event-detail-header">
-          <h2 className="event-title">{event.title}</h2>
-          <p className="description">{event.description}</p>
+    <div className="p-lg">
+      {/* Main card container */}
+      <div className="card">
+        <div className="text-center mb-lg">
+          <h2>{event.title}</h2>
+          <p className="text-secondary">{event.description}</p>
         </div>
 
-        {/* New two-column layout */}
-        <div className="event-detail-layout">
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-xl">
 
           {/* --- LEFT COLUMN: Information & Context --- */}
-          <div className="info-column">
-            <h3 className="column-title">Event Data</h3>
+          <div className="space-y-lg">
+            <h3 className="text-center">Event Data</h3>
 
             {/* Price Display */}
-            <div className="price-display">
-              <div className="price-column">
-                <div className="price-label">Current Price</div>
-                <div className="price-value">${event.current_price?.toLocaleString() || 'N/A'}</div>
+            <div className="flex gap-lg justify-center">
+              <div className="text-center">
+                <div className="text-secondary">Current Price</div>
+                <div className="text-primary font-bold text-xl">${event.current_price?.toLocaleString() || 'N/A'}</div>
               </div>
-              <div className="price-column">
-                <div className="price-label">Initial Price</div>
-                <div className="price-value">${event.initial_price?.toLocaleString() || 'N/A'}</div>
+              <div className="text-center">
+                <div className="text-secondary">Initial Price</div>
+                <div className="text-primary font-bold text-xl">${event.initial_price?.toLocaleString() || 'N/A'}</div>
               </div>
             </div>
             
             {/* Participation Trend Chart */}
-            <div className="betting-section">
-              <h3 className="column-title">Prize Pool Growth</h3>
-              <div className="chart-container">
+            <div>
+              <h3 className="text-center mb-md">Prize Pool Growth</h3>
+              <div className="bg-surface p-md rounded-md">
                 <ParticipationChart
                   eventId={id}
-                  style={{ height: '400px', width: '100%' }}
+                  style={{ height: '300px', width: '100%' }}
                 />
               </div>
             </div>
 
             {/* Community Sentiment Pool */}
             {(event.up_bet_percentage || event.down_bet_percentage) && (
-              <div className="sentiment-pool">
-                <h3 className="column-title">Community Sentiment</h3>
-                <div className="sentiment-bars">
-                  <div className="sentiment-bar up">
-                    <div className="sentiment-label">Bullish</div>
-                    <div className="sentiment-percentage">
-                      {(event.up_bet_percentage ?? 0).toFixed(1)}%
+              <div className="bg-surface p-md rounded-md">
+                <h3 className="text-center mb-md">Community Sentiment</h3>
+                <div className="space-y-md">
+                  <div>
+                    <div className="flex justify-between text-sm mb-sm">
+                      <span className="text-success">Bullish</span>
+                      <span className="text-primary">{(event.up_bet_percentage ?? 0).toFixed(1)}%</span>
                     </div>
-                    <div
-                      className="sentiment-progress"
-                      style={{ width: `${event.up_bet_percentage ?? 0}%` }}
-                    />
+                    <div className="sentiment-bar">
+                      <div className="sentiment-fill higher" style={{ width: `${event.up_bet_percentage ?? 0}%` }}></div>
+                    </div>
                   </div>
-                  <div className="sentiment-bar down">
-                    <div className="sentiment-label">Bearish</div>
-                    <div className="sentiment-percentage">
-                      {(event.down_bet_percentage ?? 0).toFixed(1)}%
+                  <div>
+                    <div className="flex justify-between text-sm mb-sm">
+                      <span className="text-danger">Bearish</span>
+                      <span className="text-primary">{(event.down_bet_percentage ?? 0).toFixed(1)}%</span>
                     </div>
-                    <div
-                      className="sentiment-progress"
-                      style={{ width: `${event.down_bet_percentage ?? 0}%` }}
-                    />
+                    <div className="sentiment-bar">
+                      <div className="sentiment-fill lower" style={{ width: `${event.down_bet_percentage ?? 0}%` }}></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -124,52 +122,52 @@ const EventDetail = () => {
 
             {/* Price Ranges / Possible Outcomes */}
             {event.initial_price && event.price_ranges && (
-              <div className="price-ranges-display">
-                <h3 className="price-ranges-title">Possible Outcomes</h3>
-                <div className="price-ranges-grid">
+              <div className="bg-surface p-md rounded-md">
+                <h3 className="text-center mb-md">Possible Outcomes</h3>
+                <div className="grid grid-cols-2 gap-sm">
                   {/* UP Ranges */}
-                  <div className="price-range-item up">
-                   <div className="range-label">0-3% Up</div>
-                   <div className="range-value">${formatPriceRangeValue(event.initial_price)} - ${formatPriceRangeValue(event.price_ranges?.['0-3% up']?.max)}</div>
-                 </div>
-                 <div className="price-range-item up">
-                   <div className="range-label">3-5% Up</div>
-                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['0-3% up']?.max)} - ${formatPriceRangeValue(event.price_ranges?.['3-5% up']?.max)}</div>
-                 </div>
-                 <div className="price-range-item up">
-                   <div className="range-label">5%+ Up</div>
-                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['3-5% up']?.max)}+</div>
-                 </div>
-                 {/* DOWN Ranges */}
-                 <div className="price-range-item down">
-                   <div className="range-label">0-3% Down</div>
-                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['0-3% down']?.min)} - ${formatPriceRangeValue(event.initial_price)}</div>
-                 </div>
-                 <div className="price-range-item down">
-                   <div className="range-label">3-5% Down</div>
-                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['3-5% down']?.min)} - ${formatPriceRangeValue(event.price_ranges?.['0-3% down']?.min)}</div>
-                 </div>
-                 <div className="price-range-item down">
-                   <div className="range-label">5%+ Down</div>
-                   <div className="range-value">{"<"} ${formatPriceRangeValue(event.price_ranges?.['3-5% down']?.min)}</div>
-                 </div>
+                  <div className="text-center p-sm border border-success rounded-sm">
+                    <div className="text-success font-semibold">0-3% Up</div>
+                    <div className="text-secondary text-sm">${formatPriceRangeValue(event.initial_price)} - ${formatPriceRangeValue(event.price_ranges?.['0-3% up']?.max)}</div>
+                  </div>
+                  <div className="text-center p-sm border border-success rounded-sm">
+                    <div className="text-success font-semibold">3-5% Up</div>
+                    <div className="text-secondary text-sm">${formatPriceRangeValue(event.price_ranges?.['0-3% up']?.max)} - ${formatPriceRangeValue(event.price_ranges?.['3-5% up']?.max)}</div>
+                  </div>
+                  <div className="text-center p-sm border border-success rounded-sm">
+                    <div className="text-success font-semibold">5%+ Up</div>
+                    <div className="text-secondary text-sm">${formatPriceRangeValue(event.price_ranges?.['3-5% up']?.max)}+</div>
+                  </div>
+                  {/* DOWN Ranges */}
+                  <div className="text-center p-sm border border-danger rounded-sm">
+                    <div className="text-danger font-semibold">0-3% Down</div>
+                    <div className="text-secondary text-sm">${formatPriceRangeValue(event.price_ranges?.['0-3% down']?.min)} - ${formatPriceRangeValue(event.initial_price)}</div>
+                  </div>
+                  <div className="text-center p-sm border border-danger rounded-sm">
+                    <div className="text-danger font-semibold">3-5% Down</div>
+                    <div className="text-secondary text-sm">${formatPriceRangeValue(event.price_ranges?.['3-5% down']?.min)} - ${formatPriceRangeValue(event.price_ranges?.['0-3% down']?.min)}</div>
+                  </div>
+                  <div className="text-center p-sm border border-danger rounded-sm">
+                    <div className="text-danger font-semibold">5%+ Down</div>
+                    <div className="text-secondary text-sm">{"<"} ${formatPriceRangeValue(event.price_ranges?.['3-5% down']?.min)}</div>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* --- RIGHT COLUMN: Betting Actions --- */}
-          <div className="action-column">
-            <h3 className="column-title">Place Your Bet</h3>
+          <div className="bg-surface p-lg rounded-md">
+            <h3 className="text-center mb-lg">Place Your Bet</h3>
             
             {/* Dynamic Rewards Display */}
-            <div className="rewards-container">
-              <h4 className="rewards-title">Potential Reward</h4>
-              <div className="reward-value">
+            <div className="text-center bg-charcoal p-md rounded-md mb-lg">
+              <div className="text-secondary">Potential Reward</div>
+              <div className="text-primary font-bold text-2xl">
                 ${(selectedEntryFee * (event.prize_pool / 100)).toFixed(2)}
               </div>
-              <div className="reward-note">
-                Based on {selectedEntryFee} SATS entry
+              <div className="text-secondary text-sm">
+                Based on {selectedEntryFee} PTS entry
               </div>
             </div>
 
@@ -184,8 +182,8 @@ const EventDetail = () => {
 
         {/* Resolution Status (if applicable) */}
         {event.status === 'resolved' && (
-          <div className="resolution-info">
-            <strong>Result:</strong> {event.correct_answer} -
+          <div className="bg-success bg-opacity-10 p-md rounded-md text-center mt-lg">
+            <strong className="text-success">Result:</strong> {event.correct_answer} -
             Final Price: ${event.final_price?.toLocaleString()}
           </div>
         )}

@@ -5,7 +5,6 @@ import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminRoute from './components/admin/AdminRoute';
 import './index.css';
-import './basic-styles.css';
 import RegisterForm from './RegisterForm';
 import LoginForm from './LoginForm';
 import EventList from './components/EventList';

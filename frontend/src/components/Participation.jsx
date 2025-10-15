@@ -169,26 +169,26 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
   };
 
   return (
-    <div className="betting-interface">
-      <div className="balance-display">
-        <div className="balance-amount">{userPoints.toLocaleString()} points</div>
-        <div className="fee-breakdown">
-          <span className="entry-fee ${userPoints >= selectedEntryFee ? '' : 'low-balance'}">
+    <div className="space-y-lg">
+      <div className="bg-surface p-md rounded-md text-center">
+        <div className="text-primary font-bold text-xl mb-sm">{userPoints.toLocaleString()} points</div>
+        <div className="text-secondary text-sm">
+          <span className={userPoints >= selectedEntryFee ? '' : 'text-danger'}>
             Entry: {selectedEntryFee?.toLocaleString()}
           </span>
-          <span className="platform-fee">
+          <span className="text-secondary ml-sm">
             (5% fee: {Math.floor(selectedEntryFee * 0.05)?.toLocaleString()})
           </span>
         </div>
       </div>
 
-      <div className="entry-fee-section">
-        <h3 className="fee-select-title">Select Entry Stake</h3>
-        <div className="stake-grid">
+      <div className="text-center">
+        <h4 className="text-secondary mb-md">Select Entry Stake</h4>
+        <div className="flex flex-wrap gap-sm justify-center">
           {[100, 200, 500, 1000].map((fee) => (
             <button
               key={fee}
-              className={`action-button ${selectedEntryFee === fee ? 'active' : ''}`}
+              className={`btn ${selectedEntryFee === fee ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setSelectedEntryFee(fee)}
               disabled={fee > userPoints || !isEventActive}
             >
@@ -199,23 +199,23 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
       </div>
 
       {getErrorMessage() && (
-        <div className="error-banner">{getErrorMessage()}</div>
+        <div className="alert alert-danger">{getErrorMessage()}</div>
       )}
 
-      <div className="prediction-section">
-        <div className="prediction-grid">
+      <div className="space-y-md">
+        <div className="grid grid-cols-2 gap-md">
           {eventOptions.map((option) => (
             <button
               key={option.id || option.value}
-              className={`prediction-card ${selectedPrediction === option.value ? 'selected' : ''} ${
-                option.value.includes('up') ? 'bullish' : 'bearish'
-              }`}
+              className={`card text-center p-md cursor-pointer transition-all hover:scale-105 ${
+                selectedPrediction === option.value ? 'ring-2 ring-orange-primary' : ''
+              } ${option.value.includes('up') ? 'bg-success bg-opacity-10' : 'bg-danger bg-opacity-10'}`}
               onClick={() => setSelectedPrediction(option.value)}
               disabled={!canPlaceBet() || betStatus === 'success'}
             >
-              <span className="prediction-label">{option.label || option.value}</span>
-              <span className="odds-indicator">2.5x</span>
-              <div className="fee-disclaimer">
+              <span className="block font-semibold text-primary">{option.label || option.value}</span>
+              <span className="block text-secondary text-sm mt-sm">2.5x</span>
+              <div className="text-secondary text-xs mt-sm">
                 * Includes 5% platform fee
               </div>
             </button>
@@ -223,7 +223,9 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
         </div>
 
         <button
-          className={`cta-bet-button ${!selectedPrediction ? 'disabled' : ''}`}
+          className={`btn btn-lg w-full ${
+            !selectedPrediction ? 'btn-secondary opacity-50' : 'btn-primary'
+          }`}
           onClick={handleBet}
           disabled={!canPlaceBet() || betStatus === 'success' || !selectedPrediction}
         >
@@ -232,10 +234,12 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
       </div>
 
       {betStatus === 'success' && (
-        <div className="success-overlay">
-          <div className="success-message">
-            <div className="confetti-animation"></div>
-            Bet Placed Successfully!
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-surface p-xl rounded-md text-center">
+            <div className="text-success text-2xl font-bold mb-md">Bet Placed Successfully!</div>
+            <button className="btn btn-primary" onClick={() => setBetStatus(null)}>
+              Continue
+            </button>
           </div>
         </div>
       )}

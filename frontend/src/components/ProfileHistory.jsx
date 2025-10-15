@@ -1,6 +1,5 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import './ProfileHistory.css';
 
 const ProfileHistory = ({ history }) => {
   const formatDate = (dateString) => {

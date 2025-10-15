@@ -114,62 +114,60 @@ const EventCard = ({ event }) => {
         }
       }}
     >
-      <div className="card-header">
-        <div className="event-header flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h3 className="event-title">{event.title}</h3>
-          <div className="flex items-center gap-4">
-            <span className="participants" aria-label={`${event.current_participants} participants`}>👥{event.current_participants}</span>
-            <div className={`status-indicator ${isEventClosingSoon(event) ? 'status-closing' : 'status-active'}`}>
-              <span className="status-dot"></span>
-              {isEventClosingSoon(event) ? 'Closing' : 'Active'}
-            </div>
-            <CountdownTimer endTime={event.end_time} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-md">
+        <h3 className="text-primary">{event.title}</h3>
+        <div className="flex items-center gap-4">
+          <span className="text-secondary" aria-label={`${event.current_participants} participants`}>👥{event.current_participants}</span>
+          <div className={`text-secondary ${isEventClosingSoon(event) ? 'text-orange' : 'text-success'}`}>
+            {isEventClosingSoon(event) ? 'Closing' : 'Active'}
           </div>
-        </div>
-        <div className="prediction-sentiment-bar mt-2">
-          <div className="sentiment-fill higher" style={{ width: '70%' }}></div>
-          <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
+          <CountdownTimer endTime={event.end_time} />
         </div>
       </div>
-      <div className="card-body">
-        <p className="description">{event.description}</p>
-        
-        {/* Key Event Stats Bar */}
-        <div className="event-stats">
-          <div className="stat-item">
-            <span className="stat-label">Prize Pool</span>
-            <span className="stat-value">💰 ${event.prize_pool?.toLocaleString() || 0}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Entry Fee</span>
-            <span className="stat-value">🎫 {typeof event.entry_fee === 'number' ? `${event.entry_fee} PTS` : 'N/A'}</span>
-          </div>
+      
+      {/* Sentiment Bar */}
+      <div className="sentiment-bar mb-md">
+        <div className="sentiment-fill higher" style={{ width: '70%' }}></div>
+        <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
+      </div>
+      
+      <p className="text-primary mb-md">{event.description}</p>
+      
+      {/* Key Event Stats Bar */}
+      <div className="flex gap-md mb-md">
+        <div className="flex flex-col items-center">
+          <span className="text-secondary text-sm">Prize Pool</span>
+          <span className="text-primary font-semibold">💰 ${event.prize_pool?.toLocaleString() || 0}</span>
         </div>
-        
-        {/* Interactive Prediction Options Preview */}
-        <div className="prediction-options-preview">
-          <h4 className="options-preview-title">Prediction Options</h4>
-          <div className="options-grid">
-            {eventOptions.map((option) => (
-              <div
-                key={option.id}
-                className={`action-button option-chip ${option.value.includes('up') ? 'option-chip-up' : 'option-chip-down'}`}
-              >
-                {option.label}
-              </div>
-            ))}
-          </div>
+        <div className="flex flex-col items-center">
+          <span className="text-secondary text-sm">Entry Fee</span>
+          <span className="text-primary font-semibold">🎫 {typeof event.entry_fee === 'number' ? `${event.entry_fee} PTS` : 'N/A'}</span>
         </div>
-        
-        {/* Call to Action Button */}
-        <div className="card-action-footer">
-          <button className="button button-primary" onClick={(e) => {
-            e.stopPropagation(); // Prevent card's onClick from firing twice
-            navigate(`/events/${event.id}`);
-          }}>
-            View & Place Bet
-          </button>
+      </div>
+      
+      {/* Interactive Prediction Options Preview */}
+      <div className="bg-surface p-md rounded-md mb-md">
+        <h4 className="text-primary text-center mb-sm">Prediction Options</h4>
+        <div className="flex gap-sm justify-center flex-wrap">
+          {eventOptions.map((option) => (
+            <div
+              key={option.id}
+              className={`btn btn-secondary text-sm ${option.value.includes('up') ? 'text-success' : 'text-danger'}`}
+            >
+              {option.label}
+            </div>
+          ))}
         </div>
+      </div>
+      
+      {/* Call to Action Button */}
+      <div className="text-center">
+        <button className="btn btn-primary" onClick={(e) => {
+          e.stopPropagation(); // Prevent card's onClick from firing twice
+          navigate(`/events/${event.id}`);
+        }}>
+          View & Place Bet
+        </button>
       </div>
     </div>
   );

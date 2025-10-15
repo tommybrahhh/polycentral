@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, getUserDetails, adjustUserPoints, updateUserRole, suspendUser, resetUserClaims } from '../../services/adminApi';
-import '../../styles/admin.css';
 
 const UserManagement = ({ activeTab, setActiveTab }) => {
   const [users, setUsers] = useState([]);
