@@ -3034,6 +3034,48 @@ adminRouter.post('/events/:id/suspend', async (req, res) => {
 
 // --- END OF BLOCK TO ADD ---
 
+// --- ADD THIS ENTIRE BLOCK ---
+
+// Admin endpoint to delete an event
+adminRouter.delete('/events/:id', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+
+    // Validate input
+    if (!eventId || isNaN(eventId)) {
+      return res.status(400).json({ error: 'Invalid event ID' });
+    }
+
+    // Delete the event from the database
+    // This assumes your database is set up with 'ON DELETE CASCADE'
+    // to also remove related participants, outcomes, etc.
+    const result = await pool.query(
+      'DELETE FROM events WHERE id = $1',
+      [eventId]
+    );
+
+    // The 'pg' library returns a 'rowCount' property. 
+    // If rowCount is 0, no event was found with that ID.
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Event deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    // Handle foreign key constraint errors if ON DELETE CASCADE is not set
+    if (error.code === '23503') {
+        return res.status(409).json({ error: 'Cannot delete event because it has active participants. Please resolve or handle participants first.' });
+    }
+    res.status(500).json({ error: 'Failed to delete event' });
+  }
+});
+
+// --- END OF BLOCK TO ADD ---
 // Admin endpoint to transfer platform fees to a user
 adminRouter.post('/platform-fees/transfer', async (req, res) => {
   const { userId, amount, reason } = req.body;
