@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import Participation from './Participation';
-import ParticipationChart from './ParticipationChart';
+import ActivityMeter from './ActivityMeter';
 
 // Helper function to safely format price range values
 const formatPriceRangeValue = (value) => {
@@ -82,16 +82,11 @@ const EventDetail = () => {
               </div>
             </div>
             
-            {/* Participation Trend Chart */}
-            <div>
-              <h3 className="text-center mb-md">Prize Pool Growth</h3>
-              <div className="bg-surface p-md rounded-md">
-                <ParticipationChart
-                  eventId={id}
-                  style={{ height: '300px', width: '100%' }}
-                />
-              </div>
-            </div>
+            {/* --- NEW: Event Activity Meter --- */}
+            <ActivityMeter
+                prizePool={event.prize_pool}
+                participants={event.current_participants}
+            />
 
             {/* Community Sentiment Pool */}
             {(event.up_bet_percentage || event.down_bet_percentage) && (

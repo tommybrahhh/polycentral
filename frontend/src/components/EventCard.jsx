@@ -125,11 +125,31 @@ const EventCard = ({ event }) => {
         </div>
       </div>
       
-      {/* Sentiment Bar */}
-      <div className="sentiment-bar mb-md">
-        <div className="sentiment-fill higher" style={{ width: '70%' }}></div>
-        <div className="sentiment-fill lower" style={{ width: '30%' }}></div>
-      </div>
+      {/* Dynamic Community Sentiment Bar */}
+      {event.prediction_distribution && (event.prediction_distribution.up > 0 || event.prediction_distribution.down > 0) && (
+        <div className="mb-md">
+          <div className="flex justify-between text-xs text-secondary mb-1 px-1">
+            <span className="text-success font-semibold">
+              Bullish: {event.prediction_distribution.up.toFixed(0)}%
+            </span>
+            <span className="text-danger font-semibold">
+              Bearish: {event.prediction_distribution.down.toFixed(0)}%
+            </span>
+          </div>
+          <div className="sentiment-bar">
+            <div
+              className="sentiment-fill higher"
+              style={{ width: `${event.prediction_distribution.up}%` }}
+              title={`${event.prediction_distribution.up.toFixed(1)}% Bullish`}
+            ></div>
+            <div
+              className="sentiment-fill lower"
+              style={{ width: `${event.prediction_distribution.down}%` }}
+              title={`${event.prediction_distribution.down.toFixed(1)}% Bearish`}
+            ></div>
+          </div>
+        </div>
+      )}
       
       <p className="text-primary mb-md">{event.description}</p>
       

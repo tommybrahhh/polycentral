@@ -1777,6 +1777,18 @@ app.get('/api/events/active', async (req, res) => {
         e.correct_answer,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
+        
+        -- START: New calculations for prediction sentiment
+        (
+          SELECT json_build_object(
+            'up', COALESCE(SUM(CASE WHEN p.prediction LIKE '%up%' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(p.id), 0), 0),
+            'down', COALESCE(SUM(CASE WHEN p.prediction LIKE '%down%' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(p.id), 0), 0)
+          )
+          FROM participants p
+          WHERE p.event_id = e.id
+        ) AS prediction_distribution,
+        -- END: New calculations for prediction sentiment
+        
         et.name as event_type
       FROM events e
       LEFT JOIN event_types et ON e.event_type_id = et.id
