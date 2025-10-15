@@ -2296,7 +2296,6 @@ adminRouter.post('/events/create', async (req, res) => {
       crypto_symbol,
       initial_price,
       prediction_window,
-      is_daily
     } = req.body;
 
     // Validate required fields
@@ -2369,7 +2368,7 @@ adminRouter.post('/events/create', async (req, res) => {
       `INSERT INTO events (
         title, description, category, options, entry_fee, max_participants,
         start_time, end_time, crypto_symbol, initial_price, prediction_window,
-        is_daily, event_type_id, status, resolution_status
+        event_type_id, status, resolution_status
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', 'pending')
       RETURNING *`,
       [
@@ -2384,7 +2383,6 @@ adminRouter.post('/events/create', async (req, res) => {
         crypto_symbol || 'bitcoin',
         finalInitialPrice || 50000,
         prediction_window || '24 hours',
-        is_daily || false,
         eventTypeId
       ]
     );
