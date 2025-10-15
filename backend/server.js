@@ -2255,15 +2255,123 @@ cron.schedule('0 0 * * *', resolvePendingEvents); // Run daily at midnight UTC
 
 
 // --- Admin Manual Event Creation Endpoint ---
-// This endpoint allows admin to manually trigger event creation
+// This endpoint allows admin to manually create events with custom parameters
 adminRouter.post('/events/create', async (req, res) => {
   try {
-    console.log('Admin manually triggering event creation...');
-    await createDailyEvent();
-    res.json({ success: true, message: "Event creation triggered successfully" });
+    const {
+      title,
+      description,
+      category,
+      options,
+      entry_fee,
+      max_participants,
+      start_time,
+      end_time,
+      crypto_symbol,
+      initial_price,
+      prediction_window,
+      is_daily
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !options || entry_fee === undefined || !start_time || !end_time) {
+      return res.status(400).json({
+        error: 'Missing required fields: title, options, entry_fee, start_time, end_time'
+      });
+    }
+
+    // Validate entry fee
+    if (entry_fee < 100 || entry_fee % 25 !== 0) {
+      return res.status(400).json({
+        error: 'Entry fee must be at least 100 points and divisible by 25'
+      });
+    }
+
+    // Validate dates
+    const startTime = new Date(start_time);
+    const endTime = new Date(end_time);
+    
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format for start_time or end_time' });
+    }
+
+    if (endTime <= startTime) {
+      return res.status(400).json({ error: 'End time must be after start time' });
+    }
+
+    // Validate options is a valid JSON array
+    let parsedOptions;
+    try {
+      parsedOptions = Array.isArray(options) ? options : JSON.parse(options);
+      if (!Array.isArray(parsedOptions) || parsedOptions.length === 0) {
+        throw new Error('Options must be a non-empty array');
+      }
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid options format. Must be a valid JSON array' });
+    }
+
+    // Check for existing event with same title
+    const existingEvent = await pool.query(
+      'SELECT * FROM events WHERE title = $1',
+      [title]
+    );
+    
+    if (existingEvent.rows.length > 0) {
+      return res.status(409).json({ error: 'Event title already exists' });
+    }
+
+    // Look up event type 'prediction'
+    const typeQuery = await pool.query(`SELECT id FROM event_types WHERE name = 'prediction'`);
+    if (typeQuery.rows.length === 0) {
+      return res.status(400).json({ error: "Event type 'prediction' not found" });
+    }
+    const eventTypeId = typeQuery.rows[0].id;
+
+    // Get current price if initial_price is not provided
+    let finalInitialPrice = initial_price;
+    if (!finalInitialPrice && crypto_symbol) {
+      try {
+        finalInitialPrice = await coingecko.getCurrentPrice(crypto_symbol);
+      } catch (error) {
+        console.warn('Failed to fetch current price, using default:', error.message);
+        finalInitialPrice = 50000; // Default price
+      }
+    }
+
+    // Create new event with all parameters
+    const { rows: [newEvent] } = await pool.query(
+      `INSERT INTO events (
+        title, description, category, options, entry_fee, max_participants,
+        start_time, end_time, crypto_symbol, initial_price, prediction_window,
+        is_daily, event_type_id, status, resolution_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', 'pending')
+      RETURNING *`,
+      [
+        title,
+        description || '',
+        category || 'crypto',
+        JSON.stringify(parsedOptions),
+        entry_fee,
+        max_participants || 100,
+        startTime,
+        endTime,
+        crypto_symbol || 'bitcoin',
+        finalInitialPrice || 50000,
+        prediction_window || '24 hours',
+        is_daily || false,
+        eventTypeId
+      ]
+    );
+
+    console.log('Admin created new event:', newEvent);
+    res.status(201).json({ success: true, data: newEvent });
+
   } catch (error) {
     console.error('Admin event creation failed:', error);
-    res.status(500).json({ error: 'Failed to create event' });
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Event title already exists' });
+    }
+    res.status(500).json({ error: 'Failed to create event: ' + error.message });
   }
 });
 

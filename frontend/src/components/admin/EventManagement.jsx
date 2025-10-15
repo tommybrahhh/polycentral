@@ -31,11 +31,15 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
   const [eventForm, setEventForm] = useState({
     title: '',
     description: '',
+    category: '',
+    options: JSON.stringify(['Higher', 'Lower']),
     entry_fee: 100,
     start_time: '',
     end_time: '',
     crypto_symbol: 'btc',
-    max_participants: 100
+    max_participants: 100,
+    prediction_window: '24 hours',
+    is_daily: false
   });
   
   // Template form state
@@ -106,11 +110,15 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
       setEventForm({
         title: '',
         description: '',
+        category: '',
+        options: JSON.stringify(['Higher', 'Lower']),
         entry_fee: 100,
         start_time: '',
         end_time: '',
         crypto_symbol: 'btc',
-        max_participants: 100
+        max_participants: 100,
+        prediction_window: '24 hours',
+        is_daily: false
       });
       setShowCreateForm(false);
       fetchData();
@@ -536,6 +544,29 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
                 />
               </div>
               
+              <div className="form-group">
+                <label htmlFor="category">Category:</label>
+                <input
+                  type="text"
+                  id="category"
+                  value={eventForm.category}
+                  onChange={(e) => setEventForm({...eventForm, category: e.target.value})}
+                  placeholder="e.g., Bitcoin, Ethereum, General"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="options">Options (JSON array):</label>
+                <textarea
+                  id="options"
+                  value={eventForm.options}
+                  onChange={(e) => setEventForm({...eventForm, options: e.target.value})}
+                  required
+                  placeholder='["Option 1", "Option 2", "Option 3"]'
+                />
+                <small>Enter options as a JSON array, e.g., ["Higher", "Lower"] or ["Yes", "No"]</small>
+              </div>
+              
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="entry_fee">Entry Fee:</label>
@@ -598,16 +629,44 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
                 </select>
               </div>
               
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="prediction_window">Prediction Window:</label>
+                  <select
+                    id="prediction_window"
+                    value={eventForm.prediction_window}
+                    onChange={(e) => setEventForm({...eventForm, prediction_window: e.target.value})}
+                  >
+                    <option value="1 hour">1 hour</option>
+                    <option value="4 hours">4 hours</option>
+                    <option value="12 hours">12 hours</option>
+                    <option value="24 hours">24 hours</option>
+                    <option value="48 hours">48 hours</option>
+                    <option value="7 days">7 days</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="is_daily">Daily Event:</label>
+                  <input
+                    type="checkbox"
+                    id="is_daily"
+                    checked={eventForm.is_daily}
+                    onChange={(e) => setEventForm({...eventForm, is_daily: e.target.checked})}
+                  />
+                </div>
+              </div>
+              
               <div className="form-actions">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="button button-secondary"
                   onClick={() => setShowCreateForm(false)}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="button button-primary"
                   disabled={actionLoading}
                 >

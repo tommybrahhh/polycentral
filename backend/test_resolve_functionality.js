@@ -2,7 +2,7 @@ const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
 
 // Configuration
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = 'http://localhost:8080';
 const DB_PATH = './database.json';
 
 // Test admin credentials (you'll need to create an admin user first)

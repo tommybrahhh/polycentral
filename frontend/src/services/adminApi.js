@@ -70,7 +70,7 @@ export const getAllEvents = (params = {}) => {
 };
 
 export const createEvent = (eventData) => {
-  return adminApi.post('/api/admin/events', eventData);
+  return adminApi.post('/api/admin/events/create', eventData);
 };
 
 export const updateEvent = (eventId, eventData) => {
