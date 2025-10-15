@@ -4,6 +4,13 @@ import { useParams } from 'react-router-dom';
 import Participation from './Participation';
 import ParticipationChart from './ParticipationChart';
 
+// Helper function to safely format price range values
+const formatPriceRangeValue = (value) => {
+  if (value === null || value === undefined) return 'N/A';
+  const numValue = Number(value);
+  return isNaN(numValue) ? 'N/A' : numValue.toFixed(2);
+};
+
 const EventDetail = () => {
   const { id } = useParams();
   const [event, setEvent] = useState(null);
@@ -116,30 +123,30 @@ const EventDetail = () => {
                 <div className="price-ranges-grid">
                   {/* UP Ranges */}
                   <div className="price-range-item up">
-                    <div className="range-label">0-3% Up</div>
-                    <div className="range-value">${event.initial_price?.toFixed(2)} - ${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'}</div>
-                  </div>
-                  <div className="price-range-item up">
-                    <div className="range-label">3-5% Up</div>
-                    <div className="range-value">${event.price_ranges['0-3% up']?.max?.toFixed(2) || 'N/A'} - ${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}</div>
-                  </div>
-                  <div className="price-range-item up">
-                    <div className="range-label">5%+ Up</div>
-                    <div className="range-value">${event.price_ranges['3-5% up']?.max?.toFixed(2) || 'N/A'}+</div>
-                  </div>
-                  {/* DOWN Ranges */}
-                  <div className="price-range-item down">
-                    <div className="range-label">0-3% Down</div>
-                    <div className="range-value">${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'} - ${event.initial_price?.toFixed(2)}</div>
-                  </div>
-                  <div className="price-range-item down">
-                    <div className="range-label">3-5% Down</div>
-                    <div className="range-value">${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'} - ${event.price_ranges['0-3% down']?.min?.toFixed(2) || 'N/A'}</div>
-                  </div>
-                  <div className="price-range-item down">
-                    <div className="range-label">5%+ Down</div>
-                    <div className="range-value">{"<"} ${event.price_ranges['3-5% down']?.min?.toFixed(2) || 'N/A'}</div>
-                  </div>
+                   <div className="range-label">0-3% Up</div>
+                   <div className="range-value">${formatPriceRangeValue(event.initial_price)} - ${formatPriceRangeValue(event.price_ranges?.['0-3% up']?.max)}</div>
+                 </div>
+                 <div className="price-range-item up">
+                   <div className="range-label">3-5% Up</div>
+                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['0-3% up']?.max)} - ${formatPriceRangeValue(event.price_ranges?.['3-5% up']?.max)}</div>
+                 </div>
+                 <div className="price-range-item up">
+                   <div className="range-label">5%+ Up</div>
+                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['3-5% up']?.max)}+</div>
+                 </div>
+                 {/* DOWN Ranges */}
+                 <div className="price-range-item down">
+                   <div className="range-label">0-3% Down</div>
+                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['0-3% down']?.min)} - ${formatPriceRangeValue(event.initial_price)}</div>
+                 </div>
+                 <div className="price-range-item down">
+                   <div className="range-label">3-5% Down</div>
+                   <div className="range-value">${formatPriceRangeValue(event.price_ranges?.['3-5% down']?.min)} - ${formatPriceRangeValue(event.price_ranges?.['0-3% down']?.min)}</div>
+                 </div>
+                 <div className="price-range-item down">
+                   <div className="range-label">5%+ Down</div>
+                   <div className="range-value">{"<"} ${formatPriceRangeValue(event.price_ranges?.['3-5% down']?.min)}</div>
+                 </div>
                 </div>
               </div>
             )}
