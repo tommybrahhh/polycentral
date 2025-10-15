@@ -57,26 +57,43 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 8080;
 
-// Middleware to authenticate admin API key
-const authenticateAdmin = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    // Verify JWT token first
-    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
-        if (err) {
-            return res.status(401).json({ error: 'Invalid token' });
+// Middleware to authenticate admin using database is_admin flag
+const authenticateAdmin = async (req, res, next) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        
+        if (!token) {
+            return res.status(401).json({ error: 'Access token required' });
         }
 
-        // Check if user is admin
-        const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [user.userId]);
-        if (rows.length === 0 || !rows[0].is_admin) {
-            return res.status(403).json({ error: 'Admin access required' });
-        }
+        // Verify JWT token to get user ID
+        jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
+            if (err) {
+                console.log('Token verification failed:', err.message);
+                return res.status(401).json({ error: 'Token is invalid or expired' });
+            }
 
-        req.userId = user.userId;
-        next();
-    });
+            const userId = decoded.userId;
+            
+            // Check if user is admin directly from database
+            const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [userId]);
+            
+            if (rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            
+            if (!rows[0].is_admin) {
+                return res.status(403).json({ error: 'Admin access required' });
+            }
+
+            req.userId = userId;
+            next();
+        });
+    } catch (error) {
+        console.error('Admin authentication error:', error);
+        res.status(500).json({ error: 'Internal server error during authentication' });
+    }
 };
 
 // Create admin router and apply middleware
