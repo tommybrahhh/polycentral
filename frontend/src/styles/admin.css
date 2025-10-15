@@ -118,77 +118,101 @@
 .button {
   padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--animation-medium);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: inherit;
-  text-decoration: none;
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left var(--animation-slow);
+}
+
+.button:hover::before {
+  left: 100%;
 }
 
 .button-primary {
-  background: var(--orange-primary);
-  color: #000;
+  background: linear-gradient(135deg, var(--orange-primary), var(--orange-neon));
+  color: #000000;
+  box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .button-primary:hover {
-  background: var(--orange-secondary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(255, 165, 0, 0.5), 0 0 40px rgba(255, 107, 53, 0.3);
 }
 
 .button-secondary {
   background: rgba(255, 165, 0, 0.1);
   color: var(--orange-primary);
-  border: 1px solid var(--orange-primary);
+  border: 1px solid rgba(255, 165, 0, 0.3);
 }
 
 .button-secondary:hover {
   background: rgba(255, 165, 0, 0.2);
-  transform: translateY(-2px);
+  border-color: var(--orange-primary);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(255, 165, 0, 0.3), 0 0 30px rgba(255, 165, 0, 0.2);
 }
 
 .button-success {
-  background: #4caf50;
-  color: white;
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: #000000;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .button-success:hover {
-  background: #45a049;
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.5), 0 0 40px rgba(76, 175, 80, 0.3);
 }
 
 .button-warning {
-  background: #ff9800;
-  color: white;
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: #000000;
+  box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .button-warning:hover {
-  background: #f57c00;
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(255, 152, 0, 0.5), 0 0 40px rgba(255, 152, 0, 0.3);
 }
 
 .button-danger {
-  background: #f44336;
-  color: white;
+  background: linear-gradient(135deg, #f44336, #e53935);
+  color: #000000;
+  box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .button-danger:hover {
-  background: #e53935;
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(244, 67, 54, 0.5), 0 0 40px rgba(244, 67, 54, 0.3);
 }
 
 .button-info {
-  background: #2196f3;
-  color: white;
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: #000000;
+  box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .button-info:hover {
-  background: #1976d2;
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(33, 150, 243, 0.5), 0 0 40px rgba(33, 150, 243, 0.3);
 }
 
 .button-small {
@@ -200,6 +224,11 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
+  box-shadow: none !important;
+}
+
+.button:active {
+  transform: translateY(-1px);
 }
 
 /* Events Table */
@@ -225,7 +254,7 @@
 
 .events-table th {
   background: rgba(255, 165, 0, 0.1);
-  color: var(--orange-primary);
+  color: #000000; /* Changed from orange to black for better contrast */
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.8rem;
@@ -238,7 +267,7 @@
 
 .event-title {
   font-weight: 600;
-  color: var(--dark-text);
+  color: #000000; /* Changed from dark-text to black for better contrast */
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -255,17 +284,17 @@
 
 .status-badge.active {
   background: rgba(76, 175, 80, 0.2);
-  color: #4caf50;
+  color: #000000; /* Changed to black for better contrast */
 }
 
 .status-badge.pending {
   background: rgba(255, 152, 0, 0.2);
-  color: #ff9800;
+  color: #000000; /* Changed to black for better contrast */
 }
 
 .status-badge.resolved {
   background: rgba(33, 150, 243, 0.2);
-  color: #2196f3;
+  color: #000000; /* Changed to black for better contrast */
 }
 
 .action-buttons {
@@ -364,7 +393,7 @@
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  color: var(--dark-text);
+  color: #000000; /* Changed from dark-text to black for better contrast */
   font-weight: 600;
 }
 
@@ -423,12 +452,12 @@
 
 .info-item label {
   font-weight: 600;
-  color: var(--dark-text-secondary);
+  color: #000000; /* Changed from dark-text-secondary to black for better contrast */
   font-size: 0.9rem;
 }
 
 .info-item span {
-  color: var(--dark-text);
+  color: #000000; /* Changed from dark-text to black for better contrast */
   font-size: 1rem;
 }
 
@@ -606,4 +635,131 @@
   padding: 2rem;
   color: var(--dark-text-secondary);
   font-style: italic;
+}
+
+/* User Management Styles */
+.user-management {
+  width: 100%;
+}
+
+.user-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.user-management-header h2 {
+  color: var(--orange-primary);
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.users-list {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--dark-card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.users-table th,
+.users-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 165, 0, 0.1);
+}
+
+.users-table th {
+  background: rgba(255, 165, 0, 0.1);
+  color: #000000;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.users-table tr:hover {
+  background: rgba(255, 165, 0, 0.05);
+}
+
+.role-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-badge.admin {
+  background: rgba(255, 165, 0, 0.2);
+  color: #000000;
+}
+
+.role-badge.user {
+  background: rgba(33, 150, 243, 0.2);
+  color: #000000;
+}
+
+.status-badge.suspended {
+  background: rgba(244, 67, 54, 0.2);
+  color: #000000;
+}
+
+/* User Details Modal */
+.user-details {
+  padding: 1.5rem;
+}
+
+.user-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.user-actions {
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 165, 0, 0.2);
+}
+
+.user-actions h4 {
+  color: var(--orange-primary);
+  margin-bottom: 1rem;
+}
+
+.action-section {
+  margin-bottom: 2rem;
+}
+
+.action-section h4 {
+  color: var(--orange-primary);
+  margin-bottom: 1rem;
+}
+
+.status-active {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.status-suspended {
+  color: #f44336;
+  font-weight: 600;
+}
+
+.role-admin {
+  color: var(--orange-primary);
+  font-weight: 600;
+}
+
+.role-user {
+  color: #2196f3;
+  font-weight: 600;
 }

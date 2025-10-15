@@ -65,25 +65,25 @@ const AdminControlPanel = () => {
         <h3 className="text-2xl font-bold text-gray-800">Admin Control Panel</h3>
         <div className="flex gap-2">
           {metrics?.pendingEvents > 0 && (
-            <button
-              onClick={handleResolveEvents}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-            >
-              Resolve Events ({metrics.pendingEvents})
-            </button>
-          )}
-          <button
-            onClick={handleCreateEvent}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-          >
-            Create Event
-          </button>
-          <button
-            onClick={() => navigate('/admin')}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-          >
-            Full Admin Dashboard
-          </button>
+           <button
+             onClick={handleResolveEvents}
+             className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
+           >
+             Resolve Events ({metrics.pendingEvents})
+           </button>
+         )}
+         <button
+           onClick={handleCreateEvent}
+           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+         >
+           Create Event
+         </button>
+         <button
+           onClick={() => navigate('/admin')}
+           className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+         >
+           Full Admin Dashboard
+         </button>
         </div>
       </div>
 
@@ -142,7 +142,7 @@ const AdminControlPanel = () => {
           </button>
           <button
             onClick={handleResolveEvents}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors text-center"
+            className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-3 rounded-lg font-semibold transition-colors text-center"
           >
             ⚡ Resolve Pending Events
           </button>
