@@ -1898,7 +1898,15 @@ app.get('/api/events/:id', async (req, res) => {
     const event = rows[0];
     if (event.status === 'active' || event.resolution_status === 'pending') {
       try {
-        event.current_price = await coingecko.getCurrentPrice(event.crypto_symbol || 'bitcoin');
+        // Convert symbol to CoinGecko ID - 'btc' -> 'bitcoin', 'eth' -> 'ethereum', etc.
+        const coinGeckoIdMap = {
+          'btc': 'bitcoin',
+          'eth': 'ethereum',
+          'sol': 'solana',
+          'ada': 'cardano'
+        };
+        const coinGeckoId = coinGeckoIdMap[event.crypto_symbol] || 'bitcoin';
+        event.current_price = await coingecko.getCurrentPrice(coinGeckoId);
         
         // Add price range information for active events
         if (event.initial_price) {
