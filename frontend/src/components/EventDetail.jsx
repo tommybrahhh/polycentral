@@ -20,6 +20,11 @@ const EventDetail = () => {
 
   useEffect(() => {
     const fetchEvent = async () => {
+      // FIX: Reset state to show loading indicator and clear old data
+      setLoading(true);
+      setEvent(null);
+      setError(null);
+
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/${id}`);
         const eventData = response.data;
@@ -33,10 +38,11 @@ const EventDetail = () => {
         }
         
         setEvent(eventData);
-        setLoading(false);
       } catch (err) {
         console.error('Failed to fetch event:', err);
         setError('Failed to load event');
+      } finally {
+        // This will run after the try or catch block completes
         setLoading(false);
       }
     };
