@@ -1525,41 +1525,37 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         });
     }
     
-    // Validate prediction - updated to use price range options
-    const validPredictions = [
-        '0-3% up', '3-5% up', '5%+ up',
-        '0-3% down', '3-5% down', '5%+ down'
-    ];
-    
-    if (!validPredictions.includes(prediction)) {
-        console.log('DEBUG: Invalid prediction value', { prediction });
-        return res.status(400).json({ error: 'Invalid prediction value' });
-    }
   
-    // Get event details including pot system configuration
-    const eventQuery = await pool.query(
-        'SELECT pot_enabled, min_bet, max_bet, status, end_time FROM events WHERE id = $1',
-        [eventId]
-    );
-    
-    if (eventQuery.rows.length === 0) {
-        return res.status(404).json({ error: 'Event not found' });
-    }
-    
-    const event = eventQuery.rows[0];
-    
-    // Check if event is still active
-    const now = new Date();
-    const endTime = new Date(event.end_time);
-    if (now >= endTime || event.status !== 'active') {
-        return res.status(400).json({ error: 'Event is no longer active' });
-    }
-  
-    // Validate bet amount against event constraints
-    if (selectedEntryFee < event.min_bet || selectedEntryFee > event.max_bet) {
-        return res.status(400).json({
-            error: `Bet amount must be between ${event.min_bet} and ${event.max_bet} points`
-        });
+
+    // Dynamically validate prediction against the event's actual options
+    try {
+        const eventOptionsQuery = await pool.query('SELECT options FROM events WHERE id = $1', [eventId]);
+        if (eventOptionsQuery.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found for validation' });
+        }
+        
+        const eventOptions = eventOptionsQuery.rows[0].options; // This can be a JSON string or an array of objects
+        let validPredictions = [];
+        
+        if (typeof eventOptions === 'string') {
+            const parsedOptions = JSON.parse(eventOptions);
+            // Check if it's an array of strings (like ['Higher', 'Lower'])
+            if (typeof parsedOptions[0] === 'string') {
+                validPredictions = parsedOptions;
+            } else { // It's an array of objects (like [{label, value}, ...])
+                validPredictions = parsedOptions.map(opt => opt.value);
+            }
+        } else if (Array.isArray(eventOptions)) { // It's already parsed from the DB
+             validPredictions = eventOptions.map(opt => opt.value);
+        }
+
+        if (!validPredictions.includes(prediction)) {
+            console.log('DEBUG: Invalid prediction value', { prediction, validOptions: validPredictions });
+            return res.status(400).json({ error: 'Invalid prediction value submitted' });
+        }
+    } catch (e) {
+        console.error("Error during prediction validation:", e);
+        return res.status(500).json({ error: 'Server error during prediction validation' });
     }
 
     let client;
