@@ -1616,17 +1616,6 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Insufficient points' });
         }
 
-        // Check if user has already bet on this event
-        console.log('DEBUG: Checking if user already bet on this event', { eventId, userId });
-        const existingBet = await client.query(
-            'SELECT * FROM participants WHERE event_id = $1 AND user_id = $2',
-            [eventId, userId]
-        );
-        if (existingBet.rows.length > 0) {
-            console.log('DEBUG: User already placed a bet on this event', { eventId, userId });
-            await client.query('ROLLBACK');
-            return res.status(400).json({ error: 'You have already placed a bet on this event' });
-        }
 
         // Insert bet into participants table
         console.log('DEBUG: Inserting bet into participants table', { eventId, userId, prediction, amount: selectedEntryFee });
@@ -2172,6 +2161,7 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
     
     const { rows } = await pool.query(
       `SELECT
+         p.id AS participation_id,
          e.id AS event_id,
          e.title,
          e.initial_price,

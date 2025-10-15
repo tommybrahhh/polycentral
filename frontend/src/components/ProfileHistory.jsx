@@ -15,7 +15,7 @@ const ProfileHistory = ({ history }) => {
       <h3>Event Participation History</h3>
       <div className="history-list">
         {history.map((entry) => (
-          <div key={entry.event_id} className={`history-item ${entry.resolution_state}`}>
+          <div key={entry.participation_id} className={`history-item ${entry.resolution_state}`}>
             <div className="event-header">
               <span className="event-title">{entry.title || 'Untitled Event'}</span>
               <span className="event-date">{formatDate(entry.end_time) || 'N/A'}</span>

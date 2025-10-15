@@ -76,8 +76,8 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      setBetStatus('success');
-      setSelectedPrediction(null); // Reset selection after successful bet
+      setBetStatus('success'); // Briefly set for visual feedback if needed
+      setSelectedPrediction(null); // Reset the selected button immediately
       
       // Fetch updated user data from the server to ensure points are accurate
       try {
@@ -115,7 +115,6 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
       }
       
       // Refresh event data to update prize pool and participant count
-      // We need to get the fetchEvents function from the parent context
       const eventUpdateEvent = new CustomEvent('refreshEvents');
       window.dispatchEvent(eventUpdateEvent);
       
@@ -128,10 +127,10 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
         }, 200);
       }
       
-      // Show success toast
+      // Show a more encouraging success toast
       const toast = document.createElement('div');
       toast.className = 'toast toast-success show';
-      toast.textContent = 'Bet placed successfully!';
+      toast.textContent = 'Bet placed! Feel free to place another.';
       document.body.appendChild(toast);
       
       // Remove toast after 3 seconds
@@ -139,7 +138,8 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
         toast.remove();
       }, 3000);
       
-      setTimeout(() => setBetStatus(null), 3000);
+      // Reset the bet status quickly so the button is re-enabled
+      setTimeout(() => setBetStatus(null), 500);
     } catch (error) {
       console.error('Betting failed:', error);
       setBetStatus('error');
@@ -227,16 +227,6 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
         </button>
       </div>
 
-      {betStatus === 'success' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface p-xl rounded-md text-center">
-            <div className="text-success text-2xl font-bold mb-md">Bet Placed Successfully!</div>
-            <button className="btn btn-primary" onClick={() => setBetStatus(null)}>
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
