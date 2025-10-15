@@ -165,20 +165,36 @@ const EventCard = ({ event }) => {
         </div>
       </div>
       
-      {/* Interactive Prediction Options Preview */}
-      <div className="bg-surface p-md rounded-md mb-md">
-        <h4 className="text-primary text-center mb-sm">Prediction Options</h4>
-        <div className="flex gap-sm justify-center flex-wrap">
-          {eventOptions.map((option) => (
-            <div
-              key={option.id}
-              className={`btn btn-secondary text-sm ${option.value.includes('up') ? 'text-success' : 'text-danger'}`}
-            >
-              {option.label}
-            </div>
-          ))}
+      {/* Option Volume Chart */}
+      {event.option_volumes && Object.keys(event.option_volumes).length > 0 && (
+        <div className="bg-surface p-md rounded-md mb-md">
+          <h4 className="text-primary text-center mb-sm">Betting Volume</h4>
+          <div className="space-y-2">
+            {Object.entries(event.option_volumes).map(([option, data]) => (
+              <div key={option} className="flex items-center gap-2">
+                <span className="text-secondary text-xs w-20 truncate">
+                  {option.includes('up') ? '📈 ' : '📉 '}
+                  {option}
+                </span>
+                <div className="flex-grow bg-charcoal rounded-full h-3 overflow-hidden">
+                  <div
+                    className={`h-3 rounded-full ${
+                      option.includes('up') ? 'bg-success' : 'bg-danger'
+                    }`}
+                    style={{
+                      width: `${Math.min((data.total_amount / event.prize_pool) * 100, 100)}%`
+                    }}
+                    title={`${data.total_amount.toLocaleString()} points (${Math.round((data.total_amount / event.prize_pool) * 100)}%)`}
+                  ></div>
+                </div>
+                <span className="text-secondary text-xs w-12 text-right">
+                  {Math.round((data.total_amount / event.prize_pool) * 100)}%
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Call to Action Button */}
       <div className="text-center">

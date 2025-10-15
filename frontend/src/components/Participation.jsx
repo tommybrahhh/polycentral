@@ -174,10 +174,7 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
         <div className="text-primary font-bold text-xl mb-sm">{userPoints.toLocaleString()} points</div>
         <div className="text-secondary text-sm">
           <span className={userPoints >= selectedEntryFee ? '' : 'text-danger'}>
-            Entry: {selectedEntryFee?.toLocaleString()}
-          </span>
-          <span className="text-secondary ml-sm">
-            (5% fee: {Math.floor(selectedEntryFee * 0.05)?.toLocaleString()})
+            Entry: {selectedEntryFee?.toLocaleString()} points
           </span>
         </div>
       </div>
@@ -214,10 +211,7 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
               disabled={!canPlaceBet() || betStatus === 'success'}
             >
               <span className="block font-semibold text-primary">{option.label || option.value}</span>
-              <span className="block text-secondary text-sm mt-sm">2.5x</span>
-              <div className="text-secondary text-xs mt-sm">
-                * Includes 5% platform fee
-              </div>
+              <span className="block text-secondary text-sm mt-sm">2.5x potential</span>
             </button>
           ))}
         </div>
