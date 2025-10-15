@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { normalizeEventOptions } from '../../utils/eventUtils'; // Adjust path if necessary
+import { normalizeEventOptions } from '../utils/eventUtils'; // Adjusted path to be relative to components directory
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
