@@ -2369,7 +2369,7 @@ adminRouter.post('/events/create', async (req, res) => {
         title, description, category, options, entry_fee, max_participants,
         start_time, end_time, crypto_symbol, initial_price, prediction_window,
         event_type_id, status, resolution_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', 'pending')
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', 'pending')
       RETURNING *`,
       [
         title,
