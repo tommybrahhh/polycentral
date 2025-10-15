@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { normalizeEventOptions } from '../../utils/eventUtils'; // Adjust path if necessary
 
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
+  const eventOptions = React.useMemo(() => normalizeEventOptions(event.options), [event.options]);
 
   // Helper function to determine if an event is closing soon (within 1 hour)
   const isEventClosingSoon = (event) => {
@@ -147,32 +149,16 @@ const EventCard = ({ event }) => {
         {/* Interactive Prediction Options Preview */}
         <div className="prediction-options-preview">
           <h4 className="options-preview-title">Prediction Options</h4>
-          {event.options && typeof event.options === 'string' ? (
-            <div className="options-grid">
-              {(() => {
-                try {
-                  const options = JSON.parse(event.options);
-                  return options.map((option, index) => (
-                    <div key={index} className={`action-button option-chip ${option.value.includes('up') ? 'option-chip-up' : 'option-chip-down'}`}>
-                      {option.label}
-                    </div>
-                  ));
-                } catch (e) {
-                  console.error('Failed to parse event options:', e);
-                  return <div className="text-sm text-gray-400">Options not available</div>;
-                }
-              })()}
-            </div>
-          ) : (
-             <div className="options-grid">
-                <div className="option-chip option-chip-up">0-3% Up</div>
-                <div className="option-chip option-chip-up">3-5% Up</div>
-                <div className="option-chip option-chip-up">5%+ Up</div>
-                <div className="option-chip option-chip-down">0-3% Down</div>
-                <div className="option-chip option-chip-down">3-5% Down</div>
-                <div className="option-chip option-chip-down">5%+ Down</div>
-             </div>
-          )}
+          <div className="options-grid">
+            {eventOptions.map((option) => (
+              <div
+                key={option.id}
+                className={`action-button option-chip ${option.value.includes('up') ? 'option-chip-up' : 'option-chip-down'}`}
+              >
+                {option.label}
+              </div>
+            ))}
+          </div>
         </div>
         
         {/* Call to Action Button */}
