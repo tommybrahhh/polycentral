@@ -31,21 +31,36 @@ export default function ParticipationChart({ eventId }) {
   };
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    // Get backend WebSocket URL from environment variable
+    const apiUrl = new URL(import.meta.env.VITE_API_BASE_URL);
+    const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${apiUrl.host}/ws`;
     
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'participationUpdate' && message.eventId === eventId) {
-        fetchData();
-      }
-    };
+    let ws;
+    try {
+      ws = new WebSocket(wsUrl);
+      
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'participationUpdate' && message.eventId === eventId) {
+          fetchData();
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.warn('WebSocket connection failed, using polling only:', error);
+      };
+    } catch (error) {
+      console.warn('WebSocket initialization failed, using polling only:', error);
+    }
 
     fetchData(); // Initial load
     const interval = setInterval(fetchData, 300000); // Fallback polling every 5 minutes
     
     return () => {
-      ws.close();
+      if (ws) {
+        ws.close();
+      }
       clearInterval(interval);
     };
   }, [eventId]);

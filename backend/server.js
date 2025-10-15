@@ -135,6 +135,7 @@ app.use('/api/admin', adminRouter);
 // --- Database Setup ---
 const fs = require('fs').promises;
 let pool;
+let clients = new Set();
 
 if (dbType === 'postgres') {
   const { Pool } = require('pg');
@@ -1216,7 +1217,7 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
           );
           console.debug('Event creation successful', newEvent);
           res.status(201).json(newEvent);
-          broadcastParticipation(eventId);
+          broadcastParticipation(newEvent.id);
         } catch (error) {
           console.error(`Event creation failed: ${error.message}`, {
             query: `INSERT INTO events (title, description, options, entry_fee, start_time, end_time, location, max_participants, current_participants, prize_pool, status, event_type_id, crypto_symbol, initial_price) VALUES ('${title}', '${description}', '${JSON.stringify(options)}', ${entry_fee}, '${startTime}', '${endTime}', '${location || 'Global'}', ${capacity || 100}, 0, 0, 'active', ${eventTypeId}, '${process.env.DEFAULT_CRYPTO_SYMBOL || 'btc'}', ${currentPrice})`,
@@ -2847,7 +2848,6 @@ async function startServer() {
         
     // Create WebSocket server
     const wss = new WebSocket.Server({ server });
-    const clients = new Set();
     
     wss.on('connection', (ws) => {
       clients.add(ws);
