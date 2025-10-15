@@ -2989,6 +2989,51 @@ adminRouter.post('/events/:id/resolve-manual', async (req, res) => {
   }
 });
 
+// --- ADD THIS ENTIRE BLOCK ---
+
+// Admin endpoint to suspend or unsuspend an event
+adminRouter.post('/events/:id/suspend', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { is_suspended } = req.body;
+
+    // Validate input
+    if (!eventId || isNaN(eventId)) {
+      return res.status(400).json({ error: 'Invalid event ID' });
+    }
+
+    if (typeof is_suspended !== 'boolean') {
+      return res.status(400).json({ error: 'is_suspended must be a boolean value' });
+    }
+
+    // Update the event's status and is_suspended flag in the database
+    const { rows } = await pool.query(
+      `UPDATE events
+       SET is_suspended = $1, status = $2
+       WHERE id = $3
+       RETURNING id, title, is_suspended, status`,
+      [is_suspended, is_suspended ? 'suspended' : 'active', eventId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const message = is_suspended ? 'Event suspended successfully' : 'Event unsuspended successfully';
+    res.json({
+      success: true,
+      message: message,
+      event: rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error updating event suspension status:', error);
+    res.status(500).json({ error: 'Failed to update event suspension status' });
+  }
+});
+
+// --- END OF BLOCK TO ADD ---
+
 // Admin endpoint to transfer platform fees to a user
 adminRouter.post('/platform-fees/transfer', async (req, res) => {
   const { userId, amount, reason } = req.body;
