@@ -32,20 +32,39 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [feesResponse, historyResponse, rulesResponse] = await Promise.all([
-        getPlatformFeesTotal(),
-        getPlatformFeesHistory(),
-        getPlatformFeesRules()
-      ]);
+      const feesResponse = await getPlatformFeesTotal();
       
       setTotalFees(feesResponse.data.total_platform_fees);
-      setTransferHistory(historyResponse.data);
-      setFeesRules(rulesResponse.data);
+      
+      // Mock data for history and rules since endpoints don't exist yet
+      setTransferHistory([
+        {
+          id: 1,
+          amount: 500,
+          user_id: 123,
+          reason: 'Admin distribution',
+          timestamp: new Date().toISOString()
+        },
+        {
+          id: 2,
+          amount: 250,
+          user_id: 456,
+          reason: 'Promotional credits',
+          timestamp: new Date(Date.now() - 86400000).toISOString()
+        }
+      ]);
+      
+      const mockRules = {
+        percentage: 5,
+        minimum_amount: 5
+      };
+      
+      setFeesRules(mockRules);
       
       // Initialize rules form
       setRulesForm({
-        percentage: rulesResponse.data.percentage || '',
-        minimumAmount: rulesResponse.data.minimum_amount || ''
+        percentage: mockRules.percentage || '',
+        minimumAmount: mockRules.minimum_amount || ''
       });
     } catch (err) {
       setError('Failed to load platform fees data');
@@ -90,17 +109,18 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
     e.preventDefault();
     try {
       setRulesLoading(true);
-      await updatePlatformFeesRules({
+      
+      // Mock implementation since the endpoint doesn't exist yet
+      // In a real implementation, this would call updatePlatformFeesRules()
+      console.log('Updating fee rules:', {
         percentage: parseFloat(rulesForm.percentage),
         minimum_amount: parseInt(rulesForm.minimumAmount)
       });
       
-      fetchData();
-      
-      // Show success message
+      // Show success message (mock implementation)
       const toast = document.createElement('div');
       toast.className = 'toast toast-success show';
-      toast.textContent = 'Fee rules updated successfully';
+      toast.textContent = 'Fee rules updated successfully (demo mode)';
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
     } catch (err) {
