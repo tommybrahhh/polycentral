@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { normalizeEventOptions } from '../../utils/eventUtils'; // Adjust path if necessary
+import { normalizeEventOptions } from '../utils/eventUtils'; // Adjust path if necessary
 
 const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
   const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
