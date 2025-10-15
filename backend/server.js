@@ -1762,6 +1762,16 @@ app.get('/api/events/active', async (req, res) => {
     }
     
     const queryText = `
+      WITH participant_stats AS (
+        SELECT
+          event_id,
+          COUNT(*) AS total_participants,
+          SUM(amount) AS total_prize_pool,
+          SUM(CASE WHEN prediction LIKE '%up%' THEN 1 ELSE 0 END) AS up_bets,
+          SUM(CASE WHEN prediction LIKE '%down%' THEN 1 ELSE 0 END) AS down_bets
+        FROM participants
+        GROUP BY event_id
+      )
       SELECT
         e.id,
         e.title,
@@ -1775,37 +1785,15 @@ app.get('/api/events/active', async (req, res) => {
         e.status,
         e.resolution_status,
         e.correct_answer,
-        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
-        
-        -- START: New calculations for prediction sentiment and volume
-        (
-          SELECT json_build_object(
-            'up', COALESCE(SUM(CASE WHEN p.prediction LIKE '%up%' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(p.id), 0), 0),
-            'down', COALESCE(SUM(CASE WHEN p.prediction LIKE '%down%' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(p.id), 0), 0)
-          )
-          FROM participants p
-          WHERE p.event_id = e.id
+        COALESCE(ps.total_participants, 0) AS current_participants,
+        COALESCE(ps.total_prize_pool, 0) AS prize_pool,
+        json_build_object(
+          'up', COALESCE(ps.up_bets * 100.0 / NULLIF(ps.total_participants, 0), 0),
+          'down', COALESCE(ps.down_bets * 100.0 / NULLIF(ps.total_participants, 0), 0)
         ) AS prediction_distribution,
-        
-        -- Option-specific volume data
-        (
-          SELECT json_object_agg(
-            p.prediction,
-            json_build_object(
-              'count', COUNT(p.id),
-              'total_amount', COALESCE(SUM(p.amount), 0),
-              'percentage', COALESCE(COUNT(p.id) * 100.0 / NULLIF((SELECT COUNT(*) FROM participants WHERE event_id = e.id), 0), 0)
-            )
-          )
-          FROM participants p
-          WHERE p.event_id = e.id
-          GROUP BY p.prediction
-        ) AS option_volumes,
-        -- END: New calculations for prediction sentiment and volume
-        
         et.name as event_type
       FROM events e
+      LEFT JOIN participant_stats ps ON e.id = ps.event_id
       LEFT JOIN event_types et ON e.event_type_id = et.id
       WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
     
