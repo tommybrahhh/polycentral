@@ -54,6 +54,7 @@ const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 const coingecko = require('./lib/coingecko');
 const { updateUserPoints } = require('./utils/pointsUtils');
+const { generateVerificationToken, getExpirationTime, sendVerificationEmail } = require('./utils/emailUtils');
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 8080;
@@ -2223,6 +2224,185 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('Error fetching user prediction history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Change password endpoint
+// Email change verification endpoint
+app.post('/api/user/request-email-change', authenticateToken, async (req, res) => {
+  try {
+    const { newEmail, currentPassword } = req.body;
+    const userId = req.userId;
+
+    // Validate input
+    if (!newEmail || !currentPassword) {
+      return res.status(400).json({ error: 'New email and current password are required' });
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+
+    // Check if new email is same as current email
+    const { rows: [user] } = await pool.query(
+      'SELECT email, password_hash FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.email === newEmail) {
+      return res.status(400).json({ error: 'New email cannot be the same as current email' });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Check if new email is already in use
+    const { rows: existingUser } = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [newEmail]
+    );
+    
+    if (existingUser.length > 0) {
+      return res.status(409).json({ error: 'Email already in use' });
+    }
+
+    // Generate verification token and expiration
+    const verificationToken = generateVerificationToken();
+    const expiresAt = getExpirationTime();
+
+    // Store verification request in database
+    await pool.query(
+      `INSERT INTO email_change_verifications (user_id, new_email, verification_token, expires_at)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, newEmail, verificationToken, expiresAt]
+    );
+
+    // Send verification email
+    await sendVerificationEmail(newEmail, verificationToken);
+
+    res.json({
+      message: 'Verification email sent! Please check your new email address to complete the process.',
+      expiresAt: expiresAt.toISOString()
+    });
+
+  } catch (error) {
+    console.error('Email change request error:', error);
+    res.status(500).json({ error: 'Failed to process email change request' });
+  }
+});
+
+// Email verification endpoint
+app.post('/api/user/verify-email-change', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Verification token is required' });
+    }
+
+    // Find and validate verification token
+    const { rows: [verification] } = await pool.query(
+      `SELECT * FROM email_change_verifications
+       WHERE verification_token = $1 AND expires_at > NOW() AND used = FALSE`,
+      [token]
+    );
+
+    if (!verification) {
+      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Update user's email
+      const { rows: [updatedUser] } = await client.query(
+        'UPDATE users SET email = $1 WHERE id = $2 RETURNING id, email, username',
+        [verification.new_email, verification.user_id]
+      );
+
+      // Mark token as used
+      await client.query(
+        'UPDATE email_change_verifications SET used = TRUE WHERE id = $1',
+        [verification.id]
+      );
+
+      // Clean up expired tokens for this user
+      await client.query(
+        'DELETE FROM email_change_verifications WHERE user_id = $1 AND (expires_at <= NOW() OR used = TRUE)',
+        [verification.user_id]
+      );
+
+      await client.query('COMMIT');
+
+      res.json({
+        success: true,
+        message: 'Email address successfully updated!',
+        user: updatedUser
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({ error: 'Failed to verify email change' });
+  }
+});
+
+app.post('/api/user/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.userId;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    // Get user's current hashed password from database
+    const { rows } = await pool.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = rows[0];
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash the new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user's password in database
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [hashedNewPassword, userId]
+    );
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
