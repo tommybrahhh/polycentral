@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+// The import is correct now: default export
+import useFetch from '../hooks/useFetch'; 
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -9,11 +11,9 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
 } from 'chart.js';
-import useFetch from '../hooks/useFetch';
+import '../styles/admin.css';
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -21,190 +21,111 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend,
-  Filler
+  Legend
 );
 
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  return new Date(dateString).toLocaleDateString('en-US', options);
+};
+
 const PointsHistory = () => {
-  const [pointsHistory, setPointsHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const { fetchWithAuth } = useFetch();
+  // We can now safely destructure all three values because we know useFetch provides them.
+  const { data: history, loading, error } = useFetch('/api/user/points-history');
 
-  useEffect(() => {
-    fetchPointsHistory();
-  }, []);
+  // Explicitly handle the loading state for a better UX.
+  if (loading) {
+    return <div className="loading">Loading points history...</div>;
+  }
 
-  const fetchPointsHistory = async () => {
-    try {
-      setLoading(true);
-      const response = await fetchWithAuth('/api/user/points-history');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch points history');
-      }
-      
-      const data = await response.json();
-      setPointsHistory(data);
-    } catch (err) {
-      setError(err.message);
-      console.error('Error fetching points history:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Explicitly handle the error state.
+  if (error) {
+    return <div className="error">Failed to load points history: {error}</div>;
+  }
+  
+  // Handle the case where there is no data.
+  if (!history || history.length === 0) {
+    return (
+        <div className="admin-content">
+            <div className="admin-component-header"><h2>Points History</h2></div>
+            <div className="card"><p>No points history available yet.</p></div>
+        </div>
+    );
+  }
 
-  // Prepare data for the chart
   const chartData = {
-    labels: pointsHistory.map(entry => 
-      new Date(entry.created_at).toLocaleDateString()
-    ),
+    labels: history.map(entry => formatDate(entry.created_at)),
     datasets: [
       {
         label: 'Points Balance',
-        data: pointsHistory.map(entry => entry.new_balance),
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        data: history.map(entry => entry.new_balance),
+        borderColor: 'var(--orange-primary)',
+        backgroundColor: 'rgba(255, 140, 0, 0.2)',
         fill: true,
-        tension: 0.4,
-        pointBackgroundColor: 'rgb(59, 130, 246)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-      }
-    ]
+        tension: 0.3,
+      },
+    ],
   };
 
   const chartOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Points Balance History'
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const entry = pointsHistory[context.dataIndex];
-            return [
-              `Balance: ${entry.new_balance} points`,
-              `Change: ${entry.change_amount > 0 ? '+' : ''}${entry.change_amount} points`,
-              `Reason: ${entry.reason}`
-            ];
-          }
-        }
-      }
+      legend: { display: false },
+      title: { display: true, text: 'Points Balance Over Time', color: 'var(--off-white)' },
     },
     scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Points'
-        }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Date'
-        }
-      }
-    },
-    maintainAspectRatio: false
+        x: { ticks: { color: 'var(--light-gray)' } },
+        y: { ticks: { color: 'var(--light-gray)' } }
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <p>Error loading points history: {error}</p>
-          <button
-            onClick={fetchPointsHistory}
-            className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Points History</h2>
-        
-        {pointsHistory.length === 0 ? (
-          <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
-            <p>No points history available yet. Start participating in events to see your history!</p>
-          </div>
-        ) : (
-          <>
-            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <div className="h-64">
-                <Line data={chartData} options={chartOptions} />
-              </div>
-            </div>
+    <div className="admin-content">
+      <div className="admin-component-header">
+        <h2>Points History</h2>
+      </div>
 
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <h3 className="text-lg font-semibold p-4 bg-gray-50 border-b">Transaction History</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Change
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        New Balance
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Reason
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {pointsHistory.map((entry, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(entry.created_at).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={entry.change_amount > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {entry.change_amount > 0 ? '+' : ''}{entry.change_amount}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {entry.new_balance}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
-                          {entry.reason.replace(/_/g, ' ')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
+      <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+        <h3>Balance Chart</h3>
+        <Line options={chartOptions} data={chartData} />
+      </div>
+      
+      <div className="card">
+        <h3>Transaction Log</h3>
+        <table className="history-table" style={{ width: '100%', marginTop: 'var(--spacing-md)' }}>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Reason</th>
+              <th>Change</th>
+              <th>New Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...history].reverse().map((entry, index) => (
+              <tr key={index}>
+                <td>{formatDate(entry.created_at)}</td>
+                <td>{entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>
+                <td style={{ color: entry.change_amount > 0 ? 'var(--success-green)' : 'var(--danger-red)' }}>
+                  {entry.change_amount > 0 ? '+' : ''}{entry.change_amount}
+                </td>
+                <td>{entry.new_balance}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <style>{`
+            .history-table th, .history-table td {
+                padding: var(--spacing-sm) var(--spacing-md);
+                text-align: left;
+                border-bottom: 1px solid var(--ui-border);
+            }
+            .history-table th {
+                color: var(--light-gray);
+                font-weight: 500;
+            }
+        `}</style>
       </div>
     </div>
   );
