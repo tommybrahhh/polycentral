@@ -377,16 +377,19 @@ const App = () => {
                         border: 'none',
                         textAlign: 'left',
                         cursor: 'pointer',
-                        fontFamily: 'inherit'
+                        fontFamily: 'inherit',
+                        fontSize: '1rem' /* Ensure font size is consistent */
                       }}
                       onClick={() => {
                         // Clear authentication data
                         localStorage.removeItem('auth_token');
                         localStorage.removeItem('user');
+                        
+                        // Update the app's state directly
                         setUsername('');
                         setPoints(0);
                         
-                        // Show success toast
+                        // Show success toast notification
                         const toast = document.createElement('div');
                         toast.className = 'toast toast-success show';
                         toast.textContent = 'Successfully logged out';

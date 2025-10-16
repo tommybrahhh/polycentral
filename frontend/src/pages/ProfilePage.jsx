@@ -44,21 +44,9 @@ const ProfilePage = () => {
           
           <div className="card">
             <h3>Account Management</h3>
-            <div className="button-group" style={{ marginTop: 'var(--spacing-lg)' }}>
-              <button
-                className="button button-danger"
-                onClick={() => {
-                  // Clear authentication data
-                  localStorage.removeItem('auth_token');
-                  localStorage.removeItem('user');
-                  // Redirect to home page
-                  navigate('/');
-                  window.location.reload();
-                }}
-              >
-                Logout
-              </button>
-            </div>
+            <p style={{ marginTop: 'var(--spacing-md)', color: 'var(--light-gray)' }}>
+              You can manage your profile and log out using the menu in the main header.
+            </p>
           </div>
         </div>
       )}
