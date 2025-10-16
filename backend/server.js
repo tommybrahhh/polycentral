@@ -2364,46 +2364,52 @@ app.post('/api/user/verify-email-change', async (req, res) => {
 });
 
 app.post('/api/user/change-password', authenticateToken, async (req, res) => {
+  const userId = req.userId; // This comes from your authenticateToken middleware
+  const { currentPassword, newPassword } = req.body;
+
+  // 1. Server-side validation
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Current and new passwords are required.' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
+  }
+
   try {
-    const { currentPassword, newPassword } = req.body;
-    const userId = req.userId;
-
-    // Validate input
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current password and new password are required' });
-    }
-
-    // Get user's current hashed password from database
-    const { rows } = await pool.query(
+    // 2. Fetch the user's current HASHED password from the database
+    // This MUST match your 'users' table schema. It is 'password_hash'.
+    const userResult = await pool.query(
       'SELECT password_hash FROM users WHERE id = $1',
       [userId]
     );
-    
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+    const storedHashedPassword = userResult.rows[0].password_hash;
+
+    // 3. Securely compare the provided current password with the stored hash
+    const isMatch = await bcrypt.compare(currentPassword, storedHashedPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Incorrect current password.' });
     }
 
-    const user = rows[0];
+    // 4. Hash the new password before saving it
+    const salt = await bcrypt.genSalt(10);
+    const newHashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
-    if (!isCurrentPasswordValid) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
-    }
-
-    // Hash the new password
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update user's password in database
+    // 5. Update the 'password_hash' column in the database
     await pool.query(
       'UPDATE users SET password_hash = $1 WHERE id = $2',
-      [hashedNewPassword, userId]
+      [newHashedPassword, userId]
     );
 
-    res.json({ message: 'Password changed successfully' });
+    // 6. Send a success response
+    res.status(200).json({ message: 'Password changed successfully!' });
+
   } catch (error) {
     console.error('Error changing password:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'An internal server error occurred.' });
   }
 });
 

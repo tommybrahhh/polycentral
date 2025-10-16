@@ -13,6 +13,7 @@ const ProfilePage = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const { data: history } = useFetch('/api/user/history');
   const { data: userData } = useFetch('/api/user/profile', {
     headers: {
@@ -48,28 +49,35 @@ const ProfilePage = () => {
           {/* Profile Information Card */}
           <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
             <h3>Profile Information</h3>
-            {userData && (
-              <div className="account-info" style={{ marginTop: 'var(--spacing-md)' }}>
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                  <strong>Email:</strong> {userData.email}
-                </div>
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                  <strong>Username:</strong> {userData.username}
-                </div>
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                  <strong>Points:</strong> {userData.points}
-                </div>
+            {userData ? (
+              <div className="account-info" style={{ marginTop: 'var(--spacing-md)', lineHeight: '1.8' }}>
+                <div><strong>Email:</strong> {userData.email}</div>
+                <div><strong>Username:</strong> {userData.username}</div>
+                <div><strong>Points:</strong> {userData.points}</div>
               </div>
-            )}
-            
-            <p style={{ marginTop: 'var(--spacing-md)', color: 'var(--light-gray)', fontSize: '0.9rem' }}>
-              You can manage your profile and log out using the menu in the main header.
+            ) : <p>Loading user data...</p>}
+          </div>
+
+          {/* Management Actions Card */}
+          <div className="card">
+            <h3>Account Management</h3>
+            <div className="button-group" style={{ marginTop: 'var(--spacing-md)', display: 'flex', gap: 'var(--spacing-md)' }}>
+              <button className="button button-secondary" onClick={() => setShowEmailForm(true)}>
+                Change Email
+              </button>
+              <button className="button button-secondary" onClick={() => setShowPasswordForm(true)}>
+                Change Password
+              </button>
+            </div>
+            <p style={{ marginTop: 'var(--spacing-lg)', color: 'var(--light-gray)', fontSize: '0.9rem' }}>
+              You can log out using the menu in the main header.
             </p>
           </div>
 
-          {/* Profile Management Card */}
-          <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
-            <h3>Profile Management</h3>
+          {/* --- MODALS --- */}
+          {/* These will now only render when their state is true, appearing as pop-ups */}
+          
+          {showEmailForm && (
             <ChangeEmailForm
               onClose={() => setShowEmailForm(false)}
               onSuccess={() => {
@@ -78,18 +86,14 @@ const ProfilePage = () => {
                 window.location.reload();
               }}
             />
-          </div>
+          )}
 
-          {/* Security Card */}
-          <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
-            <h3>Security</h3>
+          {showPasswordForm && (
             <ChangePasswordForm
-              onClose={() => {}}
-              onSuccess={() => {
-                // Handle password change success if needed
-              }}
+              onClose={() => setShowPasswordForm(false)}
+              onSuccess={() => setShowPasswordForm(false)}
             />
-          </div>
+          )}
         </div>
       )}
       
