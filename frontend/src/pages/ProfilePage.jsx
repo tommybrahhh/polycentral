@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import TabNavigation from '../components/TabNavigation';
 import ProfileHistory from '../components/ProfileHistory';
-import PointsHistory from '../components/PointsHistory';
+import PointsHistory from '../components/PointsHistory'; // This import is correct
 import AdminControlPanel from '../components/admin/AdminControlPanel';
 import useFetch from '../hooks/useFetch';
 import '../styles/admin.css';
@@ -21,6 +21,7 @@ const ProfilePage = () => {
   const tabs = [
     { id: 'account', label: 'Account Settings' },
     { id: 'activity', label: 'Activity History' },
+    { id: 'points', label: 'Points History' }, // <-- FIX #1: ADD THE NEW TAB HERE
     ...(userData?.is_admin ? [{ id: 'controlpanel', label: 'Control Panel' }] : []),
   ];
 
@@ -63,11 +64,15 @@ const ProfilePage = () => {
       )}
       
       {activeTab === 'activity' && (
-        <div>
-          <ProfileHistory history={history || []} />
-          <PointsHistory />
-        </div>
+        // FIX #2: Remove PointsHistory from here
+        <ProfileHistory history={history || []} />
       )}
+
+      {/* FIX #3: ADD A DEDICATED BLOCK FOR THE POINTS HISTORY TAB */}
+      {activeTab === 'points' && (
+        <PointsHistory />
+      )}
+
       {activeTab === 'controlpanel' && (
         <div className="controlpanel-tab">
           <AdminControlPanel />

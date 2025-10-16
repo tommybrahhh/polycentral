@@ -11,7 +11,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { useFetch } from '../hooks/useFetch';
+import useFetch from '../hooks/useFetch';
 
 // Register Chart.js components
 ChartJS.register(
