@@ -4,6 +4,7 @@ import TabNavigation from '../components/TabNavigation';
 import ProfileHistory from '../components/ProfileHistory';
 import AdminControlPanel from '../components/admin/AdminControlPanel';
 import useFetch from '../hooks/useFetch';
+import '../styles/admin.css';
 
 const ProfilePage = () => {
   const [searchParams] = useSearchParams();
@@ -34,21 +35,34 @@ const ProfilePage = () => {
       />
       
       {activeTab === 'account' && (
-        <div className="account-tab">
-          <button onClick={() => navigate('/claim-points')}>
-            Claim Free Points
-          </button>
-          <button onClick={() => {/* Logout logic */}}>
-            Logout
-          </button>
+        <div className="admin-content">
+          <div className="admin-component-header">
+            <h2>Account Settings</h2>
+          </div>
+          
+          <div className="card">
+            <h3>Account Management</h3>
+            <div className="button-group" style={{ marginTop: 'var(--spacing-lg)' }}>
+              <button
+                className="button button-danger"
+                onClick={() => {
+                  // Clear authentication data
+                  localStorage.removeItem('auth_token');
+                  localStorage.removeItem('user');
+                  // Redirect to home page
+                  navigate('/');
+                  window.location.reload();
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
       {activeTab === 'activity' && (
-        <div className="activity-tab">
-          <h2>Your Event Participation History</h2>
-          <ProfileHistory history={history || []} />
-        </div>
+        <ProfileHistory history={history || []} />
       )}
       {activeTab === 'controlpanel' && (
         <div className="controlpanel-tab">
