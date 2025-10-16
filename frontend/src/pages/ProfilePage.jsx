@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import TabNavigation from '../components/TabNavigation';
 import ProfileHistory from '../components/ProfileHistory';
+import PointsHistory from '../components/PointsHistory';
 import AdminControlPanel from '../components/admin/AdminControlPanel';
 import useFetch from '../hooks/useFetch';
 import '../styles/admin.css';
@@ -20,6 +21,7 @@ const ProfilePage = () => {
   const tabs = [
     { id: 'account', label: 'Account Settings' },
     { id: 'activity', label: 'Activity History' },
+    { id: 'points', label: 'Points History' },
     ...(userData?.is_admin ? [{ id: 'controlpanel', label: 'Control Panel' }] : []),
   ];
 
@@ -63,6 +65,9 @@ const ProfilePage = () => {
       
       {activeTab === 'activity' && (
         <ProfileHistory history={history || []} />
+      )}
+      {activeTab === 'points' && (
+        <PointsHistory />
       )}
       {activeTab === 'controlpanel' && (
         <div className="controlpanel-tab">
