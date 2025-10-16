@@ -21,7 +21,6 @@ const ProfilePage = () => {
   const tabs = [
     { id: 'account', label: 'Account Settings' },
     { id: 'activity', label: 'Activity History' },
-    { id: 'points', label: 'Points History' },
     ...(userData?.is_admin ? [{ id: 'controlpanel', label: 'Control Panel' }] : []),
   ];
 
@@ -64,10 +63,10 @@ const ProfilePage = () => {
       )}
       
       {activeTab === 'activity' && (
-        <ProfileHistory history={history || []} />
-      )}
-      {activeTab === 'points' && (
-        <PointsHistory />
+        <div>
+          <ProfileHistory history={history || []} />
+          <PointsHistory />
+        </div>
       )}
       {activeTab === 'controlpanel' && (
         <div className="controlpanel-tab">
