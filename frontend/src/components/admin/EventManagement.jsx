@@ -13,6 +13,7 @@ import {
   updateEventTemplate,
   deleteEventTemplate
 } from '../../services/adminApi';
+import '../../styles/admin.css';
 
 const EventManagement = ({ activeTab, setActiveTab }) => {
   const [events, setEvents] = useState([]);
@@ -351,8 +352,8 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
   if (error) return <div className="error">{error}</div>;
 
   return (
-    <div className="event-management">
-      <div className="event-management-header">
+    <div className="admin-content">
+      <div className="admin-component-header">
         <h2>Event Management</h2>
         <div className="controls-container">
           <div className="search-container">
@@ -374,7 +375,7 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="filter-select"
+              className="search-input"
             >
               <option value="all">All Statuses</option>
               <option value="active">Active</option>
@@ -383,13 +384,13 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
             </select>
           </div>
           <div className="button-group">
-            <button 
+            <button
               className="button button-primary"
               onClick={() => setShowCreateForm(true)}
             >
               Create Event
             </button>
-            <button 
+            <button
               className="button button-secondary"
               onClick={() => setShowTemplateForm(true)}
             >
@@ -400,7 +401,7 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
       </div>
 
       <div className="events-list">
-        <table className="events-table">
+        <table className="admin-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -428,8 +429,8 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
                 <td>{new Date(event.start_time).toLocaleDateString()}</td>
                 <td>{new Date(event.end_time).toLocaleDateString()}</td>
                 <td>
-                  <div className="action-buttons">
-                    <button 
+                  <div className="button-group">
+                    <button
                       className="button button-secondary button-small"
                       onClick={() => {
                         setSelectedEvent(event);
@@ -439,7 +440,7 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
                       View
                     </button>
                     {event.status !== 'resolved' && (
-                      <button 
+                      <button
                         className="button button-warning button-small"
                         onClick={() => handleSuspendEvent(event.id, !event.is_suspended)}
                         disabled={actionLoading}
@@ -468,7 +469,7 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
                         </button>
                       </>
                     )}
-                    <button 
+                    <button
                       className="button button-danger button-small"
                       onClick={() => handleDeleteEvent(event.id)}
                       disabled={actionLoading}
@@ -483,7 +484,7 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
         </table>
         
         {filteredEvents.length === 0 && (
-          <div className="no-events">
+          <div className="no-data">
             <p>No events found</p>
           </div>
         )}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, getUserDetails, adjustUserPoints, updateUserRole, suspendUser, resetUserClaims } from '../../services/adminApi';
+import '../../styles/admin.css';
 
 const UserManagement = ({ activeTab, setActiveTab }) => {
   const [users, setUsers] = useState([]);
@@ -170,8 +171,8 @@ const UserManagement = ({ activeTab, setActiveTab }) => {
   if (error) return <div className="error">{error}</div>;
 
   return (
-    <div className="user-management">
-      <div className="user-management-header">
+    <div className="admin-content">
+      <div className="admin-component-header">
         <h2>User Management</h2>
         <div className="search-container">
           <input
@@ -188,7 +189,7 @@ const UserManagement = ({ activeTab, setActiveTab }) => {
       </div>
 
       <div className="users-list">
-        <table className="users-table">
+        <table className="admin-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -218,7 +219,7 @@ const UserManagement = ({ activeTab, setActiveTab }) => {
                   </span>
                 </td>
                 <td>
-                  <button 
+                  <button
                     className="button button-secondary button-small"
                     onClick={() => fetchUserDetails(user.id)}
                   >
@@ -231,7 +232,7 @@ const UserManagement = ({ activeTab, setActiveTab }) => {
         </table>
         
         {filteredUsers.length === 0 && (
-          <div className="no-users">
+          <div className="no-data">
             <p>No users found</p>
           </div>
         )}
@@ -240,7 +241,7 @@ const UserManagement = ({ activeTab, setActiveTab }) => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="pagination">
-          <button 
+          <button
             className="button button-secondary"
             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
@@ -250,7 +251,7 @@ const UserManagement = ({ activeTab, setActiveTab }) => {
           <span className="page-info">
             Page {currentPage} of {totalPages}
           </span>
-          <button 
+          <button
             className="button button-secondary"
             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}

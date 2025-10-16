@@ -178,25 +178,89 @@ const App = () => {
   return (
     <Router>
       <div className="app-container main-container">
-        <nav className="main-nav">
-          <div className="nav-container">
-            <div className="nav-links">
-              <Link to="/events" className="nav-link">Events</Link>
+        <nav className="main-nav" style={{
+          background: 'var(--ui-surface)',
+          backdropFilter: 'blur(16px)',
+          borderBottom: '1px solid var(--ui-border)',
+          padding: 'var(--spacing-md) var(--spacing-xl)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100
+        }}>
+          <div className="nav-container" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            maxWidth: '1200px',
+            margin: '0 auto',
+            width: '100%'
+          }}>
+            <div className="nav-links" style={{
+              display: 'flex',
+              gap: 'var(--spacing-xl)',
+              alignItems: 'center'
+            }}>
+              <Link to="/events" className="nav-link" style={{
+                color: 'var(--off-white)',
+                textDecoration: 'none',
+                fontWeight: '500',
+                padding: 'var(--spacing-sm) var(--spacing-md)',
+                borderRadius: 'var(--radius-sm)',
+                transition: 'all var(--transition-medium)'
+              }}>Events</Link>
               {username && (
-                <Link to="/profile" className="nav-link">Profile</Link>
+                <Link to="/profile" className="nav-link" style={{
+                  color: 'var(--off-white)',
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  borderRadius: 'var(--radius-sm)',
+                  transition: 'all var(--transition-medium)'
+                }}>Profile</Link>
               )}
             </div>
             {/* --- User Status Display --- */}
-            <div className="user-status">
+            <div className="user-status" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-md)'
+            }}>
             {username ? (
-              <div className="user-info flex flex-row items-center gap-6">
-                <span className="username text-primary-700 font-medium whitespace-nowrap">Hello, {username}!</span>
-                <div className="points-display flex flex-row items-center gap-4">
-                  <div className="points-balance text-sm sm:text-base bg-primary-50 px-3 py-1 rounded-full whitespace-nowrap">
-                    🪙 <span className="points-amount font-medium text-primary-700">{points}</span> Points
+              <div className="user-info" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-lg)',
+                flexWrap: 'wrap'
+              }}>
+                <span className="username" style={{
+                  color: 'var(--off-white)',
+                  fontWeight: '500',
+                  whiteSpace: 'nowrap'
+                }}>Hello, {username}!</span>
+                <div className="points-display" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-md)',
+                  flexWrap: 'wrap'
+                }}>
+                  <div className="points-balance" style={{
+                    fontSize: '0.875rem',
+                    backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                    padding: 'var(--spacing-xs) var(--spacing-md)',
+                    borderRadius: '999px',
+                    whiteSpace: 'nowrap',
+                    color: 'var(--orange-primary)',
+                    border: '1px solid rgba(255, 140, 0, 0.3)'
+                  }}>
+                    🪙 <span style={{ fontWeight: '600' }}>{points}</span> Points
                   </div>
                   <button
-                    className="button button-success bg-success-600 hover:bg-success-700 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 shadow-sm hover:shadow"
+                    className="button button-success"
+                    style={{
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      fontSize: '0.875rem',
+                      whiteSpace: 'nowrap'
+                    }}
                     onClick={async () => {
                       try {
                         const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/claim-free-points`, {}, {
@@ -261,15 +325,60 @@ const App = () => {
                     <span className="claim-icon">🎁</span> Claim
                   </button>
                 </div>
-                <div className="user-dropdown">
-                  <button className="button button-secondary bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200">
+                <div className="user-dropdown" style={{ position: 'relative' }}>
+                  <button className="button button-secondary" style={{
+                    padding: 'var(--spacing-sm) var(--spacing-md)',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'nowrap'
+                  }}>
                     Menu ▼
                   </button>
-                  <div className="dropdown-menu">
-                    <Link to="/profile" className="dropdown-item">Profile</Link>
-                    <Link to="/admin" className="dropdown-item">Admin Dashboard</Link>
+                  <div className="dropdown-menu" style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    background: 'var(--ui-surface)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid var(--ui-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: 'var(--spacing-sm)',
+                    marginTop: 'var(--spacing-xs)',
+                    minWidth: '150px',
+                    boxShadow: 'var(--shadow-elevated)',
+                    display: 'none'
+                  }}>
+                    <Link to="/profile" className="dropdown-item" style={{
+                      display: 'block',
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      color: 'var(--off-white)',
+                      textDecoration: 'none',
+                      borderRadius: 'var(--radius-xs)',
+                      transition: 'background var(--transition-fast)'
+                    }}>Profile</Link>
+                    <Link to="/admin" className="dropdown-item" style={{
+                      display: 'block',
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      color: 'var(--off-white)',
+                      textDecoration: 'none',
+                      borderRadius: 'var(--radius-xs)',
+                      transition: 'background var(--transition-fast)'
+                    }}>Admin Dashboard</Link>
                     <button
                       className="dropdown-item"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        color: 'var(--off-white)',
+                        textDecoration: 'none',
+                        borderRadius: 'var(--radius-xs)',
+                        transition: 'background var(--transition-fast)',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit'
+                      }}
                       onClick={() => {
                         // Clear authentication data
                         localStorage.removeItem('auth_token');
@@ -295,16 +404,27 @@ const App = () => {
                 </div>
               </div>
             ) : (
-              <div className="auth-buttons flex gap-2">
+              <div className="auth-buttons" style={{
+                display: 'flex',
+                gap: 'var(--spacing-sm)'
+              }}>
                 <button
-                  className="button button-secondary bg-secondary-100 hover:bg-secondary-200 text-secondary-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200"
+                  className="button button-secondary"
                   onClick={() => setShowRegisterModal(true)}
+                  style={{
+                    padding: 'var(--spacing-sm) var(--spacing-md)',
+                    fontSize: '0.875rem'
+                  }}
                 >
                   Register
                 </button>
                 <button
-                  className="button button-primary bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 shadow-sm hover:shadow"
+                  className="button button-primary"
                   onClick={() => setShowLoginModal(true)}
+                  style={{
+                    padding: 'var(--spacing-sm) var(--spacing-md)',
+                    fontSize: '0.875rem'
+                  }}
                 >
                   Login
                 </button>
@@ -313,6 +433,21 @@ const App = () => {
           </div>
           </div>
         </nav>
+
+        <style>{`
+          .nav-link:hover {
+            background: rgba(255, 140, 0, 0.1);
+            color: var(--orange-primary);
+          }
+          
+          .user-dropdown:hover .dropdown-menu {
+            display: block;
+          }
+          
+          .dropdown-item:hover {
+            background: rgba(255, 140, 0, 0.1);
+          }
+        `}</style>
 
         <Routes>
           <Route path="/events" element={<EventList />} />

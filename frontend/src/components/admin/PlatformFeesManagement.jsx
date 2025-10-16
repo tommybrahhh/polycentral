@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getPlatformFeesTotal, getPlatformFeesHistory, transferPlatformFees, getPlatformFeesRules, updatePlatformFeesRules } from '../../services/adminApi';
+import '../../styles/admin.css';
 
 const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
   const [totalFees, setTotalFees] = useState(0);
@@ -151,16 +152,19 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
   if (error) return <div className="error">{error}</div>;
 
   return (
-    <div className="platform-fees-management">
-      <div className="fees-summary">
+    <div className="admin-content">
+      <div className="admin-component-header">
         <h2>Platform Fees Overview</h2>
-        <div className="total-fees-card">
-          <h3>Total Platform Fees</h3>
-          <p className="total-amount">${totalFees.toLocaleString()}</p>
-        </div>
       </div>
 
-      <div className="fees-transfer-section">
+      <div className="card">
+        <h3>Total Platform Fees</h3>
+        <p className="total-amount" style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--orange-primary)' }}>
+          ${totalFees.toLocaleString()}
+        </p>
+      </div>
+
+      <div className="card">
         <h3>Transfer Fees to User</h3>
         <form onSubmit={handleTransferSubmit} className="transfer-form">
           <div className="form-group">
@@ -171,6 +175,7 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
               value={transferForm.userId}
               onChange={(e) => setTransferForm({...transferForm, userId: e.target.value})}
               required
+              className="form-input"
             />
           </div>
           
@@ -183,6 +188,7 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
               onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
               required
               min="1"
+              className="form-input"
             />
           </div>
           
@@ -194,11 +200,12 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
               onChange={(e) => setTransferForm({...transferForm, reason: e.target.value})}
               required
               placeholder="Enter reason for transfer"
+              className="form-input"
             />
           </div>
           
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="button button-primary"
             disabled={transferLoading}
           >
@@ -207,7 +214,7 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
         </form>
       </div>
 
-      <div className="fees-rules-section">
+      <div className="card">
         <h3>Fee Distribution Rules</h3>
         <form onSubmit={handleRulesSubmit} className="rules-form">
           <div className="form-group">
@@ -221,6 +228,7 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
               step="0.01"
               min="0"
               max="100"
+              className="form-input"
             />
             <span className="help-text">Percentage of entry fees collected as platform fees</span>
           </div>
@@ -234,12 +242,13 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
               onChange={(e) => setRulesForm({...rulesForm, minimumAmount: e.target.value})}
               required
               min="0"
+              className="form-input"
             />
             <span className="help-text">Minimum fee amount per transaction</span>
           </div>
           
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="button button-primary"
             disabled={rulesLoading}
           >
@@ -248,25 +257,35 @@ const PlatformFeesManagement = ({ activeTab, setActiveTab }) => {
         </form>
       </div>
 
-      <div className="transfer-history">
+      <div className="card">
         <h3>Transfer History</h3>
         {transferHistory.length > 0 ? (
           <div className="history-list">
             {transferHistory.map((transfer, index) => (
-              <div key={index} className="history-item">
+              <div key={index} className="history-item" style={{
+                padding: 'var(--spacing-md)',
+                borderBottom: '1px solid var(--ui-border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
                 <div className="transfer-details">
-                  <span className="transfer-amount">${transfer.amount}</span>
+                  <span className="transfer-amount" style={{ fontWeight: 'bold', color: 'var(--orange-primary)' }}>
+                    ${transfer.amount}
+                  </span>
                   <span className="transfer-user">To User #{transfer.user_id}</span>
-                  <span className="transfer-reason">{transfer.reason}</span>
+                  <span className="transfer-reason" style={{ color: 'var(--light-gray)' }}>{transfer.reason}</span>
                 </div>
                 <div className="transfer-meta">
-                  <span className="transfer-date">{new Date(transfer.timestamp).toLocaleString()}</span>
+                  <span className="transfer-date" style={{ fontSize: '0.875rem', color: 'var(--light-gray)' }}>
+                    {new Date(transfer.timestamp).toLocaleString()}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p>No transfer history available</p>
+          <p className="no-data">No transfer history available</p>
         )}
       </div>
     </div>
