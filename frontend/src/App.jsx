@@ -324,6 +324,36 @@ const App = () => {
                   >
                     <span className="claim-icon">🎁</span> Claim
                   </button>
+                  <button
+                    className="button button-secondary"
+                    style={{
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      fontSize: '0.875rem',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={() => {
+                      // Clear authentication data
+                      localStorage.removeItem('auth_token');
+                      localStorage.removeItem('user');
+                      
+                      // Update the app's state directly
+                      setUsername('');
+                      setPoints(0);
+                      
+                      // Show success toast notification
+                      const toast = document.createElement('div');
+                      toast.className = 'toast toast-success show';
+                      toast.textContent = 'Successfully logged out';
+                      document.body.appendChild(toast);
+                      
+                      // Remove toast after 3 seconds
+                      setTimeout(() => {
+                        toast.remove();
+                      }, 3000);
+                    }}
+                  >
+                    Logout
+                  </button>
                 </div>
                 <div className="user-dropdown" style={{ position: 'relative' }}>
                   <button className="button button-secondary" style={{
