@@ -53,6 +53,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 const coingecko = require('./lib/coingecko');
+const { updateUserPoints } = require('./utils/pointsUtils');
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 8080;
@@ -889,12 +890,9 @@ async function resolvePendingEvents() {
                 console.log(`🔍 Distributing points to winner ${winner.user_id}...`);
                 await client.query('BEGIN');
                 
-                // Update user points
+                // Update user points using centralized function
                 console.log(`🔍 Adding ${winnerShare} points to user ${winner.user_id}`);
-                await client.query(
-                  `UPDATE users SET points = points + $1 WHERE id = $2`,
-                  [winnerShare, winner.user_id]
-                );
+                const newBalance = await updateUserPoints(client, winner.user_id, winnerShare, 'event_win', event.id);
                 
                 // Record winning outcome
                 console.log(`🔍 Recording winning outcome for participant ${winner.id}`);
@@ -1083,14 +1081,34 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
-    const { rows: [newUser] } = await pool.query(
-      `INSERT INTO users (username, email, password_hash, last_login_date) VALUES (LOWER($1), $2, $3, NOW()) RETURNING id, username, email, points`,
-      [username, email, passwordHash]
-    );
-    // Ensure username is returned in original case for the response
-    newUser.username = username;
-    const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: newUser });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Create user with default points (0)
+      const { rows: [newUser] } = await client.query(
+        `INSERT INTO users (username, email, password_hash, last_login_date) VALUES (LOWER($1), $2, $3, NOW()) RETURNING id, username, email, points`,
+        [username, email, passwordHash]
+      );
+      
+      // Award starting points using centralized function
+      const startingPoints = 1000; // Give new users 1000 starting points
+      const newBalance = await updateUserPoints(client, newUser.id, startingPoints, 'registration', null);
+      
+      await client.query('COMMIT');
+      
+      // Ensure username is returned in original case for the response
+      newUser.username = username;
+      newUser.points = newBalance; // Update with the new balance after points award
+      
+      const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      res.status(201).json({ token, user: newUser });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     if (error.code === '23505') {
       // Handle unique constraint violation
@@ -1296,7 +1314,7 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
       throw new Error('DUPLICATE_ENTRY');
     }
 
-    // Validate and deduct entry fee
+    // Validate and deduct entry fee using centralized function
     const balanceCheck = await client.query(
       'SELECT points FROM users WHERE id = $1 FOR UPDATE',
       [userId]
@@ -1306,11 +1324,9 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
       throw new Error('INSUFFICIENT_FUNDS');
     }
 
-    await client.query(
-      'UPDATE users SET points = points - $1 WHERE id = $2',
-      [entryFee, userId]
-    );
-
+    // Use centralized function to deduct points and log transaction
+    const newBalance = await updateUserPoints(client, userId, -entryFee, 'event_entry', eventId);
+    
     // Record participation
     await client.query(
       'INSERT INTO participants (event_id, user_id, prediction, amount) VALUES ($1, $2, $3, $4)',
@@ -1318,7 +1334,7 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
     );
 
     await client.query('COMMIT');
-    res.json({ success: true, newBalance: balanceCheck.rows[0].points - entryFee });
+    res.json({ success: true, newBalance });
   } catch (error) {
     await client.query('ROLLBACK');
     handleParticipationError(error, res);
@@ -2057,15 +2073,19 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
         try {
           await client.query('BEGIN');
 
-          // Award 250 points to the user
+          // Award 250 points to the user using centralized function
           const pointsToAward = 250;
+          const newBalance = await updateUserPoints(client, req.userId, pointsToAward, 'daily_claim', null);
+          
+          // Update last_claimed and last_login_date timestamps
           const { rows: [updatedUser] } = await client.query(
             `UPDATE users
-             SET points = points + $1, last_claimed = NOW(), last_login_date = NOW()
-             WHERE id = $2
-             RETURNING id, username, points`,
-            [pointsToAward, req.userId]
+             SET last_claimed = NOW(), last_login_date = NOW()
+             WHERE id = $1
+             RETURNING id, username`,
+            [req.userId]
           );
+          updatedUser.points = newBalance;
 
           await client.query('COMMIT');
           
@@ -2089,15 +2109,19 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
           client.release();
         }
       } else {
-        // For SQLite, use direct query (our SQLite mock handles the transaction internally)
+        // For SQLite, use centralized function for points and update timestamps separately
         const pointsToAward = 250;
+        const newBalance = await updateUserPoints(pool, req.userId, pointsToAward, 'daily_claim', null);
+        
+        // Update last_claimed and last_login_date timestamps
         const { rows: [updatedUser] } = await pool.query(
           `UPDATE users
-           SET points = points + $1, last_claimed = datetime('now'), last_login_date = datetime('now')
-           WHERE id = $2
-           RETURNING id, username, points`,
-          [pointsToAward, req.userId]
+           SET last_claimed = datetime('now'), last_login_date = datetime('now')
+           WHERE id = $1
+           RETURNING id, username`,
+          [req.userId]
         );
+        updatedUser.points = newBalance;
         
         // Log successful claim
         console.log('Successfully awarded points to user:', {
@@ -2199,6 +2223,27 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('Error fetching user prediction history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET user points history
+app.get('/api/user/points-history', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Query to get all points history for the logged-in user
+    const { rows } = await pool.query(
+      `SELECT change_amount, new_balance, reason, event_id, created_at
+       FROM points_history
+       WHERE user_id = $1
+       ORDER BY created_at ASC`,
+      [userId]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching points history:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -2497,11 +2542,8 @@ async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
             [eventId, winner.id, winnerFee]
           );
 
-          // Update user points and record outcome
-          await client.query(
-            `UPDATE users SET points = points + $1 WHERE id = $2`,
-            [winnerShare, winner.user_id]
-          );
+          // Update user points using centralized function and record outcome
+          const newBalance = await updateUserPoints(client, winner.user_id, winnerShare, 'event_win', eventId);
 
           await client.query(
             `INSERT INTO event_outcomes (participant_id, result, points_awarded)
@@ -3129,11 +3171,8 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
     const user = userResult.rows[0];
     const userBeforePoints = user.points;
     
-    // Transfer points to user
-    await client.query(
-      'UPDATE users SET points = points + $1 WHERE id = $2',
-      [amount, userId]
-    );
+    // Transfer points to user using centralized function
+    const newBalance = await updateUserPoints(client, userId, amount, 'platform_fee_transfer', null);
     
     // Log the transfer in audit_logs
     await client.query(
