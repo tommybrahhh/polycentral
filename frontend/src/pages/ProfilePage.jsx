@@ -4,6 +4,7 @@ import TabNavigation from '../components/TabNavigation';
 import ProfileHistory from '../components/ProfileHistory';
 import PointsHistory from '../components/PointsHistory'; // This import is correct
 import ChangeEmailForm from '../components/ChangeEmailForm';
+import ChangePasswordForm from '../components/ChangePasswordForm';
 import AdminControlPanel from '../components/admin/AdminControlPanel';
 import useFetch from '../hooks/useFetch';
 import '../styles/admin.css';
@@ -44,8 +45,9 @@ const ProfilePage = () => {
             <h2>Account Settings</h2>
           </div>
           
-          <div className="card">
-            <h3>Account Information</h3>
+          {/* Profile Information Card */}
+          <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+            <h3>Profile Information</h3>
             {userData && (
               <div className="account-info" style={{ marginTop: 'var(--spacing-md)' }}>
                 <div style={{ marginBottom: 'var(--spacing-md)' }}>
@@ -60,19 +62,33 @@ const ProfilePage = () => {
               </div>
             )}
             
-            <div className="account-actions" style={{ marginTop: 'var(--spacing-lg)' }}>
-              <button
-                className="button button-primary"
-                onClick={() => setShowEmailForm(true)}
-                style={{ marginRight: 'var(--spacing-md)' }}
-              >
-                Change Email
-              </button>
-              
-              <p style={{ marginTop: 'var(--spacing-md)', color: 'var(--light-gray)', fontSize: '0.9rem' }}>
-                You can manage your profile and log out using the menu in the main header.
-              </p>
-            </div>
+            <p style={{ marginTop: 'var(--spacing-md)', color: 'var(--light-gray)', fontSize: '0.9rem' }}>
+              You can manage your profile and log out using the menu in the main header.
+            </p>
+          </div>
+
+          {/* Profile Management Card */}
+          <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+            <h3>Profile Management</h3>
+            <ChangeEmailForm
+              onClose={() => setShowEmailForm(false)}
+              onSuccess={() => {
+                setShowEmailForm(false);
+                // Refresh user data to show updated email if needed
+                window.location.reload();
+              }}
+            />
+          </div>
+
+          {/* Security Card */}
+          <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+            <h3>Security</h3>
+            <ChangePasswordForm
+              onClose={() => {}}
+              onSuccess={() => {
+                // Handle password change success if needed
+              }}
+            />
           </div>
         </div>
       )}
@@ -93,16 +109,6 @@ const ProfilePage = () => {
         </div>
       )}
       
-      {showEmailForm && (
-        <ChangeEmailForm
-          onClose={() => setShowEmailForm(false)}
-          onSuccess={() => {
-            setShowEmailForm(false);
-            // Refresh user data to show updated email if needed
-            window.location.reload();
-          }}
-        />
-      )}
     </div>
   );
 };
