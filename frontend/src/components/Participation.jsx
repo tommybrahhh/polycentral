@@ -1,52 +1,44 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { normalizeEventOptions } from '../utils/eventUtils'; // Adjust path if necessary
 
-const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
-  const [betStatus, setBetStatus] = useState(null); // 'success', 'error', or null
-  const [userPoints, setUserPoints] = useState(0);
-  const [isEventActive, setIsEventActive] = useState(true);
-  const [selectedPrediction, setSelectedPrediction] = useState(null);
+const Participation = ({ event, selectedPrediction, selectedEntryFee, setSelectedEntryFee }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const STAKE_OPTIONS = [100, 200, 500, 1000];
 
   // Load user points from localStorage
-  React.useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    setUserPoints(userData.points || 0);
-    
-    // Check if event is still active
-    const now = new Date();
-    const endTime = new Date(event.end_time);
-    setIsEventActive(now < endTime && event.status === 'active');
-  }, [event]);
+  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserPoints = userData.points || 0;
 
-  // Parse event options using the centralized utility function
-  const eventOptions = React.useMemo(() => normalizeEventOptions(event.options), [event.options]);
+  // Check if event is still active
+  const now = new Date();
+  const endTime = new Date(event.end_time);
+  const isEventActive = now < endTime && event.status === 'active';
 
   const canPlaceBet = () => {
-    return isEventActive && userPoints >= selectedEntryFee;
+    return isEventActive && currentUserPoints >= selectedEntryFee;
   };
 
   const getErrorMessage = () => {
     if (!isEventActive) {
       return 'This event has ended. No more bets can be placed.';
     }
-    if (selectedEntryFee > userPoints) {
-      return `Insufficient points. You need ${selectedEntryFee - userPoints} more points.`;
+    if (selectedEntryFee > currentUserPoints) {
+      return `Insufficient points. You need ${selectedEntryFee - currentUserPoints} more points.`;
     }
     return '';
   };
 
-  const handleBet = async () => {
-    if (!selectedPrediction) {
-      setBetStatus('error');
-      setTimeout(() => setBetStatus(null), 3000);
-      return;
-    }
-    
+  const handleSubmit = async () => {
+    if (!selectedPrediction || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       if (!token) throw new Error('User not authenticated');
       
       // Validate entry fee structure
@@ -56,186 +48,101 @@ const Participation = ({ event, selectedEntryFee, setSelectedEntryFee }) => {
       
       // Check if user has enough points for the bet
       if (!canPlaceBet()) {
-        setBetStatus('error');
-        setTimeout(() => setBetStatus(null), 3000);
+        setError(getErrorMessage());
         return;
-      }
-      
-      // Add button press animation
-      const button = document.activeElement;
-      if (button) {
-        button.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-          if (button) button.style.transform = '';
-        }, 150);
       }
       
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
-        { prediction: selectedPrediction, entryFee: selectedEntryFee },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          prediction: selectedPrediction.value,
+          entryFee: selectedEntryFee,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       
-      setBetStatus('success'); // Briefly set for visual feedback if needed
-      setSelectedPrediction(null); // Reset the selected button immediately
+      // On success, update user points and show success message
+      const updatedUserData = {
+        ...userData,
+        points: userData.points - selectedEntryFee,
+        lastBet: {
+          eventId: event.id,
+          amount: selectedEntryFee,
+          timestamp: new Date().toISOString()
+        }
+      };
       
-      // Fetch updated user data from the server to ensure points are accurate
-      try {
-        const userResponse = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL}/api/user/profile`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        // Update user points with the actual server value
-        const updatedUserData = {
-          ...JSON.parse(localStorage.getItem('user') || '{}'),
-          points: userResponse.data.points,
-          lastBet: {
-            eventId: event.id,
-            amount: selectedEntryFee,
-            timestamp: new Date().toISOString()
-          }
-        };
-        
-        localStorage.setItem('user', JSON.stringify(updatedUserData));
-        setUserPoints(updatedUserData.points);
-        
-        // Update global points state
-        window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: updatedUserData.points }));
-      } catch (userError) {
-        console.error('Failed to fetch updated user data:', userError);
-        // Fallback to local calculation if server fetch fails
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        userData.points = userData.points - selectedEntryFee;
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUserPoints(userData.points);
-        
-        // Update global points state
-        window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: userData.points }));
-      }
+      localStorage.setItem('user', JSON.stringify(updatedUserData));
+      
+      // Update global points state
+      window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: updatedUserData.points }));
       
       // Refresh event data to update prize pool and participant count
-      const eventUpdateEvent = new CustomEvent('refreshEvents');
-      window.dispatchEvent(eventUpdateEvent);
+      window.dispatchEvent(new CustomEvent('refreshEvents'));
       
-      // Add celebration effect for successful bet
-      const eventCard = document.querySelector('.card');
-      if (eventCard) {
-        eventCard.style.transform = 'scale(1.02)';
-        setTimeout(() => {
-          eventCard.style.transform = '';
-        }, 200);
-      }
+      // Show success message
+      alert(`Successfully placed ${selectedEntryFee} PTS bet on ${selectedPrediction.label}!`);
       
-      // Show a more encouraging success toast
-      const toast = document.createElement('div');
-      toast.className = 'toast toast-success show';
-      toast.textContent = 'Bet placed! Feel free to place another.';
-      document.body.appendChild(toast);
-      
-      // Remove toast after 3 seconds
-      setTimeout(() => {
-        toast.remove();
-      }, 3000);
-      
-      // Reset the bet status quickly so the button is re-enabled
-      setTimeout(() => setBetStatus(null), 500);
-    } catch (error) {
-      console.error('Betting failed:', error);
-      setBetStatus('error');
-      
-      // Add shake effect for error
-      const eventCard = document.querySelector('.card');
-      if (eventCard) {
-        eventCard.style.animation = 'shake 0.5s ease';
-        setTimeout(() => {
-          eventCard.style.animation = '';
-        }, 500);
-      }
-      
-      // Show error toast
-      const toast = document.createElement('div');
-      toast.className = 'toast toast-error show';
-      toast.textContent = error.response?.data?.error || 'Failed to place bet. Try again.';
-      document.body.appendChild(toast);
-      
-      // Remove toast after 3 seconds
-      setTimeout(() => {
-        toast.remove();
-      }, 3000);
-      
-      setTimeout(() => setBetStatus(null), 3000);
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'An unexpected error occurred.';
+      setError(errorMessage);
+      console.error('Bet submission failed:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="space-y-lg">
-      <div className="bg-surface p-md rounded-md text-center">
-        <div className="text-primary font-bold text-xl mb-sm">{userPoints.toLocaleString()} points</div>
-        <div className="text-secondary text-sm">
-          <span className={userPoints >= selectedEntryFee ? '' : 'text-danger'}>
-            Entry: {selectedEntryFee?.toLocaleString()} points
-          </span>
-        </div>
+      {/* User Points Display */}
+      <div className="text-center">
+        <p className="text-primary text-xl font-semibold">{currentUserPoints.toLocaleString()} points</p>
+        <p className="text-secondary text-sm">Your available balance</p>
       </div>
 
-      <div className="text-center">
-        <h4 className="text-secondary mb-md">Select Entry Stake</h4>
-        <div className="flex flex-wrap gap-sm justify-center">
-          {[100, 200, 500, 1000].map((fee) => (
+      {/* Entry Stake Selection */}
+      <div>
+        <h4 className="text-center text-secondary mb-md">Select Entry Stake</h4>
+        <div className="grid grid-cols-4 gap-sm">
+          {STAKE_OPTIONS.map((stake) => (
             <button
-              key={fee}
-              className={`btn ${selectedEntryFee === fee ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setSelectedEntryFee(fee)}
-              disabled={fee > userPoints || !isEventActive}
+              key={stake}
+              onClick={() => setSelectedEntryFee(stake)}
+              className={`btn ${selectedEntryFee === stake ? 'btn-primary' : 'btn-secondary'}`}
+              disabled={stake > currentUserPoints || !isEventActive}
             >
-              {fee.toLocaleString()}
+              {stake}
             </button>
           ))}
         </div>
       </div>
-
+      
+      {/* Error Message */}
       {getErrorMessage() && (
         <div className="alert alert-danger">{getErrorMessage()}</div>
       )}
 
-      <div className="space-y-md">
-        <div className="grid grid-cols-2 gap-md">
-          {eventOptions.map((option) => (
-            <button
-              key={option.id || option.value}
-              className={`card text-center p-md cursor-pointer transition-all hover:scale-105 ${
-                selectedPrediction === option.value ? 'ring-2 ring-orange-primary' : ''
-              } ${option.value.includes('up') ? 'bg-success bg-opacity-10' : 'bg-danger bg-opacity-10'}`}
-              onClick={() => setSelectedPrediction(option.value)}
-              disabled={!canPlaceBet() || betStatus === 'success'}
-            >
-              <span className="block font-semibold text-primary">{option.label || option.value}</span>
-              <span className="block text-secondary text-sm mt-sm">2.5x potential</span>
-            </button>
-          ))}
-        </div>
+      {/* Final Call to Action Button */}
+      <button
+        onClick={handleSubmit}
+        disabled={isSubmitting || !canPlaceBet()}
+        className="btn btn-primary w-full text-lg"
+      >
+        {isSubmitting ? 'Submitting...' : `Confirm Prediction for ${selectedEntryFee} PTS`}
+      </button>
 
-        <button
-          className={`btn btn-lg w-full ${
-            !selectedPrediction ? 'btn-secondary opacity-50' : 'btn-primary'
-          }`}
-          onClick={handleBet}
-          disabled={!canPlaceBet() || betStatus === 'success' || !selectedPrediction}
-        >
-          {selectedPrediction ? `Confirm ${selectedEntryFee}pt Bet` : 'Select Prediction'}
-        </button>
-      </div>
-
+      {error && <p className="form-error text-center">{error}</p>}
     </div>
   );
 };
 
-
 Participation.propTypes = {
   event: PropTypes.object.isRequired,
+  selectedPrediction: PropTypes.object.isRequired,
   selectedEntryFee: PropTypes.number.isRequired,
-  setSelectedEntryFee: PropTypes.func.isRequired
+  setSelectedEntryFee: PropTypes.func.isRequired,
 };
 
 export default Participation;
