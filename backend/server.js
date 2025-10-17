@@ -755,15 +755,10 @@ async function createEvent(initialPrice) {
   const eventDate = new Date().toISOString().split('T')[0];
   const title = `Which will be the closing price of Bitcoin at the end of the day? (Creation price: $${initialPrice.toFixed(2)})`;
   
-  // Create price range options
-  const priceRanges = coingecko.calculatePriceRanges(initialPrice);
+  // Create simplified Higher/Lower options
   const options = [
-    { id: 'range_0_3_up', label: '0-3% up', value: '0-3% up' },
-    { id: 'range_3_5_up', label: '3-5% up', value: '3-5% up' },
-    { id: 'range_5_up', label: '5%+ up', value: '5%+ up' },
-    { id: 'range_0_3_down', label: '0-3% down', value: '0-3% down' },
-    { id: 'range_3_5_down', label: '3-5% down', value: '3-5% down' },
-    { id: 'range_5_down', label: '5%+ down', value: '5%+ down' }
+    { id: 'higher', label: 'Higher', value: 'Higher' },
+    { id: 'lower', label: 'Lower', value: 'Lower' }
   ];
   
   // Look up event type 'prediction'
@@ -821,8 +816,21 @@ async function resolvePendingEvents() {
         
         console.log(`🔍 Resolved event ${event.id} with final price: $${finalPrice}`);
         
-        // Determine outcome based on price range
-        const correctAnswer = coingecko.determinePriceRange(event.initial_price, finalPrice);
+        // Determine outcome based on Higher/Lower
+        let correctAnswer;
+        const initialPrice = parseFloat(event.initial_price.toFixed(2));
+        const finalPriceRounded = parseFloat(finalPrice.toFixed(2));
+
+        if (finalPriceRounded > initialPrice) {
+          correctAnswer = 'Higher';
+        } else if (finalPriceRounded < initialPrice) {
+          correctAnswer = 'Lower';
+        } else {
+          // Edge case: If prices are exactly equal after rounding, we must have a winner.
+          // Per your instruction, we'll arbitrarily pick one. Let's make it 'Higher' for consistency.
+          // This can be changed to 'Lower' if preferred, or a refund logic could be implemented here in the future.
+          correctAnswer = 'Higher';
+        }
         console.log(`🔍 Event ${event.id} correct answer: ${correctAnswer}`);
         
         // Update event with correct answer

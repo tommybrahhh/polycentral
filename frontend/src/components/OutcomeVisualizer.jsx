@@ -6,12 +6,14 @@ import PropTypes from 'prop-types';
 const OutcomeVisualizer = ({ options, optionVolumes, totalPool, onSelectPrediction, selectedPredictionValue }) => {
     const parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
 
-    const renderOptionBar = (option) => {
+    const renderOptionCard = (option) => {
         const volumeData = optionVolumes ? (optionVolumes[option.value] || { total_amount: 0, multiplier: 0 }) : { total_amount: 0, multiplier: 0 };
         const isSelected = selectedPredictionValue === option.value;
-        const isUp = option.value.includes('up');
+        
+        // Define isUp based on the simplified 'Higher' or legacy '% up' values
+        const isUp = option.value === 'Higher' || option.value.includes('up');
+        const colorClass = isUp ? 'text-success' : 'text-danger';
 
-        // Calculate a tangible reward example
         const exampleReward = (100 * (volumeData.multiplier || 0)).toFixed(0);
 
         return (
@@ -24,17 +26,12 @@ const OutcomeVisualizer = ({ options, optionVolumes, totalPool, onSelectPredicti
                 role="button"
             >
                 <div className="flex justify-between items-start mb-sm">
-                    {/* Left Side: Outcome Label */}
-                    <span className={`font-bold text-xl ${isUp ? 'text-success' : 'text-danger'}`}>{option.label}</span>
-                    
-                    {/* Right Side: Payout Info */}
+                    <span className={`font-bold text-xl ${colorClass}`}>{option.label}</span>
                     <div className="text-right">
-                        <span className="text-primary font-semibold text-xl block">{volumeData.multiplier.toFixed(2)}x Payout</span>
+                        <span className="text-primary font-semibold text-xl block">{volumeData.multiplier ? volumeData.multiplier.toFixed(2) : '0.00'}x Payout</span>
                         <span className="text-secondary text-xs">(Win {exampleReward} PTS with a 100 PTS bet)</span>
                     </div>
                 </div>
-                
-                {/* Progress Bar and Total Bet */}
                 <div>
                     <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
                         <div
@@ -49,16 +46,32 @@ const OutcomeVisualizer = ({ options, optionVolumes, totalPool, onSelectPredicti
             </div>
         );
     }
-    
-    const upOptions = parsedOptions.filter(opt => opt.value.includes('up'));
-    const downOptions = parsedOptions.filter(opt => opt.value.includes('down'));
 
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-            <div className="space-y-md">{upOptions.map(renderOptionBar)}</div>
-            <div className="space-y-md">{downOptions.map(renderOptionBar)}</div>
-        </div>
-    );
+    // This component now intelligently adapts its layout based on the number of options.
+    if (parsedOptions.length === 2) {
+        // New "Higher/Lower" Layout
+        const lowerOption = parsedOptions.find(opt => opt.value === 'Lower');
+        const higherOption = parsedOptions.find(opt => opt.value === 'Higher');
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
+                {/* As requested: Lower on the left, Higher on the right */}
+                {lowerOption && renderOptionCard(lowerOption)}
+                {higherOption && renderOptionCard(higherOption)}
+            </div>
+        );
+    } else {
+        // Legacy 6-Option Layout (maintains support for old events)
+        const upOptions = parsedOptions.filter(opt => opt.value.includes('up'));
+        const downOptions = parsedOptions.filter(opt => opt.value.includes('down'));
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
+                <div className="space-y-md">{upOptions.map(renderOptionCard)}</div>
+                <div className="space-y-md">{downOptions.map(renderOptionCard)}</div>
+            </div>
+        );
+    }
 };
 
 OutcomeVisualizer.propTypes = {
