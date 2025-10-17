@@ -1,5 +1,5 @@
 import React from 'react';
-// The import is correct now: default export
+import { Link } from 'react-router-dom';
 import useFetch from '../hooks/useFetch'; 
 import { Line } from 'react-chartjs-2';
 import {
@@ -24,38 +24,40 @@ ChartJS.register(
   Legend
 );
 
-const formatDate = (dateString) => {
+const formatFullDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  return new Date(dateString).toLocaleDateString('en-US', options);
+};
+
+const formatDateForChart = (dateString) => {
   if (!dateString) return 'N/A';
   const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
   return new Date(dateString).toLocaleDateString('en-GB', options);
 };
 
 const PointsHistory = () => {
-  // We can now safely destructure all three values because we know useFetch provides them.
   const { data: history, loading, error } = useFetch('/api/user/points-history');
 
-  // Explicitly handle the loading state for a better UX.
   if (loading) {
     return <div className="loading">Loading points history...</div>;
   }
 
-  // Explicitly handle the error state.
   if (error) {
     return <div className="error">Failed to load points history: {error}</div>;
   }
   
-  // Handle the case where there is no data.
   if (!history || history.length === 0) {
     return (
-        <div className="admin-content">
-            <div className="admin-component-header"><h2>Points History</h2></div>
-            <div className="card"><p>No points history available yet.</p></div>
-        </div>
+      <div className="admin-content">
+        <div className="admin-component-header"><h2>Points History</h2></div>
+        <div className="card"><p>No points history available yet.</p></div>
+      </div>
     );
   }
 
   const chartData = {
-    labels: history.map(entry => formatDate(entry.created_at)),
+    labels: history.map(entry => formatDateForChart(entry.created_at)),
     datasets: [
       {
         label: 'Points Balance',
@@ -70,32 +72,41 @@ const PointsHistory = () => {
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       title: {
         display: true,
         text: 'Points Balance Over Time',
         color: 'var(--orange-primary)',
-        font: { size: 22 } // Increased by 2 points from default 20
+        font: { 
+          size: 20,
+          family: 'inherit'
+        },
+        padding: {
+          bottom: 20
+        }
       },
     },
     scales: {
-        x: {
-          ticks: {
-            color: 'var(--light-gray)',
-            callback: function(value) {
-              return this.getLabelForValue(value);
-            }
-          }
+      x: {
+        ticks: {
+          color: 'var(--light-gray)',
+          font: { family: 'inherit' }
         },
-        y: {
-          ticks: {
-            color: 'var(--light-gray)',
-            callback: function(value) {
-              return value;
-            }
-          }
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
         }
+      },
+      y: {
+        ticks: {
+          color: 'var(--light-gray)',
+          font: { family: 'inherit' }
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      }
     }
   };
 
@@ -105,9 +116,11 @@ const PointsHistory = () => {
         <h2>Points History</h2>
       </div>
 
-      <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+      <div className="card" style={{ marginBottom: 'var(--spacing-lg)', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
         <h3>Balance Chart</h3>
-        <Line options={chartOptions} data={chartData} />
+        <div style={{ flexGrow: 1, position: 'relative' }}>
+          <Line options={chartOptions} data={chartData} />
+        </div>
       </div>
       
       <div className="card">
@@ -122,28 +135,38 @@ const PointsHistory = () => {
             </tr>
           </thead>
           <tbody>
-            {[...history].reverse().map((entry, index) => (
-              <tr key={index}>
-                <td>{formatDate(entry.created_at)}</td>
-                <td>{entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>
-                <td style={{ color: entry.change_amount > 0 ? 'var(--success-green)' : 'var(--danger-red)' }}>
+            {[...history].reverse().map((entry) => (
+              <tr key={entry.id || entry.created_at}>
+                <td>{formatFullDate(entry.created_at)}</td>
+                <td>
+                  {entry.event_id ? (
+                    <Link to={`/events/${entry.event_id}`} style={{ color: 'var(--off-white)' }}>
+                      {entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </Link>
+                  ) : (
+                    entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                  )}
+                </td>
+                <td style={{ color: entry.change_amount > 0 ? 'var(--success-green)' : 'var(--danger-red)', fontWeight: '600' }}>
                   {entry.change_amount > 0 ? '+' : ''}{entry.change_amount}
                 </td>
-                <td style={{ color: 'var(--orange-primary)' }}>{entry.new_balance}</td>
+                <td style={{ color: 'var(--orange-primary)', fontWeight: '600' }}>
+                  {entry.new_balance.toLocaleString()}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         <style>{`
-            .history-table th, .history-table td {
-                padding: var(--spacing-sm) var(--spacing-md);
-                text-align: left;
-                border-bottom: 1px solid var(--ui-border);
-            }
-            .history-table th {
-                color: var(--light-gray);
-                font-weight: 500;
-            }
+          .history-table th, .history-table td {
+            padding: var(--spacing-sm) var(--spacing-md);
+            text-align: left;
+            border-bottom: 1px solid var(--ui-border);
+          }
+          .history-table th {
+            color: var(--light-gray);
+            font-weight: 500;
+          }
         `}</style>
       </div>
     </div>
