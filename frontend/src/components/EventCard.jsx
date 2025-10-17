@@ -2,6 +2,80 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { normalizeEventOptions } from '../utils/eventUtils'; // Adjusted path to be relative to components directory
 
+// CountdownTimer component - exported for use in EventDetail
+export const CountdownTimer = ({ endTime }) => {
+  const [timeLeft, setTimeLeft] = React.useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [isCritical, setIsCritical] = React.useState(false);
+  const [isWarning, setIsWarning] = React.useState(false);
+
+  React.useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const end = new Date(endTime);
+      const difference = end - now;
+
+      if (difference <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      return { days, hours, minutes, seconds };
+    };
+
+    const timer = setInterval(() => {
+      const newTimeLeft = calculateTimeLeft();
+      setTimeLeft(newTimeLeft);
+  
+      // Calculate total time in minutes for warning states
+      const totalMinutes = newTimeLeft.days * 24 * 60 + newTimeLeft.hours * 60 + newTimeLeft.minutes;
+      const totalSeconds = totalMinutes * 60 + newTimeLeft.seconds;
+  
+      // Set warning states
+      const isCriticalState = totalSeconds <= 60; // 1 minute or less
+      const isWarningState = totalMinutes <= 60 && totalSeconds > 60; // 1 hour or less but more than 1 minute
+      
+      setIsCritical(isCriticalState);
+      setIsWarning(isWarningState);
+    }, 1000);
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft());
+
+    return () => clearInterval(timer);
+  }, [endTime]);
+
+  const formatTime = (value) => {
+    return value.toString().padStart(2, '0');
+  };
+
+  const getTimeDisplay = () => {
+    const { days, hours, minutes, seconds } = timeLeft;
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  const timerClass = `countdown-timer ${isCritical ? 'critical' : isWarning ? 'warning' : 'normal'}`;
+
+  return (
+    <div className={timerClass}>
+      <span className="icon">⏰</span>
+      <span className="time-display">{getTimeDisplay()}</span>
+    </div>
+  );
+};
+
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
   const eventOptions = React.useMemo(() => normalizeEventOptions(event.options), [event.options]);
@@ -20,80 +94,6 @@ const EventCard = ({ event }) => {
     const now = new Date();
     const endTime = new Date(event.end_time);
     return now >= endTime;
-  };
-
-  // CountdownTimer component
-  const CountdownTimer = ({ endTime }) => {
-    const [timeLeft, setTimeLeft] = React.useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-    const [isCritical, setIsCritical] = React.useState(false);
-    const [isWarning, setIsWarning] = React.useState(false);
-
-    React.useEffect(() => {
-      const calculateTimeLeft = () => {
-        const now = new Date();
-        const end = new Date(endTime);
-        const difference = end - now;
-
-        if (difference <= 0) {
-          return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-        }
-
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-        return { days, hours, minutes, seconds };
-      };
-
-      const timer = setInterval(() => {
-        const newTimeLeft = calculateTimeLeft();
-        setTimeLeft(newTimeLeft);
-    
-        // Calculate total time in minutes for warning states
-        const totalMinutes = newTimeLeft.days * 24 * 60 + newTimeLeft.hours * 60 + newTimeLeft.minutes;
-        const totalSeconds = totalMinutes * 60 + newTimeLeft.seconds;
-    
-        // Set warning states
-        const isCriticalState = totalSeconds <= 60; // 1 minute or less
-        const isWarningState = totalMinutes <= 60 && totalSeconds > 60; // 1 hour or less but more than 1 minute
-        
-        setIsCritical(isCriticalState);
-        setIsWarning(isWarningState);
-      }, 1000);
-
-      // Initial calculation
-      setTimeLeft(calculateTimeLeft());
-
-      return () => clearInterval(timer);
-    }, [endTime]);
-
-    const formatTime = (value) => {
-      return value.toString().padStart(2, '0');
-    };
-
-    const getTimeDisplay = () => {
-      const { days, hours, minutes, seconds } = timeLeft;
-      
-      if (days > 0) {
-        return `${days}d ${hours}h ${minutes}m`;
-      } else if (hours > 0) {
-        return `${hours}h ${minutes}m ${seconds}s`;
-      } else if (minutes > 0) {
-        return `${minutes}m ${seconds}s`;
-      } else {
-        return `${seconds}s`;
-      }
-    };
-
-    const timerClass = `countdown-timer ${isCritical ? 'critical' : isWarning ? 'warning' : 'normal'}`;
-
-    return (
-      <div className={timerClass}>
-        <span className="icon">⏰</span>
-        <span className="time-display">{getTimeDisplay()}</span>
-      </div>
-    );
   };
 
   // Don't render expired events

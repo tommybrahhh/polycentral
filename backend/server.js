@@ -1914,16 +1914,58 @@ app.get('/api/events/:id', async (req, res) => {
     const eventId = parseInt(id);
     
     // Get event data with participant counts and prize pool
-    const { rows } = await pool.query(
-      `SELECT
+    let query;
+    let params = [req.userId, eventId];
+    
+    if (dbType === 'postgres') {
+      query = `SELECT
         e.*,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
-        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = $1) AS user_prediction
+        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = $1) AS user_prediction,
+        -- START: Added logic for option volumes
+        (
+          SELECT json_object_agg(prediction, json_build_object('total_amount', total_amount))
+          FROM (
+            SELECT
+              prediction,
+              SUM(amount) as total_amount
+            FROM participants
+            WHERE event_id = e.id
+            GROUP BY prediction
+          ) as volumes
+        ) as option_volumes
+        -- END: Added logic for option volumes
       FROM events e
-      WHERE e.id = $2`,
-      [req.userId, eventId]
-    );
+      WHERE e.id = $2`;
+    } else {
+      // SQLite-compatible version
+      query = `SELECT
+        e.*,
+        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
+        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
+        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = ?) AS user_prediction,
+        -- START: SQLite-compatible option volumes
+        (
+          SELECT json_group_object(prediction, json_object('total_amount', total_amount))
+          FROM (
+            SELECT
+              prediction,
+              SUM(amount) as total_amount
+            FROM participants
+            WHERE event_id = e.id
+            GROUP BY prediction
+          ) as volumes
+        ) as option_volumes
+        -- END: SQLite-compatible option volumes
+      FROM events e
+      WHERE e.id = ?`;
+      
+      // Convert PostgreSQL-style parameters to SQLite-style
+      params = [req.userId, eventId];
+    }
+    
+    const { rows } = await pool.query(query, params);
     
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
