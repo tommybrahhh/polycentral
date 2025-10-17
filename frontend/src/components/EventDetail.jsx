@@ -7,6 +7,7 @@ import Participation from './Participation';
 import EventHeroStats from './EventHeroStats';
 import OutcomeVisualizer from './OutcomeVisualizer';
 import LiveActivityTicker from './LiveActivityTicker';
+import ParticipationTrendChart from './ParticipationTrendChart';
 import { CountdownTimer } from './EventCard'; // Assuming CountdownTimer is exported from EventCard or moved to its own file.
 
 const EventDetail = () => {
@@ -63,13 +64,15 @@ const EventDetail = () => {
           )}
         </div>
 
-        {/* Section 2: Hero Stats & Live Activity */}
+        {/* Section 2: Hero Stats, Ticker, and NEW Trend Chart */}
         <div className="space-y-md">
           <EventHeroStats
               prizePool={event.prize_pool}
               participants={event.current_participants}
           />
           <LiveActivityTicker participants={event.current_participants} />
+          {/* INSERT THE NEW COMPONENT HERE */}
+          <ParticipationTrendChart eventId={event.id} />
         </div>
         
         {/* Section 3: The Arena - Outcome Visualizer */}

@@ -1880,33 +1880,22 @@ app.get('/api/events/active', async (req, res) => {
 });
 
 // GET event details
-// Get participation history for chart
+// GET participation history for chart
 app.get('/api/events/:id/participations', async (req, res) => {
   try {
     const { id } = req.params;
-    const { interval = 'hour' } = req.query;
-    
-    const validIntervals = ['minute', 'hour', 'day'];
-    if (!validIntervals.includes(interval)) {
-      return res.status(400).json({ error: 'Invalid interval' });
-    }
 
-    const query = `
-      SELECT
-        date_trunc($1, created_at) AS time_bucket,
-        COUNT(*) AS participation_count
-      FROM participants
-      WHERE event_id = $2
-      GROUP BY time_bucket
-      ORDER BY time_bucket
-    `;
+    // Fetch all participant entries for the event, ordered by creation time
+    const { rows } = await pool.query(
+      `SELECT prediction, created_at FROM participants WHERE event_id = $1 ORDER BY created_at ASC`,
+      [id]
+    );
 
-    const { rows } = await pool.query(query, [interval, id]);
     res.json(rows);
     
   } catch (error) {
     console.error('Error fetching participation history:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error while fetching participation history' });
   }
 });
 
