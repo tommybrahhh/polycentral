@@ -95,7 +95,7 @@ const PointsHistory = () => {
           font: { family: 'inherit' }
         },
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
+          color: 'rgba(230, 113, 4, 0.1)'
         }
       },
       y: {
