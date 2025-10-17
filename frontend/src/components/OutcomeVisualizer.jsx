@@ -7,35 +7,44 @@ const OutcomeVisualizer = ({ options, optionVolumes, totalPool, onSelectPredicti
     const parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
 
     const renderOptionBar = (option) => {
-        const volumeData = optionVolumes ? (optionVolumes[option.value] || { total_amount: 0 }) : { total_amount: 0 };
-        const percentage = totalPool > 0 ? (volumeData.total_amount / totalPool) * 100 : 0;
+        const volumeData = optionVolumes ? (optionVolumes[option.value] || { total_amount: 0, multiplier: 0 }) : { total_amount: 0, multiplier: 0 };
         const isSelected = selectedPredictionValue === option.value;
         const isUp = option.value.includes('up');
-        // NOTE: The multiplier should ideally come from the API. We'll use a static 2.5x as a placeholder.
-        const multiplier = 2.5; 
+
+        // Calculate a tangible reward example
+        const exampleReward = (100 * (volumeData.multiplier || 0)).toFixed(0);
 
         return (
-            <div 
+            <div
                 key={option.id}
                 className={`p-md rounded-md cursor-pointer border-2 transition-all duration-200 bg-charcoal ${
                     isSelected ? 'border-orange-primary scale-105 shadow-lg' : 'border-charcoal hover:border-gray-600'
                 }`}
-                onClick={() => onSelectPrediction({ ...option, multiplier })}
+                onClick={() => onSelectPrediction({ ...option, multiplier: volumeData.multiplier })}
                 role="button"
             >
-                <div className="flex justify-between items-center mb-sm">
-                    <span className={`font-bold text-lg ${isUp ? 'text-success' : 'text-danger'}`}>{option.label}</span>
-                    <span className="text-primary font-semibold text-lg">{multiplier}x Reward</span>
+                <div className="flex justify-between items-start mb-sm">
+                    {/* Left Side: Outcome Label */}
+                    <span className={`font-bold text-xl ${isUp ? 'text-success' : 'text-danger'}`}>{option.label}</span>
+                    
+                    {/* Right Side: Payout Info */}
+                    <div className="text-right">
+                        <span className="text-primary font-semibold text-xl block">{volumeData.multiplier.toFixed(2)}x Payout</span>
+                        <span className="text-secondary text-xs">(Win {exampleReward} PTS with a 100 PTS bet)</span>
+                    </div>
                 </div>
-                <div className="w-full bg-surface rounded-full h-3 overflow-hidden">
-                    <div
-                        className={`h-3 rounded-full ${isUp ? 'bg-success' : 'bg-danger'}`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                        title={`${percentage.toFixed(1)}% of the prize pool`}
-                    ></div>
-                </div>
-                <div className="text-right text-xs text-secondary mt-1">
-                    {volumeData.total_amount.toLocaleString()} PTS Bet
+                
+                {/* Progress Bar and Total Bet */}
+                <div>
+                    <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
+                        <div
+                            className={`h-2 rounded-full ${isUp ? 'bg-success' : 'bg-danger'}`}
+                            style={{ width: `${totalPool > 0 ? (volumeData.total_amount / totalPool) * 100 : 0}%` }}
+                        ></div>
+                    </div>
+                    <div className="text-right text-xs text-secondary mt-1">
+                        {volumeData.total_amount.toLocaleString()} PTS in Pool
+                    </div>
                 </div>
             </div>
         );

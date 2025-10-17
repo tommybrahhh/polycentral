@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import Participation from './Participation';
-import EventHeroStats from './EventHeroStats'; 
+import EventHeroStats from './EventHeroStats';
 import OutcomeVisualizer from './OutcomeVisualizer';
+import LiveActivityTicker from './LiveActivityTicker';
 import { CountdownTimer } from './EventCard'; // Assuming CountdownTimer is exported from EventCard or moved to its own file.
 
 const EventDetail = () => {
@@ -62,11 +63,14 @@ const EventDetail = () => {
           )}
         </div>
 
-        {/* Section 2: Hero Stats */}
-        <EventHeroStats
-            prizePool={event.prize_pool}
-            participants={event.current_participants}
-        />
+        {/* Section 2: Hero Stats & Live Activity */}
+        <div className="space-y-md">
+          <EventHeroStats
+              prizePool={event.prize_pool}
+              participants={event.current_participants}
+          />
+          <LiveActivityTicker participants={event.current_participants} />
+        </div>
         
         {/* Section 3: The Arena - Outcome Visualizer */}
         <div className="bg-surface p-lg rounded-md">

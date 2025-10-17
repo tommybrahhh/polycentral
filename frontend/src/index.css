@@ -241,4 +241,18 @@ body::before {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+/* Ticker animations for LiveActivityTicker */
+.ticker-track {
+  animation: scroll-ticker 30s linear infinite;
+}
+
+@keyframes scroll-ticker {
+  from { transform: translateX(0%); }
+  to { transform: translateX(-50%); }
+}
+
+/* Ensure smooth scrolling and prevent layout shifts */
+.ticker-track > div {
+  white-space: nowrap;
+}
 

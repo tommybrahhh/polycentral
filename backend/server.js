@@ -1918,51 +1918,83 @@ app.get('/api/events/:id', async (req, res) => {
     let params = [req.userId, eventId];
     
     if (dbType === 'postgres') {
-      query = `SELECT
+      query = `WITH event_totals AS (
+        SELECT
+          id,
+          COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = events.id), 0) AS prize_pool
+        FROM events
+        WHERE id = $2
+      ), option_volumes_pre AS (
+        SELECT
+          p.prediction,
+          SUM(p.amount) as total_amount
+        FROM participants p
+        WHERE p.event_id = $2
+        GROUP BY p.prediction
+      )
+      SELECT
         e.*,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
+        et.prize_pool,
         (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = $1) AS user_prediction,
-        -- START: Added logic for option volumes
         (
-          SELECT json_object_agg(prediction, json_build_object('total_amount', total_amount))
-          FROM (
-            SELECT
-              prediction,
-              SUM(amount) as total_amount
-            FROM participants
-            WHERE event_id = e.id
-            GROUP BY prediction
-          ) as volumes
+          SELECT json_object_agg(
+            ov.prediction,
+            json_build_object(
+              'total_amount', ov.total_amount,
+              'multiplier',
+                CASE
+                  WHEN ov.total_amount > 0 THEN et.prize_pool / ov.total_amount
+                  ELSE 0
+                END
+            )
+          )
+          FROM option_volumes_pre ov, event_totals et
         ) as option_volumes
-        -- END: Added logic for option volumes
       FROM events e
+      JOIN event_totals et ON e.id = et.id
       WHERE e.id = $2`;
     } else {
       // SQLite-compatible version
-      query = `SELECT
+      query = `WITH event_totals AS (
+        SELECT
+          id,
+          COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = events.id), 0) AS prize_pool
+        FROM events
+        WHERE id = ?
+      ), option_volumes_pre AS (
+        SELECT
+          p.prediction,
+          SUM(p.amount) as total_amount
+        FROM participants p
+        WHERE p.event_id = ?
+        GROUP BY p.prediction
+      )
+      SELECT
         e.*,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) AS prize_pool,
+        et.prize_pool,
         (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = ?) AS user_prediction,
-        -- START: SQLite-compatible option volumes
         (
-          SELECT json_group_object(prediction, json_object('total_amount', total_amount))
-          FROM (
-            SELECT
-              prediction,
-              SUM(amount) as total_amount
-            FROM participants
-            WHERE event_id = e.id
-            GROUP BY prediction
-          ) as volumes
+          SELECT json_group_object(
+            prediction,
+            json_object(
+              'total_amount', total_amount,
+              'multiplier',
+                CASE
+                  WHEN total_amount > 0 THEN (SELECT prize_pool FROM event_totals) / total_amount
+                  ELSE 0
+                END
+            )
+          )
+          FROM option_volumes_pre
         ) as option_volumes
-        -- END: SQLite-compatible option volumes
       FROM events e
+      JOIN event_totals et ON e.id = et.id
       WHERE e.id = ?`;
       
       // Convert PostgreSQL-style parameters to SQLite-style
-      params = [req.userId, eventId];
+      params = [eventId, eventId, req.userId, eventId];
     }
     
     const { rows } = await pool.query(query, params);
