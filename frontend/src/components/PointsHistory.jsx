@@ -26,8 +26,8 @@ ChartJS.register(
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
-  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return new Date(dateString).toLocaleDateString('en-US', options);
+  const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
+  return new Date(dateString).toLocaleDateString('en-GB', options);
 };
 
 const PointsHistory = () => {
@@ -72,11 +72,30 @@ const PointsHistory = () => {
     responsive: true,
     plugins: {
       legend: { display: false },
-      title: { display: true, text: 'Points Balance Over Time', color: 'var(--off-white)' },
+      title: {
+        display: true,
+        text: 'Points Balance Over Time',
+        color: 'var(--orange-primary)',
+        font: { size: 22 } // Increased by 2 points from default 20
+      },
     },
     scales: {
-        x: { ticks: { color: 'var(--light-gray)' } },
-        y: { ticks: { color: 'var(--light-gray)' } }
+        x: {
+          ticks: {
+            color: 'var(--light-gray)',
+            callback: function(value) {
+              return this.getLabelForValue(value);
+            }
+          }
+        },
+        y: {
+          ticks: {
+            color: 'var(--light-gray)',
+            callback: function(value) {
+              return value;
+            }
+          }
+        }
     }
   };
 
@@ -110,7 +129,7 @@ const PointsHistory = () => {
                 <td style={{ color: entry.change_amount > 0 ? 'var(--success-green)' : 'var(--danger-red)' }}>
                   {entry.change_amount > 0 ? '+' : ''}{entry.change_amount}
                 </td>
-                <td>{entry.new_balance}</td>
+                <td style={{ color: 'var(--orange-primary)' }}>{entry.new_balance}</td>
               </tr>
             ))}
           </tbody>
