@@ -88,7 +88,7 @@ const ParticipationTrendChart = ({ eventId }) => {
 };
 
 ParticipationTrendChart.propTypes = {
-  eventId: PropTypes.number.isRequired,
+  eventId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
 };
 
 export default ParticipationTrendChart;
