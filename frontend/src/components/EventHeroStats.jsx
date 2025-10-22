@@ -2,7 +2,7 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import { useAnimatedCounter } from '../hooks/useAnimatedCounter'; // Assuming hook is moved to a separate file
+import useAnimatedCounter from '../hooks/useAnimatedCounter'; // Assuming hook is moved to a separate file
 
 const EventHeroStats = ({ prizePool, participants }) => {
   const animatedPool = useAnimatedCounter(prizePool);
