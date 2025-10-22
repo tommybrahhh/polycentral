@@ -160,7 +160,7 @@ const OutcomeTrendChart = ({ eventId, options }) => {
   const getLinePath = (data, totalPoints) => {
     if (data.length === 0) return '';
     
-    const maxValue = Math.max(...chartData.series.flatMap(s => s.data));
+    const maxValue = Math.max(...data);
     const points = data.map((value, index) => {
       const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
       const y = 200 - (value / maxValue * 180) - 10;
@@ -174,7 +174,7 @@ const OutcomeTrendChart = ({ eventId, options }) => {
   const getAreaPath = (data, totalPoints) => {
     if (data.length === 0) return '';
     
-    const maxValue = Math.max(...chartData.series.flatMap(s => s.data));
+    const maxValue = Math.max(...data);
     const points = data.map((value, index) => {
       const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
       const y = 200 - (value / maxValue * 180) - 10;
