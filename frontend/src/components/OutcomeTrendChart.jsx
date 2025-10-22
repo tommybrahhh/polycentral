@@ -156,6 +156,35 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     return colorMap[outcome] || '#8884d8';
   };
 
+  // Helper function to create SVG path for line
+  const getLinePath = (data, totalPoints) => {
+    if (data.length === 0) return '';
+    
+    const maxValue = Math.max(...chartData.series.flatMap(s => s.data));
+    const points = data.map((value, index) => {
+      const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
+      const y = 200 - (value / maxValue * 180) - 10;
+      return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
+    });
+    
+    return points.join(' ');
+  };
+
+  // Helper function to create SVG path for area
+  const getAreaPath = (data, totalPoints) => {
+    if (data.length === 0) return '';
+    
+    const maxValue = Math.max(...chartData.series.flatMap(s => s.data));
+    const points = data.map((value, index) => {
+      const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
+      const y = 200 - (value / maxValue * 180) - 10;
+      return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
+    });
+    
+    // Close the path
+    return points.join(' ') + ` L ${(totalPoints - 1) * 40 + 20},200 L 20,200 Z`;
+  };
+
   // Calculate current distribution percentages
   const currentDistribution = useMemo(() => {
     const total = data.length;
@@ -264,18 +293,19 @@ const OutcomeTrendChart = ({ eventId, options }) => {
           ))}
 
           {/* Data points */}
-          {chartData.series.map(series => (
-            series.data.map((value, index) => (
+          {chartData.series.map(series => {
+            const maxValue = Math.max(...chartData.series.flatMap(s => s.data));
+            return series.data.map((value, index) => (
               <circle
                 key={`${series.name}-${index}`}
                 cx={index * 40 + 20}
-                cy={200 - (value / Math.max(...chartData.series.flatMap(s => s.data)) * 180) - 10}
+                cy={200 - (value / maxValue * 180) - 10}
                 r="3"
                 fill={series.color}
                 className="opacity-0 hover:opacity-100 transition-opacity"
               />
-            ))
-          ))}
+            ));
+          })}
         </svg>
       </div>
 
@@ -293,35 +323,6 @@ const OutcomeTrendChart = ({ eventId, options }) => {
       </div>
     </div>
   );
-};
-
-// Helper function to create SVG path for line
-const getLinePath = (data, totalPoints) => {
-  if (data.length === 0) return '';
-  
-  const maxValue = Math.max(...data);
-  const points = data.map((value, index) => {
-    const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
-    const y = 200 - (value / maxValue * 180) - 10;
-    return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
-  });
-  
-  return points.join(' ');
-};
-
-// Helper function to create SVG path for area
-const getAreaPath = (data, totalPoints) => {
-  if (data.length === 0) return '';
-  
-  const maxValue = Math.max(...data);
-  const points = data.map((value, index) => {
-    const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
-    const y = 200 - (value / maxValue * 180) - 10;
-    return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
-  });
-  
-  // Close the path
-  return points.join(' ') + ` L ${(totalPoints - 1) * 40 + 20},200 L 20,200 Z`;
 };
 
 OutcomeTrendChart.propTypes = {
