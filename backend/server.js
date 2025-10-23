@@ -2189,50 +2189,6 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Internal server error during claim process' });
   }
 });
-        } catch (error) {
-          await client.query('ROLLBACK');
-          console.error('Error in PostgreSQL transaction:', error);
-          throw error;
-        } finally {
-          client.release();
-        }
-      } else {
-        // For SQLite, use centralized function for points and update timestamps separately
-        const pointsToAward = 250;
-        const newBalance = await updateUserPoints(pool, req.userId, pointsToAward, 'daily_claim', null);
-        
-        // Update last_claimed and last_login_date timestamps
-        const { rows: [updatedUser] } = await pool.query(
-          `UPDATE users
-           SET last_claimed = datetime('now'), last_login_date = datetime('now')
-           WHERE id = $1
-           RETURNING id, username`,
-          [req.userId]
-        );
-        updatedUser.points = newBalance;
-        
-        // Log successful claim
-        console.log('Successfully awarded points to user:', {
-          userId: req.userId,
-          pointsAwarded: pointsToAward,
-          newTotal: updatedUser.points
-        });
-        
-        res.json({
-          message: 'Successfully claimed free points!',
-          points: pointsToAward,
-          newTotal: updatedUser.points
-        });
-      }
-    } catch (dbError) {
-      console.error('Database error when updating user points:', dbError);
-      return res.status(500).json({ error: 'Failed to update user points in database' });
-    }
-  } catch (error) {
-    console.error('Error claiming free points:', error);
-    res.status(500).json({ error: 'Failed to claim points' });
-  }
-});
 
 // GET user profile endpoint
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
