@@ -1021,7 +1021,14 @@ const authenticateToken = (req, res, next) => {
                 message: err.message,
                 expiredAt: err.expiredAt
             });
-            return res.status(401).json({ error: 'Token is invalid or expired' });
+            // Check for specific JWT errors and return 401
+            if (err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError') {
+                return res.status(401).json({ error: 'Token is invalid or expired' });
+            } else {
+                // For any other unexpected errors during verification, return 500
+                console.error('Unexpected error during JWT verification:', err);
+                return res.status(500).json({ error: 'Internal server error during authentication' });
+            }
         }
         console.log('Token verified successfully for user:', user.userId);
         console.log('Full token payload:', user);
@@ -2099,6 +2106,14 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
       last_claimed: lastClaimed,
       last_login_date: user.last_login_date
     });
+
+    // ... (rest of the claim logic will go here)
+
+  } catch (error) {
+    console.error('Error in claim-free-points endpoint:', error);
+    res.status(500).json({ error: 'Internal server error during claim process' });
+  }
+});
     
     // Log last claimed time and current time for debugging
     console.log('Last claimed time:', lastClaimed);
