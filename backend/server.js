@@ -2058,6 +2058,12 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
     // Log the incoming request
     console.log('Claim free points request received for user:', req.userId);
     
+    // Ensure req.userId is present
+    if (!req.userId) {
+      console.error('Error: req.userId is undefined or null in claim-free-points endpoint');
+      return res.status(400).json({ error: 'User ID not available' });
+    }
+
     // Check if user has already claimed points today
     // Query only last_claimed column as ensureUsersTableIntegrity ensures this is the correct column
     const { rows: claimCheck } = await pool.query(
@@ -2068,14 +2074,10 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
     // Log for debugging
     console.log('User claim check result:', claimCheck);
     
-    // Check if the query returned any results
-    if (!claimCheck) {
-      console.error('Database query returned undefined for user:', req.userId);
-      return res.status(500).json({ error: 'Database query failed' });
-    }
-
-    if (claimCheck.length === 0) {
-      console.log('User not found in database for claim request');
+    // claimCheck will always be an array, even if empty.
+    // The previous `if (!claimCheck)` was unreachable.
+    if (!Array.isArray(claimCheck) || claimCheck.length === 0) {
+      console.log('User not found in database for claim request or query failed to return rows');
       return res.status(404).json({ error: 'User not found' });
     }
     
