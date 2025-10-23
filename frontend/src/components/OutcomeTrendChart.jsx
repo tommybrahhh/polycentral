@@ -67,17 +67,18 @@ const OutcomeTrendChart = ({ eventId, options }) => {
 
   // Helper function to get color based on outcome
   const getColorForOutcome = (outcome) => {
+    // New color palette with better contrast for dark mode
     const colorMap = {
-      'Higher': 'var(--success)',
-      'Lower': 'var(--danger)',
-      '0-3% up': 'var(--success-light)',
-      '3-5% up': 'var(--success)',
-      '5%+ up': 'var(--success-dark)',
-      '0-3% down': 'var(--danger-light)',
-      '3-5% down': 'var(--danger)',
-      '5%+ down': 'var(--danger-dark)'
+      'Higher': '#10B981',      // Emerald 500
+      'Lower': '#EF4444',       // Red 500
+      '0-3% up': '#34D399',     // Emerald 400
+      '3-5% up': '#059669',     // Emerald 600
+      '5%+ up': '#047857',      // Emerald 700
+      '0-3% down': '#F87171',   // Red 400
+      '3-5% down': '#DC2626',   // Red 600
+      '5%+ down': '#B91C1C',    // Red 700
     };
-    return colorMap[outcome] || '#8884d8';
+    return colorMap[outcome] || '#A78BFA'; // A default vibrant color (Violet 400)
   };
 
   // Process data for the chart
@@ -201,35 +202,42 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false, // We'll use our custom legend
+        display: false, // Keep custom legend
       },
       tooltip: {
         mode: 'index',
         intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(17, 24, 39, 0.8)', // Darker tooltip (gray-900)
+        titleColor: '#F9FAFB', // Lighter title (gray-50)
+        bodyColor: '#D1D5DB',  // Lighter body (gray-300)
+        borderColor: 'rgba(55, 65, 81, 1)', // gray-700
         borderWidth: 1,
+        padding: 12,
+        cornerRadius: 8,
       }
     },
     scales: {
       x: {
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
+          color: 'rgba(55, 65, 81, 1)', // gray-700 for a subtle grid
+          drawBorder: false,
         },
         ticks: {
-          color: 'var(--secondary)',
-          maxRotation: 45,
-          minRotation: 45
+          color: '#9CA3AF', // gray-400 for axis labels
+          maxRotation: 0, // Keep labels horizontal
+          minRotation: 0,
+          autoSkip: true,
+          maxTicksLimit: 10,
         }
       },
       y: {
         grid: {
-          color: 'rgba(255, 255, 255, 0.1)'
+          color: 'rgba(55, 65, 81, 1)', // gray-700
+          drawBorder: false,
         },
         ticks: {
-          color: 'var(--secondary)'
+          color: '#9CA3AF', // gray-400
+          beginAtZero: true,
         }
       }
     }
@@ -244,30 +252,30 @@ const OutcomeTrendChart = ({ eventId, options }) => {
         <div className="flex space-x-2">
           <button
             onClick={() => setTimeframe('hour')}
-            className={`px-3 py-1 rounded text-sm ${
-              timeframe === 'hour' 
-                ? 'bg-primary text-white' 
-                : 'bg-charcoal text-secondary hover:bg-gray-600'
+            className={`px-3 py-1 rounded text-sm transition-colors ${
+              timeframe === 'hour'
+                ? 'bg-primary text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             Last 24h
           </button>
           <button
             onClick={() => setTimeframe('day')}
-            className={`px-3 py-1 rounded text-sm ${
-              timeframe === 'day' 
-                ? 'bg-primary text-white' 
-                : 'bg-charcoal text-secondary hover:bg-gray-600'
+            className={`px-3 py-1 rounded text-sm transition-colors ${
+              timeframe === 'day'
+                ? 'bg-primary text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             Last 7d
           </button>
           <button
             onClick={() => setTimeframe('all')}
-            className={`px-3 py-1 rounded text-sm ${
-              timeframe === 'all' 
-                ? 'bg-primary text-white' 
-                : 'bg-charcoal text-secondary hover:bg-gray-600'
+            className={`px-3 py-1 rounded text-sm transition-colors ${
+              timeframe === 'all'
+                ? 'bg-primary text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             All Time
