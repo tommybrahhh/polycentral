@@ -2107,109 +2107,88 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
       last_login_date: user.last_login_date
     });
 
-    // ... (rest of the claim logic will go here)
-
-  } catch (error) {
-    console.error('Error in claim-free-points endpoint:', error);
-    res.status(500).json({ error: 'Internal server error during claim process' });
-  }
-});
-    
     // Log last claimed time and current time for debugging
     console.log('Last claimed time:', lastClaimed);
     console.log('Current time:', now);
-    
+
     // Check if user has claimed within the last 24 hours
-    try {
-      if (lastClaimed) {
-        const lastClaimedDate = new Date(lastClaimed);
+    if (lastClaimed) {
+      const lastClaimedDate = new Date(lastClaimed);
+      
+      // Check if the date is valid
+      if (isNaN(lastClaimedDate.getTime())) {
+        console.log('Invalid last claimed date, treating as no previous claim');
+      } else {
+        const timeDifference = now - lastClaimedDate;
+        const hoursSinceLastClaim = timeDifference / (1000 * 60 * 60);
         
-        // Check if the date is valid
-        if (isNaN(lastClaimedDate.getTime())) {
-          console.log('Invalid last claimed date, treating as no previous claim');
-        } else {
-          const timeDifference = now - lastClaimedDate;
-          const hoursSinceLastClaim = timeDifference / (1000 * 60 * 60);
-          const minutesSinceLastClaim = timeDifference / (1000 * 60);
-          const secondsSinceLastClaim = timeDifference / 1000;
-          
-          console.log('Time calculation details:', {
-            now: now.toISOString(),
-            lastClaimed: lastClaimedDate.toISOString(),
-            timeDifference: timeDifference,
-            hoursSinceLastClaim: hoursSinceLastClaim,
-            minutesSinceLastClaim: minutesSinceLastClaim,
-            secondsSinceLastClaim: secondsSinceLastClaim,
-            lastClaimedType: typeof lastClaimed,
-            lastClaimedValue: lastClaimed,
-            lastClaimedDateIsValid: !isNaN(lastClaimedDate.getTime()),
-            nowIsValid: !isNaN(now.getTime())
+        console.log('Time calculation details:', {
+          now: now.toISOString(),
+          lastClaimed: lastClaimedDate.toISOString(),
+          timeDifference: timeDifference,
+          hoursSinceLastClaim: hoursSinceLastClaim,
+        });
+        
+        if (hoursSinceLastClaim < 24) {
+          console.log('User attempted to claim points within 24 hours');
+          return res.status(400).json({
+            message: 'You already claimed free points today',
+            hoursRemaining: Math.ceil(24 - hoursSinceLastClaim),
+            lastClaimed: lastClaimed,
+            currentTime: now
           });
-          
-          if (hoursSinceLastClaim < 24) {
-            console.log('User attempted to claim points within 24 hours');
-            return res.status(400).json({
-              message: 'You already claimed free points today',
-              hoursRemaining: Math.ceil(24 - hoursSinceLastClaim),
-              lastClaimed: lastClaimed,
-              currentTime: now
-            });
-          }
         }
       }
-    } catch (dateError) {
-      console.error('Error processing last claimed date:', dateError);
-      // Continue with the claim process if there's an error with the date
     }
 
     // Log before updating user points
     console.log('Awarding 250 points to user:', req.userId);
     
-    // Additional validation to ensure we're not hitting the 24-hour limit incorrectly
-    console.log('Final validation before awarding points:', {
-      userId: req.userId,
-      lastClaimed: lastClaimed,
-      now: now.toISOString(),
-      hoursSinceLastClaim: lastClaimed ? (now - new Date(lastClaimed)) / (1000 * 60 * 60) : null
-    });
-    
+    // Use transaction for all database operations
+    const client = await pool.connect();
     try {
-      // For SQLite, we can't use client.query('BEGIN')/('COMMIT')/('ROLLBACK')
-      // Instead, we'll use the pool.query directly since our SQLite pool mock handles transactions
-      if (dbType === 'postgres') {
-        // Use transaction for PostgreSQL
-        const client = await pool.connect();
-        try {
-          await client.query('BEGIN');
+      await client.query('BEGIN');
 
-          // Award 250 points to the user using centralized function
-          const pointsToAward = 250;
-          const newBalance = await updateUserPoints(client, req.userId, pointsToAward, 'daily_claim', null);
-          
-          // Update last_claimed and last_login_date timestamps
-          const { rows: [updatedUser] } = await client.query(
-            `UPDATE users
-             SET last_claimed = NOW(), last_login_date = NOW()
-             WHERE id = $1
-             RETURNING id, username`,
-            [req.userId]
-          );
-          updatedUser.points = newBalance;
+      // Award 250 points to the user using centralized function
+      const pointsToAward = 250;
+      const newBalance = await updateUserPoints(client, req.userId, pointsToAward, 'daily_claim', null);
+      
+      // Update last_claimed and last_login_date timestamps
+      const { rows: [updatedUser] } = await client.query(
+        `UPDATE users
+         SET last_claimed = NOW(), last_login_date = NOW()
+         WHERE id = $1
+         RETURNING id, username`,
+        [req.userId]
+      );
+      updatedUser.points = newBalance;
 
-          await client.query('COMMIT');
-          
-          // Log successful claim
-          console.log('Successfully awarded points to user:', {
-            userId: req.userId,
-            pointsAwarded: pointsToAward,
-            newTotal: updatedUser.points
-          });
-          
-          res.json({
-            message: 'Successfully claimed free points!',
-            points: pointsToAward,
-            newTotal: updatedUser.points
-          });
+      await client.query('COMMIT');
+      
+      // Log successful claim
+      console.log('Successfully awarded points to user:', {
+        userId: req.userId,
+        pointsAwarded: pointsToAward,
+        newTotal: updatedUser.points
+      });
+      
+      res.json({
+        message: 'Successfully claimed free points!',
+        points: pointsToAward,
+        newTotal: updatedUser.points
+      });
+    } catch (transactionError) {
+      await client.query('ROLLBACK');
+      console.error('Error during transaction, rolled back.', transactionError);
+      res.status(500).json({ error: 'Failed to claim points due to a database error.' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error in claim-free-points endpoint:', error);
+    res.status(500).json({ error: 'Internal server error during claim process' });
+  }
+});
         } catch (error) {
           await client.query('ROLLBACK');
           console.error('Error in PostgreSQL transaction:', error);
