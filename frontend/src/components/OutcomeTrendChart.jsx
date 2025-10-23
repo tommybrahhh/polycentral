@@ -2,6 +2,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 const OutcomeTrendChart = ({ eventId, options }) => {
   const [data, setData] = useState([]);
@@ -41,11 +65,30 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     return parsedOptions.map(option => option.value);
   }, [parsedOptions]);
 
+  // Helper function to get color based on outcome
+  const getColorForOutcome = (outcome) => {
+    const colorMap = {
+      'Higher': 'var(--success)',
+      'Lower': 'var(--danger)',
+      '0-3% up': 'var(--success-light)',
+      '3-5% up': 'var(--success)',
+      '5%+ up': 'var(--success-dark)',
+      '0-3% down': 'var(--danger-light)',
+      '3-5% down': 'var(--danger)',
+      '5%+ down': 'var(--danger-dark)'
+    };
+    return colorMap[outcome] || '#8884d8';
+  };
+
   // Process data for the chart
   const chartData = useMemo(() => {
-    if (data.length === 0) return { series: [], timeLabels: [] };
+    if (data.length === 0) return { labels: [], datasets: [] };
 
-    // Group data by time intervals
+    // Sort data by created_at to ensure chronological order
+    const sortedData = [...data].sort((a, b) => 
+      new Date(a.created_at) - new Date(b.created_at)
+    );
+
     const now = new Date();
     let timeIntervals = [];
     
@@ -71,38 +114,27 @@ const OutcomeTrendChart = ({ eventId, options }) => {
         });
       }
     } else {
-      // All time - group by hour for the first day, then by day
-      const firstParticipation = new Date(data[0]?.created_at || now);
-      const timeDiff = now - firstParticipation;
-      const daysDiff = timeDiff / (24 * 60 * 60 * 1000);
+      // All time - use fixed interval approach
+      const firstParticipation = new Date(sortedData[0]?.created_at || now);
+      const lastParticipation = new Date(sortedData[sortedData.length - 1]?.created_at || now);
+      const timeDiff = lastParticipation - firstParticipation;
       
-      if (daysDiff <= 1) {
-        // Less than 1 day, group by hour
-        for (let i = 0; i <= 24; i++) {
-          const time = new Date(firstParticipation.getTime() + i * 60 * 60 * 1000);
-          if (time > now) break;
-          timeIntervals.push({
-            time: time,
-            label: time.toLocaleTimeString([], { hour: '2-digit' }),
-            counts: Object.fromEntries(outcomeValues.map(outcome => [outcome, 0]))
-          });
-        }
-      } else {
-        // More than 1 day, group by day
-        for (let i = 0; i <= daysDiff; i++) {
-          const date = new Date(firstParticipation.getTime() + i * 24 * 60 * 60 * 1000);
-          if (date > now) break;
-          timeIntervals.push({
-            time: date,
-            label: date.toLocaleDateString([], { month: 'short', day: 'numeric' }),
-            counts: Object.fromEntries(outcomeValues.map(outcome => [outcome, 0]))
-          });
-        }
+      // Determine optimal interval count (max 24 points)
+      const maxPoints = 24;
+      const intervalCount = Math.min(maxPoints, Math.ceil(timeDiff / (60 * 60 * 1000))); // max 24 hours worth of points
+      
+      for (let i = 0; i < intervalCount; i++) {
+        const intervalTime = new Date(firstParticipation.getTime() + (i * timeDiff / intervalCount));
+        timeIntervals.push({
+          time: intervalTime,
+          label: intervalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          counts: Object.fromEntries(outcomeValues.map(outcome => [outcome, 0]))
+        });
       }
     }
 
     // Count participations in each time interval
-    data.forEach(entry => {
+    sortedData.forEach(entry => {
       const entryTime = new Date(entry.created_at);
       
       for (let i = 0; i < timeIntervals.length - 1; i++) {
@@ -131,59 +163,23 @@ const OutcomeTrendChart = ({ eventId, options }) => {
       };
     });
 
+    // Prepare datasets for ChartJS
+    const datasets = outcomeValues.map(outcome => ({
+      label: outcome,
+      data: seriesData.map(item => item[outcome]),
+      borderColor: getColorForOutcome(outcome),
+      backgroundColor: getColorForOutcome(outcome) + '40', // Add opacity
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointHoverRadius: 5
+    }));
+
     return {
-      series: outcomeValues.map(outcome => ({
-        name: outcome,
-        data: seriesData.map(item => item[outcome]),
-        color: getColorForOutcome(outcome)
-      })),
-      timeLabels: seriesData.map(item => item.time)
+      labels: seriesData.map(item => item.time),
+      datasets: datasets
     };
   }, [data, timeframe, outcomeValues]);
-
-  // Helper function to get color based on outcome
-  const getColorForOutcome = (outcome) => {
-    const colorMap = {
-      'Higher': 'var(--success)',
-      'Lower': 'var(--danger)',
-      '0-3% up': 'var(--success-light)',
-      '3-5% up': 'var(--success)',
-      '5%+ up': 'var(--success-dark)',
-      '0-3% down': 'var(--danger-light)',
-      '3-5% down': 'var(--danger)',
-      '5%+ down': 'var(--danger-dark)'
-    };
-    return colorMap[outcome] || '#8884d8';
-  };
-
-  // Helper function to create SVG path for line
-  const getLinePath = (data, totalPoints) => {
-    if (data.length === 0) return '';
-    
-    const maxValue = Math.max(...data);
-    const points = data.map((value, index) => {
-      const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
-      const y = 200 - (value / maxValue * 180) - 10;
-      return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
-    });
-    
-    return points.join(' ');
-  };
-
-  // Helper function to create SVG path for area
-  const getAreaPath = (data, totalPoints) => {
-    if (data.length === 0) return '';
-    
-    const maxValue = Math.max(...data);
-    const points = data.map((value, index) => {
-      const x = (index / (totalPoints - 1)) * (totalPoints * 40 - 40) + 20;
-      const y = 200 - (value / maxValue * 180) - 10;
-      return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
-    });
-    
-    // Close the path
-    return points.join(' ') + ` L ${(totalPoints - 1) * 40 + 20},200 L 20,200 Z`;
-  };
 
   // Calculate current distribution percentages
   const currentDistribution = useMemo(() => {
@@ -198,6 +194,46 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     
     return distribution;
   }, [data, outcomeValues]);
+
+  // Chart options
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false, // We'll use our custom legend
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+        ticks: {
+          color: 'var(--secondary)',
+          maxRotation: 45,
+          minRotation: 45
+        }
+      },
+      y: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+        ticks: {
+          color: 'var(--secondary)'
+        }
+      }
+    }
+  };
 
   if (loading) return <div className="h-64 bg-surface rounded-md animate-pulse"></div>;
 
@@ -260,64 +296,19 @@ const OutcomeTrendChart = ({ eventId, options }) => {
       </div>
 
       {/* Chart Container */}
-      <div className="relative h-48 w-full">
-        <svg viewBox={`0 0 ${chartData.timeLabels.length * 40} 200`} preserveAspectRatio="none" className="w-full h-full">
-          <defs>
-            {chartData.series.map(series => (
-              <linearGradient key={series.name} id={`gradient-${series.name}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={series.color} stopOpacity="0.4"/>
-                <stop offset="100%" stopColor={series.color} stopOpacity="0"/>
-              </linearGradient>
-            ))}
-          </defs>
-
-          {/* Fill areas */}
-          {chartData.series.map(series => (
-            <path
-              key={series.name}
-              d={getAreaPath(series.data, chartData.timeLabels.length)}
-              fill={`url(#gradient-${series.name})`}
-            />
-          ))}
-
-          {/* Lines */}
-          {chartData.series.map(series => (
-            <path
-              key={series.name}
-              d={getLinePath(series.data, chartData.timeLabels.length)}
-              fill="none"
-              stroke={series.color}
-              strokeWidth="2"
-              className="draw-line"
-            />
-          ))}
-
-          {/* Data points */}
-          {chartData.series.map(series => {
-            const maxValue = Math.max(...chartData.series.flatMap(s => s.data));
-            return series.data.map((value, index) => (
-              <circle
-                key={`${series.name}-${index}`}
-                cx={index * 40 + 20}
-                cy={200 - (value / maxValue * 180) - 10}
-                r="3"
-                fill={series.color}
-                className="opacity-0 hover:opacity-100 transition-opacity"
-              />
-            ));
-          })}
-        </svg>
+      <div className="relative h-64 w-full">
+        <Line data={chartData} options={chartOptions} />
       </div>
 
       {/* Legend */}
       <div className="flex flex-wrap justify-center mt-4 gap-3">
-        {chartData.series.map(series => (
-          <div key={series.name} className="flex items-center">
+        {chartData.datasets.map(dataset => (
+          <div key={dataset.label} className="flex items-center">
             <div 
               className="w-3 h-3 rounded-full mr-2"
-              style={{ backgroundColor: series.color }}
+              style={{ backgroundColor: dataset.borderColor }}
             />
-            <span className="text-sm text-secondary">{series.name}</span>
+            <span className="text-sm text-secondary">{dataset.label}</span>
           </div>
         ))}
       </div>
