@@ -3,13 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import Participation from './Participation';
+import { motion, AnimatePresence } from 'framer-motion';
 import EventHeroStats from './EventHeroStats';
 import OutcomeVisualizer from './OutcomeVisualizer';
 import LiveActivityTicker from './LiveActivityTicker';
 import ParticipationTrendChart from './ParticipationTrendChart';
 import OutcomeTrendChart from './OutcomeTrendChart';
 import { CountdownTimer } from './EventCard'; // Assuming CountdownTimer is exported from EventCard or moved to its own file.
+import PredictionModal from './PredictionModal';
+import SuccessAnimation from './SuccessAnimation';
+import Snackbar from './Snackbar';
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -18,6 +21,9 @@ const EventDetail = () => {
   const [error, setError] = useState(null);
   const [selectedPrediction, setSelectedPrediction] = useState(null);
   const [selectedEntryFee, setSelectedEntryFee] = useState(100);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -49,6 +55,71 @@ const EventDetail = () => {
         setSelectedPrediction(null);
     } else {
         setSelectedPrediction(prediction);
+        setIsModalOpen(true);
+    }
+  };
+
+  const handleSubmitPrediction = async (stake) => {
+    setIsModalOpen(false);
+    // Here you would call your API
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      if (!token) throw new Error('User not authenticated');
+      
+      // Validate entry fee structure
+      if (typeof stake !== 'number' || stake < 100) {
+        throw new Error('Invalid entry fee configuration');
+      }
+      
+      // Check if user has enough points for the bet
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const currentUserPoints = userData.points || 0;
+      
+      if (stake > currentUserPoints) {
+        setSnackbarMessage(`Insufficient points. You need ${stake - currentUserPoints} more points.`);
+        setTimeout(() => setSnackbarMessage(''), 3000);
+        return;
+      }
+
+      await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/events/${event.id}/bet`,
+        {
+          prediction: selectedPrediction.value,
+          entryFee: stake,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // Trigger success flow
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setSnackbarMessage(`Bet for ${stake} PTS placed!`);
+        setTimeout(() => setSnackbarMessage(''), 3000);
+        
+        // Update user points and refresh data
+        const updatedUserData = {
+          ...userData,
+          points: userData.points - stake,
+          lastBet: {
+            eventId: event.id,
+            amount: stake,
+            timestamp: new Date().toISOString()
+          }
+        };
+        
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        window.dispatchEvent(new CustomEvent('pointsUpdated', { detail: updatedUserData.points }));
+        window.dispatchEvent(new CustomEvent('refreshEvents'));
+        
+      }, 1500); // Match the animation duration
+
+    } catch (error) {
+      console.error('Submission failed', error);
+      setSnackbarMessage('Prediction failed. Please try again.');
+      setTimeout(() => setSnackbarMessage(''), 3000);
     }
   };
 
@@ -98,7 +169,7 @@ const EventDetail = () => {
         {/* Section 4: Your Bet (Conditionally Rendered) */}
         {selectedPrediction && (
             <div className="bg-surface p-lg rounded-md border-2 border-orange-primary">
-                <h3 className="text-center text-xl font-semibold mb-md">Confirm Your Prediction</h3>
+                <h3 className="text-center text-xl font-semibold mb-md">Your Selection</h3>
                 <div className="text-center bg-charcoal p-md rounded-md mb-lg">
                     <div className="text-secondary">Your Potential Reward</div>
                     <div className="text-success font-bold text-4xl">
@@ -108,15 +179,24 @@ const EventDetail = () => {
                         for a {selectedEntryFee} PTS entry on <span className="font-bold text-primary">{selectedPrediction.label}</span>
                     </div>
                 </div>
-
-                <Participation
-                    event={event}
-                    selectedPrediction={selectedPrediction}
-                    selectedEntryFee={selectedEntryFee}
-                    setSelectedEntryFee={setSelectedEntryFee}
-                />
             </div>
         )}
+
+        {/* New Prediction Modal */}
+        <PredictionModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          selectedPrediction={selectedPrediction}
+          event={event}
+          currentUserPoints={JSON.parse(localStorage.getItem('user') || '{}').points || 0}
+          onSubmit={handleSubmitPrediction}
+        />
+
+        {showSuccess && <SuccessAnimation />}
+
+        <AnimatePresence>
+          {snackbarMessage && <Snackbar message={snackbarMessage} />}
+        </AnimatePresence>
 
         {/* Resolution Status */}
         {event.status === 'resolved' && (
