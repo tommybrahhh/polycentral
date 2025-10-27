@@ -19,7 +19,7 @@ const SuccessAnimation = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-true-black z-50 flex flex-col items-center justify-center"
+      className="fixed inset-0 bg-orange-primary z-50 flex flex-col items-center justify-center"
     >
       <motion.svg
         className="w-48 h-48"
@@ -30,7 +30,7 @@ const SuccessAnimation = () => {
         <motion.path
           d="M5 13l4 4L19 7"
           strokeWidth="2"
-          stroke="var(--primary)"
+          stroke="var(--dark-charcoal)"
           strokeLinecap="round"
           strokeLinejoin="round"
           variants={icon}
@@ -40,7 +40,7 @@ const SuccessAnimation = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="text-primary text-2xl font-semibold mt-4"
+        className="text-dark-charcoal text-3xl font-bold mt-6"
       >
         Prediction Finalized. Good Luck.
       </motion.p>
