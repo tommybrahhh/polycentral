@@ -18,6 +18,7 @@ const App = () => {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const UserIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -26,121 +27,231 @@ const App = () => {
     </svg>
   );
 
-  // Handle authentication updates from login/register forms
-  const handleAuthentication = (userData) => {
-    console.log('handleAuthentication called with:', userData);
-    setUsername(userData.username);
-    setPoints(userData.points);
-    console.log('Username and points updated in state');
-  };
+    const handleAuthentication = (userData) => {
 
-  const userMenuRef = React.useRef(null);
+      console.log('handleAuthentication called with:', userData);
 
-  // This function checks if a wallet is connected when the app loads
-  const checkIfWalletIsConnected = async () => {
-    try {
-      // First make sure we have access to window.ethereum
-      const { ethereum } = window;
-
-      if (!ethereum) {
-        console.log("Make sure you have MetaMask!");
-        return;
-      } else {
-        console.log("We have the ethereum object", ethereum);
-      }
-
-      // Check if we're authorized to access the user's wallet
-      const accounts = await ethereum.request({ method: 'eth_accounts' });
-
-      if (accounts.length !== 0) {
-        const account = accounts[0];
-        console.log("Found an authorized account:", account);
-        setCurrentAccount(account);
-      } else {
-        console.log("No authorized account found");
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  // The main function to connect the wallet
-  const connectWallet = async () => {
-    try {
-      const { ethereum } = window;
-
-      if (!ethereum) {
-        alert("Get MetaMask!");
-        return;
-      }
-
-      // Request access to the user's accounts
-      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-
-      console.log("Connected", accounts[0]);
-      setCurrentAccount(accounts[0]);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  
-  // Add 404 component
-  const NotFound = () => (
-    <div className="not-found-container">
-      <h2>404 - Page Not Found</h2>
-      <p>The page you're looking for doesn't exist.</p>
-      <Link to="/" className="button button-primary">Back to Home</Link>
-    </div>
-  );
-
-  useEffect(() => {
-    // Check for stored user data
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
       setUsername(userData.username);
+
       setPoints(userData.points);
-    }
-    
-    checkIfWalletIsConnected();
 
-    const handleAccountsChanged = (accounts) => {
-        if (accounts.length > 0) {
-            setCurrentAccount(accounts[0]);
+      setIsAdmin(userData.is_admin || false);
+
+      console.log('Username, points, and admin status updated in state');
+
+    };
+
+  
+
+    // This function checks if a wallet is connected when the app loads
+
+    const checkIfWalletIsConnected = async () => {
+
+      try {
+
+        // First make sure we have access to window.ethereum
+
+        const { ethereum } = window;
+
+  
+
+        if (!ethereum) {
+
+          console.log("Make sure you have MetaMask!");
+
+          return;
+
         } else {
-            setCurrentAccount(null);
+
+          console.log("We have the ethereum object", ethereum);
+
         }
-    };
-    
-    // Handler for points updates
-    const handlePointsUpdate = (event) => {
-      setPoints(event.detail);
-    };
 
-    if (window.ethereum) {
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-    }
-    
-    // Add event listener for points updates
-    window.addEventListener('pointsUpdated', handlePointsUpdate);
+  
 
-    const handleClickOutside = (event) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setShowUserMenu(false);
+        // Check if we're authorized to access the user's wallet
+
+        const accounts = await ethereum.request({ method: 'eth_accounts' });
+
+  
+
+        if (accounts.length !== 0) {
+
+          const account = accounts[0];
+
+          console.log("Found an authorized account:", account);
+
+          setCurrentAccount(account);
+
+        } else {
+
+          console.log("No authorized account found");
+
+        }
+
+      } catch (error) {
+
+        console.error(error);
+
       }
+
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    
-    // Cleanup the listeners when the component is unmounted
-    return () => {
-        if (window.ethereum) {
-            window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+  
+
+    // The main function to connect the wallet
+
+    const connectWallet = async () => {
+
+      try {
+
+        const { ethereum } = window;
+
+  
+
+        if (!ethereum) {
+
+          alert("Get MetaMask!");
+
+          return;
+
         }
-        window.removeEventListener('pointsUpdated', handlePointsUpdate);
-        document.removeEventListener('mousedown', handleClickOutside);
+
+  
+
+        // Request access to the user's accounts
+
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+
+  
+
+        console.log("Connected", accounts[0]);
+
+        setCurrentAccount(accounts[0]);
+
+      } catch (error) {
+
+        console.log(error);
+
+      }
+
     };
-  }, []);
+
+    
+
+    // Add 404 component
+
+    const NotFound = () => (
+
+      <div className="not-found-container">
+
+        <h2>404 - Page Not Found</h2>
+
+        <p>The page you're looking for doesn't exist.</p>
+
+        <Link to="/" className="button button-primary">Back to Home</Link>
+
+      </div>
+
+    );
+
+  
+
+    useEffect(() => {
+
+      // Check for stored user data
+
+      const storedUser = localStorage.getItem('user');
+
+      if (storedUser) {
+
+        const userData = JSON.parse(storedUser);
+
+        setUsername(userData.username);
+
+        setPoints(userData.points);
+
+        setIsAdmin(userData.is_admin || false);
+
+      }
+
+      
+
+      checkIfWalletIsConnected();
+
+  
+
+      const handleAccountsChanged = (accounts) => {
+
+          if (accounts.length > 0) {
+
+              setCurrentAccount(accounts[0]);
+
+          } else {
+
+              setCurrentAccount(null);
+
+          }
+
+      };
+
+      
+
+      // Handler for points updates
+
+      const handlePointsUpdate = (event) => {
+
+        setPoints(event.detail);
+
+      };
+
+  
+
+      if (window.ethereum) {
+
+          window.ethereum.on('accountsChanged', handleAccountsChanged);
+
+      }
+
+      
+
+      window.addEventListener('pointsUpdated', handlePointsUpdate);
+
+  
+
+      const handleClickOutside = (event) => {
+
+        if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+
+          setShowUserMenu(false);
+
+        }
+
+      };
+
+  
+
+      document.addEventListener('mousedown', handleClickOutside);
+
+      
+
+      // Cleanup the listeners when the component is unmounted
+
+      return () => {
+
+          if (window.ethereum) {
+
+              window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+
+          }
+
+          window.removeEventListener('pointsUpdated', handlePointsUpdate);
+
+          document.removeEventListener('mousedown', handleClickOutside);
+
+      };
+
+    }, []);
 
   // Create particle effects
   useEffect(() => {
@@ -253,7 +364,7 @@ const App = () => {
                     position: 'absolute',
                     top: 'calc(100% + var(--spacing-sm))',
                     right: 0,
-                    background: 'var(--ui-surface)',
+                    background: 'var(--dark-charcoal)',
                     backdropFilter: 'blur(16px)',
                     border: '1px solid var(--ui-border)',
                     borderRadius: 'var(--radius-md)',
@@ -273,7 +384,7 @@ const App = () => {
                       <span style={{ fontSize: '0.875rem', color: 'var(--light-gray)' }}>{points} Points</span>
                     </div>
                     <Link to="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>Profile</Link>
-                    <Link to="/admin" className="dropdown-item" onClick={() => setShowUserMenu(false)}>Admin Dashboard</Link>
+                    {isAdmin && <Link to="/admin" className="dropdown-item" onClick={() => setShowUserMenu(false)}>Admin Dashboard</Link>}
                     <button
                       className="dropdown-item"
                       onClick={async () => {
@@ -300,6 +411,7 @@ const App = () => {
                         localStorage.removeItem('user');
                         setUsername('');
                         setPoints(0);
+                        setIsAdmin(false);
                         setShowUserMenu(false);
                         // Show success toast
                       }}
