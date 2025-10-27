@@ -34,8 +34,8 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-8">
-              <h3 className="text-xl font-bold">{selectedPrediction.label}</h3>
-              <p className="text-light-gray">Your prediction for: {event.title}</p>
+              <h3 className="text-primary text-xl font-bold">{selectedPrediction.label}</h3>
+              <p className="text-secondary">Your prediction for: {event.title}</p>
             </div>
 
             {/* Stake Input Section */}
@@ -49,7 +49,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
                     className="bg-ui-surface text-6xl font-bold w-full text-center focus:outline-none py-4 px-6 rounded-lg text-off-white border-2 border-ui-border focus:border-orange-primary"
                     style={{ caretColor: 'var(--primary)' }}
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-light-gray">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-secondary">
                     PTS
                   </span>
                 </div>
@@ -72,10 +72,10 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
                   ))}
                 </div>
 
-                <p className="text-light-gray">
+                <p className="text-secondary">
                   Potential Winnings: <span className="text-success font-semibold">~{Math.round(potentialWinnings)} PTS</span>
                 </p>
-                <p className="text-light-gray text-sm mt-1">
+                <p className="text-secondary text-sm mt-1">
                   Your balance: {currentUserPoints.toLocaleString()} PTS
                 </p>
               </div>
@@ -86,7 +86,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
               <button
                 onClick={() => onSubmit(stake)}
                 disabled={stake > currentUserPoints || stake < 100}
-                className="w-full bg-orange-primary hover:bg-orange-600 text-black font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed !opacity-100"
+                className="w-full bg-orange-primary hover:bg-orange-600 text-dark-charcoal font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed !opacity-100"
                 style={{ opacity: 1, pointerEvents: 'auto' }}
               >
                 Participate for {stake} PTS

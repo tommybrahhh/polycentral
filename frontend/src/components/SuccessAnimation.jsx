@@ -19,7 +19,7 @@ const SuccessAnimation = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-gray-900 z-50 flex flex-col items-center justify-center"
+      className="fixed inset-0 bg-true-black z-50 flex flex-col items-center justify-center"
     >
       <motion.svg
         className="w-48 h-48"
@@ -40,7 +40,7 @@ const SuccessAnimation = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="text-white text-2xl font-semibold mt-4"
+        className="text-primary text-2xl font-semibold mt-4"
       >
         Prediction Finalized. Good Luck.
       </motion.p>
