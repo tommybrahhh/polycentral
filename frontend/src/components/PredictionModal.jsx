@@ -38,11 +38,6 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
               <p className="text-gray-400">Your prediction for: {event.title}</p>
             </div>
 
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold text-white">{selectedPrediction.label}</h3>
-              <p className="text-gray-400">Your prediction for: {event.title}</p>
-            </div>
-
             {/* Stake Input Section */}
             <div className="text-center mb-8">
               <div className="relative mb-6">
