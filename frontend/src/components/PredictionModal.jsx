@@ -39,54 +39,56 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
             </div>
 
             {/* Stake Input Section */}
-            <div className="text-center mb-8">
-              <div className="relative mb-6">
-                <input
-                  type="text"
-                  value={stake}
-                  onChange={handleStakeChange}
-                  className="bg-ui-surface text-6xl font-bold w-full text-center focus:outline-none py-4 px-6 rounded-lg text-off-white border-2 border-ui-border focus:border-orange-primary"
-                  style={{ caretColor: 'var(--primary)' }}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-light-gray">
-                  PTS
-                </span>
-              </div>
-              
-              {/* Predefined Stake Options */}
-              <div className="grid grid-cols-4 gap-2 mb-6">
-                {STAKE_OPTIONS.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => setStake(option)}
-                    className={`py-3 px-2 rounded-lg text-center font-semibold transition-all duration-200 ${
-                      stake === option
-                        ? 'bg-orange-primary text-dark-charcoal ring-2 ring-orange-primary'
-                        : 'bg-ui-surface text-light-gray hover:bg-gray-600'
-                    }`}
-                    disabled={option > currentUserPoints}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+            <div className="bg-ui-surface p-4 rounded-lg mb-4">
+              <div className="text-center">
+                <div className="relative mb-6">
+                  <input
+                    type="text"
+                    value={stake}
+                    onChange={handleStakeChange}
+                    className="bg-ui-surface text-6xl font-bold w-full text-center focus:outline-none py-4 px-6 rounded-lg text-off-white border-2 border-ui-border focus:border-orange-primary"
+                    style={{ caretColor: 'var(--primary)' }}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-light-gray">
+                    PTS
+                  </span>
+                </div>
+                
+                {/* Predefined Stake Options */}
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                  {STAKE_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setStake(option)}
+                      className={`py-3 px-2 rounded-lg text-center font-semibold transition-all duration-200 ${
+                        stake === option
+                          ? 'bg-orange-primary text-dark-charcoal ring-2 ring-orange-primary'
+                          : 'bg-ui-surface text-light-gray hover:bg-gray-600'
+                      }`}
+                      disabled={option > currentUserPoints}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
 
-              <p className="text-light-gray">
-                Potential Winnings: <span className="text-success font-semibold">~{Math.round(potentialWinnings)} PTS</span>
-              </p>
-              <p className="text-light-gray text-sm mt-1">
-                Your balance: {currentUserPoints.toLocaleString()} PTS
-              </p>
+                <p className="text-light-gray">
+                  Potential Winnings: <span className="text-success font-semibold">~{Math.round(potentialWinnings)} PTS</span>
+                </p>
+                <p className="text-light-gray text-sm mt-1">
+                  Your balance: {currentUserPoints.toLocaleString()} PTS
+                </p>
+              </div>
             </div>
 
             {/* Confirm Button */}
-            <div className="mb-4">
+            <div className="bg-ui-surface p-4 rounded-lg mb-4">
               <button
                 onClick={() => onSubmit(stake)}
                 disabled={stake > currentUserPoints || stake < 100}
-                className="w-full bg-primary hover:bg-primary-focus text-white font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                className="w-full bg-orange-primary hover:bg-orange-600 text-black font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
-                Confirm Bet for {stake} PTS
+                Participate for {stake} PTS
               </button>
             </div>
           </motion.div>
