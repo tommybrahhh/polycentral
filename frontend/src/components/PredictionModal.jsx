@@ -22,7 +22,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/75 z-50 flex items-end"
+          className="fixed inset-0 bg-black/75 z-50 flex items-end backdrop-blur-md"
           onClick={onClose}
         >
           <motion.div
@@ -82,11 +82,12 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
             </div>
 
             {/* Confirm Button */}
-            <div className="bg-ui-surface p-4 rounded-lg mb-4">
+            <div className="bg-ui-surface p-4 rounded-lg mb-4" style={{ opacity: 1, pointerEvents: 'auto' }}>
               <button
                 onClick={() => onSubmit(stake)}
                 disabled={stake > currentUserPoints || stake < 100}
                 className="w-full bg-orange-primary hover:bg-orange-600 text-black font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed !opacity-100"
+                style={{ opacity: 1, pointerEvents: 'auto' }}
               >
                 Participate for {stake} PTS
               </button>
