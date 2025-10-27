@@ -22,7 +22,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 z-50 flex items-end"
+          className="fixed inset-0 bg-black/75 z-50 flex items-end"
           onClick={onClose}
         >
           <motion.div
@@ -30,12 +30,12 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
             animate={{ y: '0%' }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="bg-gray-900 w-full rounded-t-2xl p-6 pt-8 text-white"
+            className="bg-ui-surface w-full rounded-t-2xl p-6 pt-8 text-off-white border-t border-ui-border"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-8">
               <h3 className="text-2xl font-bold">{selectedPrediction.label}</h3>
-              <p className="text-gray-400">Your prediction for: {event.title}</p>
+              <p className="text-light-gray">Your prediction for: {event.title}</p>
             </div>
 
             {/* Stake Input Section */}
@@ -45,10 +45,10 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
                   type="text"
                   value={stake}
                   onChange={handleStakeChange}
-                  className="bg-gray-800 text-6xl font-bold w-full text-center focus:outline-none py-4 px-6 rounded-lg text-white border-2 border-gray-700 focus:border-primary"
+                  className="bg-ui-surface text-6xl font-bold w-full text-center focus:outline-none py-4 px-6 rounded-lg text-off-white border-2 border-ui-border focus:border-orange-primary"
                   style={{ caretColor: 'var(--primary)' }}
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-gray-400">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-light-gray">
                   PTS
                 </span>
               </div>
@@ -61,8 +61,8 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
                     onClick={() => setStake(option)}
                     className={`py-3 px-2 rounded-lg text-center font-semibold transition-all duration-200 ${
                       stake === option
-                        ? 'bg-primary text-white ring-2 ring-primary-focus'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        ? 'bg-orange-primary text-dark-charcoal ring-2 ring-orange-primary'
+                        : 'bg-ui-surface text-light-gray hover:bg-gray-600'
                     }`}
                     disabled={option > currentUserPoints}
                   >
@@ -71,10 +71,10 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
                 ))}
               </div>
 
-              <p className="text-gray-400">
-                Potential Winnings: <span className="text-green-400 font-semibold">~{Math.round(potentialWinnings)} PTS</span>
+              <p className="text-light-gray">
+                Potential Winnings: <span className="text-success font-semibold">~{Math.round(potentialWinnings)} PTS</span>
               </p>
-              <p className="text-gray-500 text-sm mt-1">
+              <p className="text-light-gray text-sm mt-1">
                 Your balance: {currentUserPoints.toLocaleString()} PTS
               </p>
             </div>
