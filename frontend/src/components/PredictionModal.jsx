@@ -34,7 +34,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold">{selectedPrediction.label}</h3>
+              <h3 className="text-xl font-bold">{selectedPrediction.label}</h3>
               <p className="text-light-gray">Your prediction for: {event.title}</p>
             </div>
 
@@ -87,6 +87,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
                 onClick={() => onSubmit(stake)}
                 disabled={stake > currentUserPoints || stake < 100}
                 className="w-full bg-orange-primary hover:bg-orange-600 text-black font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                style={{ opacity: 1, display: 'block' }}
               >
                 Participate for {stake} PTS
               </button>
