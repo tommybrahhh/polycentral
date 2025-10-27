@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
-import { useDrag } from 'react-use-gesture';
+import { useDrag } from '@use-gesture/react';
 
 const SwipeToConfirm = ({ onConfirm }) => {
   const [style, api] = React.useState({ x: 0 });

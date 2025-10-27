@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { motion, AnimatePresence } from 'framer-motion';
 import SwipeToConfirm from './SwipeToConfirm';
-import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
+import useAnimatedCounter from '../hooks/useAnimatedCounter';
 
 const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUserPoints, onSubmit }) => {
   const [stake, setStake] = useState(100);
