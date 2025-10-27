@@ -30,7 +30,7 @@ ChartJS.register(
 const OutcomeTrendChart = ({ eventId, options }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState('all'); // 'hour', 'day', 'all'
+  const [timeframe, setTimeframe] = useState('hour'); // 'hour', 'day', 'all'
 
   useEffect(() => {
     const fetchData = async () => {
