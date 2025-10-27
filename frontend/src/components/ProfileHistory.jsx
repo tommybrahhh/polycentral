@@ -17,101 +17,52 @@ const ProfileHistory = ({ history }) => {
         <h2>Event Participation History</h2>
       </div>
       
-      <div className="history-list">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
         {history.length > 0 ? (
           history.map((entry) => (
-            <div key={entry.participation_id} className="card" style={{ marginBottom: 'var(--spacing-md)' }}>
-              <div className="event-header" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 'var(--spacing-md)',
-                paddingBottom: 'var(--spacing-sm)',
-                borderBottom: '1px solid var(--ui-border)'
-              }}>
-                <span className="event-title" style={{
-                  fontWeight: '600',
-                  color: 'var(--off-white)',
-                  fontSize: '1.1rem'
-                }}>
+            <div key={entry.participation_id} className="card p-4">
+              <div className="flex justify-between items-center mb-4 pb-2 border-b border-ui-border">
+                <span className="font-semibold text-off-white text-lg">
                   {entry.title || 'Untitled Event'}
                 </span>
-                <span className="event-date" style={{
-                  color: 'var(--light-gray)',
-                  fontSize: '0.875rem'
-                }}>
+                <span className="text-light-gray text-sm">
                   {formatDate(entry.end_time) || 'N/A'}
                 </span>
               </div>
               
-              <div className="event-details" style={{ marginBottom: 'var(--spacing-md)' }}>
-                <div className="detail-row" style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: 'var(--spacing-xs)'
-                }}>
-                  <span style={{ color: 'var(--light-gray)' }}>Prediction:</span>
-                  <span className="prediction" style={{
-                    fontWeight: '500',
-                    color: 'var(--off-white)'
-                  }}>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between">
+                  <span className="text-light-gray">Prediction:</span>
+                  <span className="font-medium text-off-white">
                     {entry.prediction || 'N/A'}
                   </span>
                 </div>
-                <div className="detail-row" style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: 'var(--spacing-xs)'
-                }}>
-                  <span style={{ color: 'var(--light-gray)' }}>Entry Fee:</span>
-                  <span className="entry-fee" style={{
-                    color: 'var(--danger-red)',
-                    fontWeight: '500'
-                  }}>
+                <div className="flex justify-between">
+                  <span className="text-light-gray">Entry Fee:</span>
+                  <span className="text-danger-red font-medium">
                     -{entry.entry_fee || 0} pts
                   </span>
                 </div>
                 {entry.resolution_state === 'win' && (
-                  <div className="detail-row" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: 'var(--spacing-xs)'
-                  }}>
-                    <span style={{ color: 'var(--light-gray)' }}>Points Won:</span>
-                    <span className="points" style={{
-                      color: 'var(--success-green)',
-                      fontWeight: '600'
-                    }}>
+                  <div className="flex justify-between">
+                    <span className="text-light-gray">Points Won:</span>
+                    <span className="text-success-green font-semibold">
                       +{entry.points_awarded || entry.entry_fee || 0} pts
                     </span>
                   </div>
                 )}
                 {entry.resolution_state === 'loss' && (
-                  <div className="detail-row" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: 'var(--spacing-xs)'
-                  }}>
-                    <span style={{ color: 'var(--light-gray)' }}>Result:</span>
-                    <span className="result" style={{
-                      color: 'var(--danger-red)',
-                      fontWeight: '500'
-                    }}>
+                  <div className="flex justify-between">
+                    <span className="text-light-gray">Result:</span>
+                    <span className="text-danger-red font-medium">
                       Loss
                     </span>
                   </div>
                 )}
                 {entry.resolution_state === 'pending' && (
-                  <div className="detail-row" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: 'var(--spacing-xs)'
-                  }}>
-                    <span style={{ color: 'var(--light-gray)' }}>Status:</span>
-                    <span className="result" style={{
-                      color: '#fbbf24',
-                      fontWeight: '500'
-                    }}>
+                  <div className="flex justify-between">
+                    <span className="text-light-gray">Status:</span>
+                    <span className="text-yellow-400 font-medium">
                       Resolution Pending
                     </span>
                   </div>
@@ -119,40 +70,18 @@ const ProfileHistory = ({ history }) => {
               </div>
               
               {entry.resolution_details && (
-                <div className="resolution-details" style={{
-                  padding: 'var(--spacing-sm)',
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--ui-border)'
-                }}>
-                  <div className="price-movement" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: 'var(--spacing-xs)',
-                    fontSize: '0.875rem'
-                  }}>
-                    <span style={{ color: 'var(--light-gray)' }}>Initial Price:</span>
-                    <span style={{ color: 'var(--off-white)' }}>${entry.initial_price || 'N/A'}</span>
+                <div className="p-3 bg-black bg-opacity-20 rounded-sm border border-ui-border">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-light-gray">Initial Price:</span>
+                    <span className="text-off-white">${entry.initial_price || 'N/A'}</span>
                   </div>
-                  <div className="price-movement" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: 'var(--spacing-xs)',
-                    fontSize: '0.875rem'
-                  }}>
-                    <span style={{ color: 'var(--light-gray)' }}>Final Price:</span>
-                    <span style={{ color: 'var(--off-white)' }}>${entry.final_price || 'N/A'}</span>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-light-gray">Final Price:</span>
+                    <span className="text-off-white">${entry.final_price || 'N/A'}</span>
                   </div>
-                  <div className="correct-answer" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '0.875rem'
-                  }}>
-                    <span style={{ color: 'var(--light-gray)' }}>Correct Prediction:</span>
-                    <span style={{
-                      color: 'var(--off-white)',
-                      fontWeight: '500'
-                    }}>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-light-gray">Correct Prediction:</span>
+                    <span className="text-off-white font-medium">
                       {entry.correct_answer || 'N/A'}
                     </span>
                   </div>

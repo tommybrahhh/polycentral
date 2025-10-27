@@ -124,8 +124,8 @@ const EventDetail = () => {
   };
 
   return (
-    <div className="p-lg max-w-4xl mx-auto">
-      <div className="card space-y-xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="card space-y-6 sm:space-y-8">
         {/* Section 1: Event Header & Urgency */}
         <div className="text-center">
           <h2 className="text-3xl font-bold">{event.title}</h2>

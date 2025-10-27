@@ -268,3 +268,15 @@ body::before {
     stroke-dashoffset: 0;
   }
 }
+
+/* Mobile modal styles */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 0;
+  }
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+}

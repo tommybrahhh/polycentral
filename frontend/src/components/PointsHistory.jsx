@@ -123,51 +123,38 @@ const PointsHistory = () => {
         </div>
       </div>
       
-      <div className="card">
-        <h3>Transaction Log</h3>
-        <table className="history-table" style={{ width: '100%', marginTop: 'var(--spacing-md)' }}>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Reason</th>
-              <th>Change</th>
-              <th>New Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...history].reverse().map((entry) => (
-              <tr key={entry.id || entry.created_at}>
-                <td>{formatFullDate(entry.created_at)}</td>
-                <td>
-                  {entry.event_id ? (
-                    <Link to={`/events/${entry.event_id}`} style={{ color: 'var(--off-white)' }}>
-                      {entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </Link>
-                  ) : (
-                    entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                  )}
-                </td>
-                <td style={{ color: entry.change_amount > 0 ? 'var(--success-green)' : 'var(--danger-red)', fontWeight: '600' }}>
-                  {entry.change_amount > 0 ? '+' : ''}{entry.change_amount}
-                </td>
-                <td style={{ color: 'var(--orange-primary)', fontWeight: '600' }}>
-                  {entry.new_balance.toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <style>{`
-          .history-table th, .history-table td {
-            padding: var(--spacing-sm) var(--spacing-md);
-            text-align: left;
-            border-bottom: 1px solid var(--ui-border);
-          }
-          .history-table th {
-            color: var(--light-gray);
-            font-weight: 500;
-          }
-        `}</style>
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+        {[...history].reverse().map((entry) => (
+          <div key={entry.id || entry.created_at} className="card p-4">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-light-gray text-sm">{formatFullDate(entry.created_at)}</span>
+              <span
+                className={`font-semibold ${entry.change_amount > 0 ? 'text-success-green' : 'text-danger-red'}`}
+              >
+                {entry.change_amount > 0 ? '+' : ''}{entry.change_amount}
+              </span>
+            </div>
+            
+            <div className="mb-2">
+              <span className="text-off-white">
+                {entry.event_id ? (
+                  <Link to={`/events/${entry.event_id}`} className="text-off-white hover:text-orange-primary">
+                    {entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </Link>
+                ) : (
+                  entry.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                )}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-light-gray text-sm">New Balance:</span>
+              <span className="text-orange-primary font-semibold">
+                {entry.new_balance.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
