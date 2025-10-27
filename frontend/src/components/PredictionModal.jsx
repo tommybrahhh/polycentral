@@ -82,7 +82,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
             </div>
 
             {/* Confirm Button */}
-            <div className="bg-ui-surface p-4 rounded-lg mb-4" style={{ opacity: 1, pointerEvents: 'auto' }}>
+            <div className="bg-dark-charcoal p-4 rounded-lg mb-4" style={{ opacity: 1, pointerEvents: 'auto' }}>
               <button
                 onClick={() => onSubmit(stake)}
                 disabled={stake > currentUserPoints || stake < 100}

@@ -8,8 +8,8 @@ const SuccessAnimation = () => {
       pathLength: 1,
       fill: 'rgba(255, 255, 255, 1)',
       transition: {
-        default: { duration: 1.5, ease: 'easeInOut' },
-        fill: { duration: 1.5, ease: [1, 0, 0.8, 1] },
+        default: { duration: 2.5, ease: 'easeInOut' },
+        fill: { duration: 2.5, ease: [1, 0, 0.8, 1] },
       },
     },
   };
@@ -42,21 +42,21 @@ const SuccessAnimation = () => {
         <div className="flex flex-col items-center">
           {/* Animated circle background */}
           <motion.div
-            className="w-32 h-32 rounded-full bg-orange-primary flex items-center justify-center mb-6 relative"
+            className="w-40 h-40 rounded-full bg-orange-primary flex items-center justify-center mb-8 relative"
             variants={circleVariants}
             initial="hidden"
             animate="visible"
           >
             <div className="absolute inset-0 bg-orange-primary rounded-full opacity-20 animate-ping"></div>
             <motion.svg
-              className="w-20 h-20"
+              className="w-28 h-28"
               viewBox="0 0 24 24"
               initial="hidden"
               animate="visible"
             >
               <motion.path
                 d="M5 13l4 4L19 7"
-                strokeWidth="2.5"
+                strokeWidth="3"
                 stroke="var(--dark-charcoal)"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -68,8 +68,8 @@ const SuccessAnimation = () => {
           <motion.h3
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="text-2xl font-bold text-off-white text-center mb-2"
+            transition={{ delay: 0.8, duration: 0.5 }}
+            className="text-3xl font-bold text-off-white text-center mb-4"
           >
             Prediction Submitted!
           </motion.h3>
@@ -77,8 +77,8 @@ const SuccessAnimation = () => {
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
-            className="text-light-gray text-center mb-6 text-lg"
+            transition={{ delay: 1.2, duration: 0.5 }}
+            className="text-light-gray text-center mb-8 text-xl"
           >
             Your bet has been placed successfully. Good luck!
           </motion.p>
@@ -86,8 +86,8 @@ const SuccessAnimation = () => {
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.7, duration: 0.3 }}
-            className="btn btn-primary px-8 py-3 text-lg font-semibold"
+            transition={{ delay: 1.8, duration: 0.4 }}
+            className="btn btn-primary px-10 py-4 text-xl font-semibold"
             onClick={() => window.location.reload()}
           >
             Continue
