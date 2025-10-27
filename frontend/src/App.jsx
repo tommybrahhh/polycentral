@@ -17,6 +17,14 @@ const App = () => {
   const [username, setUsername] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const UserIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </svg>
+  );
 
   // Handle authentication updates from login/register forms
   const handleAuthentication = (userData) => {
@@ -25,6 +33,8 @@ const App = () => {
     setPoints(userData.points);
     console.log('Username and points updated in state');
   };
+
+  const userMenuRef = React.useRef(null);
 
   // This function checks if a wallet is connected when the app loads
   const checkIfWalletIsConnected = async () => {
@@ -113,6 +123,14 @@ const App = () => {
     
     // Add event listener for points updates
     window.addEventListener('pointsUpdated', handlePointsUpdate);
+
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
     
     // Cleanup the listeners when the component is unmounted
     return () => {
@@ -120,6 +138,7 @@ const App = () => {
             window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
         }
         window.removeEventListener('pointsUpdated', handlePointsUpdate);
+        document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -208,16 +227,6 @@ const App = () => {
                 borderRadius: 'var(--radius-sm)',
                 transition: 'all var(--transition-medium)'
               }}>Events</Link>
-              {username && (
-                <Link to="/profile" className="nav-link" style={{
-                  color: 'var(--off-white)',
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  padding: 'var(--spacing-sm) var(--spacing-md)',
-                  borderRadius: 'var(--radius-sm)',
-                  transition: 'all var(--transition-medium)'
-                }}>Profile</Link>
-              )}
             </div>
             {/* --- User Status Display --- */}
             <div className="user-status" style={{
@@ -226,215 +235,79 @@ const App = () => {
               gap: 'var(--spacing-md)'
             }}>
             {username ? (
-              <div className="user-info" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-lg)',
-                flexWrap: 'wrap'
-              }}>
-                <span className="username" style={{
-                  color: 'var(--off-white)',
-                  fontWeight: '500',
-                  whiteSpace: 'nowrap'
-                }}>Hello, {username}!</span>
-                <div className="points-display" style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--spacing-md)',
-                  flexWrap: 'wrap'
-                }}>
-                  <div className="points-balance" style={{
-                    fontSize: '0.875rem',
-                    backgroundColor: 'rgba(255, 140, 0, 0.1)',
-                    padding: 'var(--spacing-xs) var(--spacing-md)',
-                    borderRadius: '999px',
-                    whiteSpace: 'nowrap',
-                    color: 'var(--orange-primary)',
-                    border: '1px solid rgba(255, 140, 0, 0.3)'
-                  }}>
-                    🪙 <span style={{ fontWeight: '600' }}>{points}</span> Points
-                  </div>
-                  <button
-                    className="button button-success"
-                    style={{
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      fontSize: '0.875rem',
-                      whiteSpace: 'nowrap'
-                    }}
-                    onClick={async () => {
-                      try {
-                        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/claim-free-points`, {}, {
-                          headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
-                        });
-                        // Animate the points change
-                        const oldPoints = points;
-                        const newPoints = response.data.newTotal;
-                        
-                        // Create a smooth animation from old to new points
-                        const duration = 1000; // 1 second animation
-                        const startTime = Date.now();
-                        
-                        const animatePoints = () => {
-                          const currentTime = Date.now();
-                          const elapsed = currentTime - startTime;
-                          const progress = Math.min(elapsed / duration, 1);
-                          
-                          // Easing function for smooth animation
-                          const easeOutCubic = 1 - Math.pow(1 - progress, 3);
-                          const currentPoints = Math.floor(oldPoints + (newPoints - oldPoints) * easeOutCubic);
-                          
-                          setPoints(currentPoints);
-                          
-                          if (progress < 1) {
-                            requestAnimationFrame(animatePoints);
-                          } else {
-                            // Ensure we end with the exact new points value
-                            setPoints(newPoints);
-                          }
-                        };
-                        
-                        requestAnimationFrame(animatePoints);
-                        
-                        // Show success toast
-                        const toast = document.createElement('div');
-                        toast.className = 'toast toast-success show';
-                        toast.textContent = response.data.message;
-                        document.body.appendChild(toast);
-                        
-                        // Remove toast after 3 seconds
-                        setTimeout(() => {
-                          toast.remove();
-                        }, 3000);
-                      } catch (error) {
-                        console.error('Claim failed:', error);
-                        
-                        // Show error toast
-                        const toast = document.createElement('div');
-                        toast.className = 'toast toast-error show';
-                        toast.textContent = 'Failed to claim points: ' + (error.response?.data?.message || error.message);
-                        document.body.appendChild(toast);
-                        
-                        // Remove toast after 3 seconds
-                        setTimeout(() => {
-                          toast.remove();
-                        }, 3000);
-                      }
-                    }}
-                    title="Claim daily points"
-                  >
-                    <span className="claim-icon">🎁</span> Claim
-                  </button>
-                  <button
-                    className="button button-secondary"
-                    style={{
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      fontSize: '0.875rem',
-                      whiteSpace: 'nowrap'
-                    }}
-                    onClick={() => {
-                      // Clear authentication data
-                      localStorage.removeItem('auth_token');
-                      localStorage.removeItem('user');
-                      
-                      // Update the app's state directly
-                      setUsername('');
-                      setPoints(0);
-                      
-                      // Show success toast notification
-                      const toast = document.createElement('div');
-                      toast.className = 'toast toast-success show';
-                      toast.textContent = 'Successfully logged out';
-                      document.body.appendChild(toast);
-                      
-                      // Remove toast after 3 seconds
-                      setTimeout(() => {
-                        toast.remove();
-                      }, 3000);
-                    }}
-                  >
-                    Logout
-                  </button>
-                </div>
-                <div className="user-dropdown" style={{ position: 'relative' }}>
-                  <button className="button button-secondary" style={{
-                    padding: 'var(--spacing-sm) var(--spacing-md)',
-                    fontSize: '0.875rem',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Menu ▼
-                  </button>
+              <div className="user-dropdown" style={{ position: 'relative' }} ref={userMenuRef}>
+                <button 
+                  className="button button-icon" 
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--off-white)'
+                  }}
+                >
+                  <UserIcon />
+                </button>
+                {showUserMenu && (
                   <div className="dropdown-menu" style={{
                     position: 'absolute',
-                    top: '100%',
+                    top: 'calc(100% + var(--spacing-sm))',
                     right: 0,
                     background: 'var(--ui-surface)',
                     backdropFilter: 'blur(16px)',
                     border: '1px solid var(--ui-border)',
-                    borderRadius: 'var(--radius-sm)',
+                    borderRadius: 'var(--radius-md)',
                     padding: 'var(--spacing-sm)',
-                    marginTop: 'var(--spacing-xs)',
-                    minWidth: '150px',
+                    minWidth: '220px',
                     boxShadow: 'var(--shadow-elevated)',
-                    display: 'none'
+                    zIndex: 110,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--spacing-xs)'
                   }}>
-                    <Link to="/profile" className="dropdown-item" style={{
-                      display: 'block',
+                    <div className="dropdown-header" style={{
                       padding: 'var(--spacing-sm) var(--spacing-md)',
-                      color: 'var(--off-white)',
-                      textDecoration: 'none',
-                      borderRadius: 'var(--radius-xs)',
-                      transition: 'background var(--transition-fast)'
-                    }}>Profile</Link>
-                    <Link to="/admin" className="dropdown-item" style={{
-                      display: 'block',
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      color: 'var(--off-white)',
-                      textDecoration: 'none',
-                      borderRadius: 'var(--radius-xs)',
-                      transition: 'background var(--transition-fast)'
-                    }}>Admin Dashboard</Link>
+                      borderBottom: '1px solid var(--ui-border)',
+                    }}>
+                      <span style={{ fontWeight: '600', display: 'block' }}>Hello, {username}!</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--light-gray)' }}>{points} Points</span>
+                    </div>
+                    <Link to="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>Profile</Link>
+                    <Link to="/admin" className="dropdown-item" onClick={() => setShowUserMenu(false)}>Admin Dashboard</Link>
                     <button
                       className="dropdown-item"
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: 'var(--spacing-sm) var(--spacing-md)',
-                        color: 'var(--off-white)',
-                        textDecoration: 'none',
-                        borderRadius: 'var(--radius-xs)',
-                        transition: 'background var(--transition-fast)',
-                        background: 'none',
-                        border: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        fontSize: '1rem' /* Ensure font size is consistent */
+                      onClick={async () => {
+                        try {
+                          const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/claim-free-points`, {}, {
+                            headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+                          });
+                          setPoints(response.data.newTotal);
+                          // Show success toast
+                        } catch (error) {
+                          console.error('Claim failed:', error);
+                          // Show error toast
+                        }
+                        setShowUserMenu(false);
                       }}
+                    >
+                      Claim Free Points
+                    </button>
+                    <div style={{ borderTop: '1px solid var(--ui-border)', margin: 'var(--spacing-xs) 0' }}></div>
+                    <button
+                      className="dropdown-item"
                       onClick={() => {
-                        // Clear authentication data
                         localStorage.removeItem('auth_token');
                         localStorage.removeItem('user');
-                        
-                        // Update the app's state directly
                         setUsername('');
                         setPoints(0);
-                        
-                        // Show success toast notification
-                        const toast = document.createElement('div');
-                        toast.className = 'toast toast-success show';
-                        toast.textContent = 'Successfully logged out';
-                        document.body.appendChild(toast);
-                        
-                        // Remove toast after 3 seconds
-                        setTimeout(() => {
-                          toast.remove();
-                        }, 3000);
+                        setShowUserMenu(false);
+                        // Show success toast
                       }}
                     >
                       Logout
                     </button>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="auth-buttons" style={{
@@ -466,21 +339,6 @@ const App = () => {
           </div>
           </div>
         </nav>
-
-        <style>{`
-          .nav-link:hover {
-            background: rgba(255, 140, 0, 0.1);
-            color: var(--orange-primary);
-          }
-          
-          .user-dropdown:hover .dropdown-menu {
-            display: block;
-          }
-          
-          .dropdown-item:hover {
-            background: rgba(255, 140, 0, 0.1);
-          }
-        `}</style>
 
         <Routes>
           <Route path="/events" element={<EventList />} />
