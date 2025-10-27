@@ -33,8 +33,29 @@ const EventList = () => {
   // Filter out expired events
   const activeEvents = events.filter(event => !isEventExpired(event));
 
-  if (loading) return <div className="loading">Loading events...</div>;
+  if (loading) {
+    // Show skeleton cards while loading
+    return (
+      <div className="events-container">
+        <div className="events-list">
+          {[1, 2, 3].map((i) => (
+            <EventCard key={`skeleton-${i}`} event={null} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
   if (error) return <div className="form-error">{error}</div>;
+  
+  if (activeEvents.length === 0) {
+    return (
+      <div className="text-center text-light-gray py-8">
+        <p className="text-lg mb-2">No upcoming events at the moment.</p>
+        <p className="text-secondary">Check back later for new prediction opportunities!</p>
+      </div>
+    );
+  }
 
   return (
     <div className="events-container">
