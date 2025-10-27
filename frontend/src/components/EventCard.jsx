@@ -178,9 +178,9 @@ const EventCard = ({ event }) => {
         }
       }}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-sm">
         <h3 className="text-primary text-lg sm:text-xl font-semibold leading-tight">{event.title}</h3>
-        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <span className="text-secondary text-sm sm:text-base" aria-label={`${event.current_participants} participants`}>
             👥{event.current_participants}
           </span>
@@ -193,7 +193,7 @@ const EventCard = ({ event }) => {
       
       {/* Dynamic Community Sentiment Bar */}
       {event.prediction_distribution && (event.prediction_distribution.up > 0 || event.prediction_distribution.down > 0) && (
-        <div className="mb-md">
+        <div className="mb-sm">
           <div className="flex justify-between text-xs text-secondary mb-1 px-1">
             <span className="text-success font-semibold">
               Bullish: {event.prediction_distribution.up.toFixed(0)}%
@@ -217,15 +217,15 @@ const EventCard = ({ event }) => {
         </div>
       )}
       
-      <p className="text-primary mb-md text-sm sm:text-base leading-relaxed">{event.description}</p>
+      <p className="text-primary mb-sm text-sm sm:text-base leading-relaxed">{event.description}</p>
       
       {/* Key Event Stats Bar */}
-      <div className="flex gap-4 sm:gap-6 mb-md flex-wrap">
-        <div className="flex flex-col items-center min-w-[100px] sm:min-w-0">
+      <div className="flex gap-4 sm:gap-6 mb-sm flex-nowrap justify-around">
+        <div className="flex flex-col items-center">
           <span className="text-secondary text-xs sm:text-sm mb-1">Prize Pool</span>
           <span className="text-primary font-semibold text-sm sm:text-base">💰 ${event.prize_pool?.toLocaleString() || 0}</span>
         </div>
-        <div className="flex flex-col items-center min-w-[100px] sm:min-w-0">
+        <div className="flex flex-col items-center">
           <span className="text-secondary text-xs sm:text-sm mb-1">Entry Fee</span>
           <span className="text-primary font-semibold text-sm sm:text-base">🎫 {typeof event.entry_fee === 'number' ? `${event.entry_fee} PTS` : 'N/A'}</span>
         </div>
@@ -233,18 +233,18 @@ const EventCard = ({ event }) => {
       
       {/* Option Volume Chart */}
       {event.option_volumes && Object.keys(event.option_volumes).length > 0 && (
-        <div className="bg-surface p-3 sm:p-4 rounded-md mb-md">
-          <h4 className="text-primary text-center mb-2 sm:mb-3 text-sm sm:text-base font-medium">Betting Volume</h4>
+        <div className="bg-surface p-2 sm:p-3 rounded-md mb-sm">
+          <h4 className="text-primary text-center mb-2 text-sm sm:text-base font-medium">Betting Volume</h4>
           <div className="space-y-2">
             {Object.entries(event.option_volumes).map(([option, data]) => (
-              <div key={option} className="flex items-center gap-2">
-                <span className="text-secondary text-xs sm:text-sm w-16 sm:w-20 truncate">
+              <div key={option} className="flex items-center gap-1">
+                <span className="text-secondary text-xs sm:text-sm w-12 sm:w-16 truncate">
                   {option.includes('up') ? '📈 ' : '📉 '}
                   {option}
                 </span>
-                <div className="flex-grow bg-charcoal rounded-full h-2 sm:h-3 overflow-hidden min-w-[60px]">
+                <div className="flex-grow bg-charcoal rounded-full h-2 overflow-hidden">
                   <div
-                    className={`h-2 sm:h-3 rounded-full ${
+                    className={`h-2 rounded-full ${
                       option.includes('up') ? 'bg-success' : 'bg-danger'
                     }`}
                     style={{
@@ -253,7 +253,7 @@ const EventCard = ({ event }) => {
                     title={`${data.total_amount.toLocaleString()} points (${Math.round((data.total_amount / event.prize_pool) * 100)}%)`}
                   ></div>
                 </div>
-                <span className="text-secondary text-xs w-8 sm:w-12 text-right">
+                <span className="text-secondary text-xs w-10 sm:w-12 text-right">
                   {Math.round((data.total_amount / event.prize_pool) * 100)}%
                 </span>
               </div>
