@@ -24,7 +24,7 @@ const ParticipationTrendChart = ({ eventId }) => {
   }, [eventId]);
 
   const chartData = useMemo(() => {
-    if (data.length === 0) return { higherPath: 'M 0,50 L 100,50', lowerPath: 'M 0,50 L 100,50' };
+    if (data.length === 0) return { higherPath: '', lowerPath: '', hasData: false };
 
     let higherCount = 0;
     let lowerCount = 0;
@@ -55,34 +55,38 @@ const ParticipationTrendChart = ({ eventId }) => {
       return path;
     };
     
-    return { higherPath: toPath(higherPoints), lowerPath: toPath(lowerPoints) };
+    return { higherPath: toPath(higherPoints), lowerPath: toPath(lowerPoints), hasData: true };
 
   }, [data]);
 
   if (loading) return <div className="h-24 bg-surface rounded-md animate-pulse"></div>;
 
   return (
-    <div className="relative h-24 w-full">
-      <svg viewBox="0 0 100 50" preserveAspectRatio="none" className="absolute w-full h-full">
-        <defs>
-          <linearGradient id="higherGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--success)" stopOpacity="0.4"/>
-            <stop offset="100%" stopColor="var(--success)" stopOpacity="0"/>
-          </linearGradient>
-          <linearGradient id="lowerGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--danger)" stopOpacity="0.4"/>
-            <stop offset="100%" stopColor="var(--danger)" stopOpacity="0"/>
-          </linearGradient>
-        </defs>
-        
-        {/* Fill under the path */}
-        <path d={chartData.higherPath + ` L 100,50 L 0,50 Z`} fill="url(#higherGradient)" />
-        <path d={chartData.lowerPath + ` L 100,50 L 0,50 Z`} fill="url(#lowerGradient)" />
+    <div className="relative h-24 w-full flex items-center justify-center text-light-gray text-sm">
+      {chartData.hasData ? (
+        <svg viewBox="0 0 100 50" preserveAspectRatio="none" className="absolute w-full h-full">
+          <defs>
+            <linearGradient id="higherGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--success)" stopOpacity="0.4"/>
+              <stop offset="100%" stopColor="var(--success)" stopOpacity="0"/>
+            </linearGradient>
+            <linearGradient id="lowerGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--danger)" stopOpacity="0.4"/>
+              <stop offset="100%" stopColor="var(--danger)" stopOpacity="0"/>
+            </linearGradient>
+          </defs>
+          
+          {/* Fill under the path */}
+          <path d={chartData.higherPath + ` L 100,50 L 0,50 Z`} fill="url(#higherGradient)" />
+          <path d={chartData.lowerPath + ` L 100,50 L 0,50 Z`} fill="url(#lowerGradient)" />
 
-        {/* The line itself */}
-        <path d={chartData.higherPath} fill="none" stroke="var(--success)" strokeWidth="0.5" className="draw-line" />
-        <path d={chartData.lowerPath} fill="none" stroke="var(--danger)" strokeWidth="0.5" className="draw-line" />
-      </svg>
+          {/* The line itself */}
+          <path d={chartData.higherPath} fill="none" stroke="var(--success)" strokeWidth="0.5" className="draw-line" />
+          <path d={chartData.lowerPath} fill="none" stroke="var(--danger)" strokeWidth="0.5" className="draw-line" />
+        </svg>
+      ) : (
+        <p>No participation trend data available.</p>
+      )}
     </div>
   );
 };
