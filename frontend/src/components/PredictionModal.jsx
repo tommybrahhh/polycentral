@@ -86,8 +86,7 @@ const PredictionModal = ({ isOpen, onClose, selectedPrediction, event, currentUs
               <button
                 onClick={() => onSubmit(stake)}
                 disabled={stake > currentUserPoints || stake < 100}
-                className="w-full bg-orange-primary hover:bg-orange-600 text-black font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                style={{ opacity: 1, display: 'block' }}
+                className="w-full bg-orange-primary hover:bg-orange-600 text-black font-bold py-4 px-6 rounded-lg text-lg transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed !opacity-100"
               >
                 Participate for {stake} PTS
               </button>
