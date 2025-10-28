@@ -4,13 +4,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import EventHeroStats from './EventHeroStats';
+import EventStats from './EventStats';
 import OutcomeVisualizer from './OutcomeVisualizer';
 import LiveActivityTicker from './LiveActivityTicker';
-import ParticipationTrendChart from './ParticipationTrendChart';
 import OutcomeTrendChart from './OutcomeTrendChart';
 import { CountdownTimer } from './EventCard';
-import PredictionModal from './PredictionModal';
+import BetSlip from './BetSlip';
 import SuccessAnimation from './SuccessAnimation';
 import Snackbar from './Snackbar';
 
@@ -49,7 +48,6 @@ const EventDetail = () => {
       setSelectedPrediction(null);
     } else {
       setSelectedPrediction(prediction);
-      setIsModalOpen(true);
     }
   };
 
@@ -104,34 +102,32 @@ const EventDetail = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="space-y-6 sm:space-y-8">
+    <div className="p-4 max-w-md mx-auto">
+      <div className="space-y-4">
         <div className="text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold">{event.title}</h2>
+          <h2 className="text-xl font-bold">{event.title}</h2>
           {event.end_time && (
-            <div className="mt-4 inline-block">
+            <div className="mt-2 inline-block">
                 <CountdownTimer endTime={event.end_time} />
             </div>
           )}
         </div>
 
-        <div className="space-y-6">
-          <EventHeroStats
-              prizePool={event.prize_pool}
-              participants={event.current_participants}
-          />
-          <LiveActivityTicker participants={event.current_participants} />
-          
+        <EventStats
+            prizePool={event.prize_pool}
+            participants={event.current_participants}
+            entryFee={event.entry_fee}
+        />
+
+        <div className="bg-surface p-4 rounded-lg">
           <OutcomeTrendChart
             eventId={event.id}
             options={event.options}
           />
-          
-          <ParticipationTrendChart eventId={event.id} />
         </div>
         
-        <div className="bg-surface p-4 sm:p-6 rounded-lg">
-            <h3 className="text-center text-xl font-semibold mb-6">Choose an Outcome</h3>
+        <div className="bg-surface p-4 rounded-lg">
+            <h3 className="text-center text-lg font-semibold mb-4">Choose an Outcome</h3>
             <OutcomeVisualizer 
                 options={event.options}
                 optionVolumes={event.option_volumes}
@@ -140,6 +136,24 @@ const EventDetail = () => {
                 selectedPredictionValue={selectedPrediction?.value}
             />
         </div>
+
+        <AnimatePresence>
+          {selectedPrediction && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-surface p-4 rounded-lg border-2 border-orange-primary"
+            >
+              <h3 className="text-center text-lg font-semibold mb-4">Place Your Bet</h3>
+              <BetSlip 
+                selectedPrediction={selectedPrediction}
+                currentUserPoints={JSON.parse(localStorage.getItem('user') || '{}').points || 0}
+                onSubmit={handleSubmitPrediction}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <PredictionModal
           isOpen={isModalOpen}
@@ -157,7 +171,7 @@ const EventDetail = () => {
         </AnimatePresence>
 
         {event.status === 'resolved' && (
-          <div className="bg-success bg-opacity-10 p-4 rounded-md text-center mt-8">
+          <div className="bg-success bg-opacity-10 p-4 rounded-md text-center mt-6">
             <strong className="text-success">Result:</strong> {event.correct_answer} -
             Final Price: ${event.final_price?.toLocaleString()}
           </div>
