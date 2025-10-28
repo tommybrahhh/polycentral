@@ -11,11 +11,12 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  TimeScale
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import 'chartjs-adapter-date-fns';
 
-// Register ChartJS components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -24,13 +25,14 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  TimeScale
 );
 
 const OutcomeTrendChart = ({ eventId, options }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState('hour'); // 'hour', 'day', 'all'
+  const [timeframe, setTimeframe] = useState('last_month'); // 'last_7_days', 'last_month', 'last_3_months', 'all'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,7 +50,6 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     fetchData();
   }, [eventId]);
 
-  // Parse options to get all possible outcomes
   const parsedOptions = useMemo(() => {
     if (typeof options === 'string') {
       try {
@@ -60,116 +61,62 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     return options || [];
   }, [options]);
 
-  // Get all unique outcome values from options
   const outcomeValues = useMemo(() => {
     return parsedOptions.map(option => option.value);
   }, [parsedOptions]);
 
-  // Helper function to get color based on outcome
   const getColorForOutcome = (outcome) => {
-    // New color palette with better contrast for dark mode
     const colorMap = {
-      'Higher': '#10B981',      // Emerald 500
-      'Lower': '#EF4444',       // Red 500
-      '0-3% up': '#34D399',     // Emerald 400
-      '3-5% up': '#059669',     // Emerald 600
-      '5%+ up': '#047857',      // Emerald 700
-      '0-3% down': '#F87171',   // Red 400
-      '3-5% down': '#DC2626',   // Red 600
-      '5%+ down': '#B91C1C',    // Red 700
+      'Higher': '#10B981',
+      'Lower': '#EF4444',
+      '0-3% up': '#34D399',
+      '3-5% up': '#059669',
+      '5%+ up': '#047857',
+      '0-3% down': '#F87171',
+      '3-5% down': '#DC2626',
+      '5%+ down': '#B91C1C',
     };
-    return colorMap[outcome] || '#A78BFA'; // A default vibrant color (Violet 400)
+    return colorMap[outcome] || '#A78BFA';
   };
 
-  // Process data for the chart
   const chartData = useMemo(() => {
     if (data.length === 0) return { labels: [], datasets: [] };
 
-    // Sort data by created_at to ensure chronological order
-    const sortedData = [...data].sort((a, b) => 
-      new Date(a.created_at) - new Date(b.created_at)
-    );
+    const sortedData = [...data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
     const now = new Date();
-    let timeIntervals = [];
-    
-    // Create time intervals based on selected timeframe
-    if (timeframe === 'hour') {
-      // Last 24 hours in 1-hour intervals
-      for (let i = 23; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-        timeIntervals.push({
-          time: time,
-          label: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          counts: Object.fromEntries(outcomeValues.map(outcome => [outcome, 0]))
-        });
-      }
-    } else if (timeframe === 'day') {
-      // Last 7 days
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        timeIntervals.push({
-          time: date,
-          label: date.toLocaleDateString([], { month: 'short', day: 'numeric' }),
-          counts: Object.fromEntries(outcomeValues.map(outcome => [outcome, 0]))
-        });
-      }
-    } else {
-      // All time - use fixed interval approach
-      const firstParticipation = new Date(sortedData[0]?.created_at || now);
-      const lastParticipation = new Date(sortedData[sortedData.length - 1]?.created_at || now);
-      const timeDiff = lastParticipation - firstParticipation;
-      
-      // Determine optimal interval count (max 24 points)
-      const maxPoints = 24;
-      const intervalCount = Math.min(maxPoints, Math.ceil(timeDiff / (60 * 60 * 1000))); // max 24 hours worth of points
-      
-      for (let i = 0; i < intervalCount; i++) {
-        const intervalTime = new Date(firstParticipation.getTime() + (i * timeDiff / intervalCount));
-        timeIntervals.push({
-          time: intervalTime,
-          label: intervalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          counts: Object.fromEntries(outcomeValues.map(outcome => [outcome, 0]))
-        });
-      }
+    let startDate;
+
+    switch (timeframe) {
+      case 'last_7_days':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        break;
+      case 'last_3_months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        break;
+      case 'all':
+        startDate = sortedData.length > 0 ? new Date(sortedData[0].created_at) : now;
+        break;
+      case 'last_month':
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        break;
     }
 
-    // Count participations in each time interval
-    sortedData.forEach(entry => {
-      const entryTime = new Date(entry.created_at);
-      
-      for (let i = 0; i < timeIntervals.length - 1; i++) {
-        const currentInterval = timeIntervals[i];
-        const nextInterval = timeIntervals[i + 1];
-        
-        if (entryTime >= currentInterval.time && entryTime < nextInterval.time) {
-          if (currentInterval.counts[entry.prediction] !== undefined) {
-            currentInterval.counts[entry.prediction]++;
-          }
-          break;
-        }
-      }
-    });
+    const filteredData = sortedData.filter(entry => new Date(entry.created_at) >= startDate);
 
-    // Calculate cumulative counts
-    const cumulativeCounts = Object.fromEntries(outcomeValues.map(outcome => [outcome, 0]));
-    const seriesData = timeIntervals.map(interval => {
-      outcomeValues.forEach(outcome => {
-        cumulativeCounts[outcome] += interval.counts[outcome];
-      });
-      
-      return {
-        time: interval.label,
-        ...Object.fromEntries(outcomeValues.map(outcome => [outcome, cumulativeCounts[outcome]]))
-      };
-    });
-
-    // Prepare datasets for ChartJS
+    const labels = filteredData.map(entry => new Date(entry.created_at));
     const datasets = outcomeValues.map(outcome => ({
       label: outcome,
-      data: seriesData.map(item => item[outcome]),
+      data: filteredData.map(entry => {
+        if (entry.prediction === outcome) {
+            const cumulativeCount = filteredData.filter(e => new Date(e.created_at) <= new Date(entry.created_at) && e.prediction === outcome).length;
+            return cumulativeCount;
+        }
+        return null;
+      }).filter(d => d !== null),
       borderColor: getColorForOutcome(outcome),
-      backgroundColor: getColorForOutcome(outcome) + '40', // Add opacity
+      backgroundColor: getColorForOutcome(outcome) + '40',
       fill: true,
       tension: 0.4,
       pointRadius: 3,
@@ -177,12 +124,11 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     }));
 
     return {
-      labels: seriesData.map(item => item.time),
-      datasets: datasets
+      labels,
+      datasets
     };
   }, [data, timeframe, outcomeValues]);
 
-  // Calculate current distribution percentages
   const currentDistribution = useMemo(() => {
     const total = data.length;
     if (total === 0) return {};
@@ -196,21 +142,20 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     return distribution;
   }, [data, outcomeValues]);
 
-  // Chart options
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false, // Keep custom legend
+        display: false,
       },
       tooltip: {
         mode: 'index',
         intersect: false,
-        backgroundColor: 'rgba(17, 24, 39, 0.8)', // Darker tooltip (gray-900)
-        titleColor: '#F9FAFB', // Lighter title (gray-50)
-        bodyColor: '#D1D5DB',  // Lighter body (gray-300)
-        borderColor: 'rgba(55, 65, 81, 1)', // gray-700
+        backgroundColor: 'rgba(17, 24, 39, 0.8)',
+        titleColor: '#F9FAFB',
+        bodyColor: '#D1D5DB',
+        borderColor: 'rgba(55, 65, 81, 1)',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -218,13 +163,21 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     },
     scales: {
       x: {
+        type: 'time',
+        time: {
+          unit: 'day',
+          tooltipFormat: 'MMM dd, yyyy',
+          displayFormats: {
+            day: 'MMM d'
+          }
+        },
         grid: {
-          color: 'rgba(55, 65, 81, 1)', // gray-700 for a subtle grid
+          color: 'rgba(55, 65, 81, 1)',
           drawBorder: false,
         },
         ticks: {
-          color: '#9CA3AF', // gray-400 for axis labels
-          maxRotation: 0, // Keep labels horizontal
+          color: '#9CA3AF',
+          maxRotation: 0,
           minRotation: 0,
           autoSkip: true,
           maxTicksLimit: 10,
@@ -232,11 +185,11 @@ const OutcomeTrendChart = ({ eventId, options }) => {
       },
       y: {
         grid: {
-          color: 'rgba(55, 65, 81, 1)', // gray-700
+          color: 'rgba(55, 65, 81, 1)',
           drawBorder: false,
         },
         ticks: {
-          color: '#9CA3AF', // gray-400
+          color: '#9CA3AF',
           beginAtZero: true,
         }
       }
@@ -247,23 +200,13 @@ const OutcomeTrendChart = ({ eventId, options }) => {
 
   return (
     <div className="bg-surface p-4 rounded-md">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Outcome Trend Analysis</h3>
-        <div className="flex space-x-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+        <h3 className="text-lg font-semibold mb-4 sm:mb-0">Outcome Trend Analysis</h3>
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setTimeframe('hour')}
-            className={`px-3 py-1 rounded text-sm transition-colors ${
-              timeframe === 'hour'
-                ? 'bg-primary text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            Last 24h
-          </button>
-          <button
-            onClick={() => setTimeframe('day')}
-            className={`px-3 py-1 rounded text-sm transition-colors ${
-              timeframe === 'day'
+            onClick={() => setTimeframe('last_7_days')}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              timeframe === 'last_7_days'
                 ? 'bg-primary text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
@@ -271,8 +214,28 @@ const OutcomeTrendChart = ({ eventId, options }) => {
             Last 7d
           </button>
           <button
+            onClick={() => setTimeframe('last_month')}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              timeframe === 'last_month'
+                ? 'bg-primary text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            Last Month
+          </button>
+          <button
+            onClick={() => setTimeframe('last_3_months')}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              timeframe === 'last_3_months'
+                ? 'bg-primary text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            Last 3m
+          </button>
+          <button
             onClick={() => setTimeframe('all')}
-            className={`px-3 py-1 rounded text-sm transition-colors ${
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
               timeframe === 'all'
                 ? 'bg-primary text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -283,7 +246,6 @@ const OutcomeTrendChart = ({ eventId, options }) => {
         </div>
       </div>
 
-      {/* Current Distribution Summary */}
       <div className="mb-4 p-3 bg-charcoal rounded">
         <h4 className="text-sm font-medium mb-2">Current Distribution</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -303,12 +265,10 @@ const OutcomeTrendChart = ({ eventId, options }) => {
         </div>
       </div>
 
-      {/* Chart Container */}
-      <div className="relative h-64 w-full">
+      <div className="relative h-64 sm:h-80 w-full">
         <Line data={chartData} options={chartOptions} />
       </div>
 
-      {/* Legend */}
       <div className="flex flex-wrap justify-center mt-4 gap-3">
         {chartData.datasets.map(dataset => (
           <div key={dataset.label} className="flex items-center">

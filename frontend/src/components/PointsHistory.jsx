@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import useFetch from '../hooks/useFetch'; 
 import { Line } from 'react-chartjs-2';
@@ -11,7 +11,9 @@ import {
   Title,
   Tooltip,
   Legend,
+  TimeScale
 } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 import '../styles/admin.css';
 
 ChartJS.register(
@@ -21,7 +23,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TimeScale
 );
 
 const formatFullDate = (dateString) => {
@@ -30,14 +33,27 @@ const formatFullDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-US', options);
 };
 
-const formatDateForChart = (dateString) => {
-  if (!dateString) return 'N/A';
-  const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
-  return new Date(dateString).toLocaleDateString('en-GB', options);
-};
-
 const PointsHistory = () => {
   const { data: history, loading, error } = useFetch('/api/user/points-history');
+  const [period, setPeriod] = useState('last_month');
+
+  const filteredHistory = useMemo(() => {
+    if (!history) return [];
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    const last7Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+    const last3Months = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+
+    switch (period) {
+      case 'last_7_days':
+        return history.filter(entry => new Date(entry.created_at) > last7Days);
+      case 'last_3_months':
+        return history.filter(entry => new Date(entry.created_at) > last3Months);
+      case 'last_month':
+      default:
+        return history.filter(entry => new Date(entry.created_at) > lastMonth);
+    }
+  }, [history, period]);
 
   if (loading) {
     return <div className="loading">Loading points history...</div>;
@@ -47,21 +63,21 @@ const PointsHistory = () => {
     return <div className="error">Failed to load points history: {error}</div>;
   }
   
-  if (!history || history.length === 0) {
+  if (!filteredHistory || filteredHistory.length === 0) {
     return (
       <div className="admin-content">
         <div className="admin-component-header"><h2>Points History</h2></div>
-        <div className="card"><p>No points history available yet.</p></div>
+        <div className="card"><p>No points history available for the selected period.</p></div>
       </div>
     );
   }
 
   const chartData = {
-    labels: history.map(entry => formatDateForChart(entry.created_at)),
+    labels: filteredHistory.map(entry => new Date(entry.created_at)),
     datasets: [
       {
         label: 'Points Balance',
-        data: history.map(entry => entry.new_balance),
+        data: filteredHistory.map(entry => entry.new_balance),
         borderColor: 'var(--orange-primary)',
         backgroundColor: 'rgba(255, 140, 0, 0.2)',
         fill: true,
@@ -90,9 +106,18 @@ const PointsHistory = () => {
     },
     scales: {
       x: {
+        type: 'time',
+        time: {
+          unit: 'day',
+          tooltipFormat: 'MMM dd, yyyy',
+          displayFormats: {
+            day: 'MMM d'
+          }
+        },
         ticks: {
           color: 'var(--light-gray)',
-          font: { family: 'inherit' }
+          font: { family: 'inherit' },
+          maxTicksLimit: 10,
         },
         grid: {
           color: 'rgba(230, 113, 4, 0.1)'
@@ -114,6 +139,11 @@ const PointsHistory = () => {
     <div className="admin-content">
       <div className="admin-component-header">
         <h2>Points History</h2>
+        <div className="filter-buttons">
+          <button onClick={() => setPeriod('last_7_days')} className={period === 'last_7_days' ? 'active' : ''}>Last 7 Days</button>
+          <button onClick={() => setPeriod('last_month')} className={period === 'last_month' ? 'active' : ''}>Last Month</button>
+          <button onClick={() => setPeriod('last_3_months')} className={period === 'last_3_months' ? 'active' : ''}>Last 3 Months</button>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 'var(--spacing-lg)', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
@@ -124,7 +154,7 @@ const PointsHistory = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-        {[...history].reverse().map((entry) => (
+        {[...filteredHistory].reverse().map((entry) => (
           <div key={entry.id || entry.created_at} className="card p-4">
             <div className="flex justify-between items-center mb-3">
               <span className="text-light-gray text-sm">{formatFullDate(entry.created_at)}</span>
@@ -159,5 +189,3 @@ const PointsHistory = () => {
     </div>
   );
 };
-
-export default PointsHistory;

@@ -2,29 +2,29 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import useAnimatedCounter from '../hooks/useAnimatedCounter'; // Assuming hook is moved to a separate file
+import useAnimatedCounter from '../hooks/useAnimatedCounter';
 
 const EventHeroStats = ({ prizePool, participants }) => {
   const animatedPool = useAnimatedCounter(prizePool);
   const animatedParticipants = useAnimatedCounter(participants);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-md text-center bg-surface p-lg rounded-md">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 text-center bg-surface p-4 sm:p-6 rounded-md">
       <div>
-        <h3 className="text-secondary text-lg">Current Prize Pool</h3>
+        <h3 className="text-secondary text-base sm:text-lg">Current Prize Pool</h3>
         <p
-          className="text-5xl font-bold text-primary tracking-wider"
+          className="text-4xl sm:text-5xl font-bold text-primary tracking-wider"
           style={{ textShadow: '0 0 12px var(--success-glow, rgba(46, 204, 113, 0.6))' }}
         >
           ${animatedPool.toLocaleString()}
         </p>
       </div>
-      <div className="mt-md md:mt-0">
-        <h3 className="text-secondary text-lg">Active Participants</h3>
-        <p className="text-5xl font-bold text-primary">
+      <div className="mt-4 md:mt-0">
+        <h3 className="text-secondary text-base sm:text-lg">Active Participants</h3>
+        <p className="text-4xl sm:text-5xl font-bold text-primary">
           {animatedParticipants.toLocaleString()}
         </p>
-        <p className="text-sm text-secondary mt-1">Join them now!</p>
+        <button className="btn btn-secondary mt-2">Join them now!</button>
       </div>
     </div>
   );

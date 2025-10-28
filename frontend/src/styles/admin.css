@@ -99,6 +99,33 @@
   margin: 0;
 }
 
+.filter-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.filter-buttons button {
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  color: var(--light-gray);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-buttons button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--off-white);
+}
+
+.filter-buttons button.active {
+  background: var(--orange-primary);
+  color: var(--dark-charcoal);
+  border-color: var(--orange-primary);
+  font-weight: 600;
+}
+
 .controls-container {
   display: flex;
   gap: var(--spacing-md);

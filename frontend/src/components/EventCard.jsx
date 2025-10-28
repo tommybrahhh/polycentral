@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { normalizeEventOptions } from '../utils/eventUtils'; // Adjusted path to be relative to components directory
+import { normalizeEventOptions } from '../utils/eventUtils';
 
-// CountdownTimer component - exported for use in EventDetail
 export const CountdownTimer = ({ endTime }) => {
   const [timeLeft, setTimeLeft] = React.useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isCritical, setIsCritical] = React.useState(false);
@@ -30,27 +29,20 @@ export const CountdownTimer = ({ endTime }) => {
       const newTimeLeft = calculateTimeLeft();
       setTimeLeft(newTimeLeft);
   
-      // Calculate total time in minutes for warning states
       const totalMinutes = newTimeLeft.days * 24 * 60 + newTimeLeft.hours * 60 + newTimeLeft.minutes;
       const totalSeconds = totalMinutes * 60 + newTimeLeft.seconds;
   
-      // Set warning states
-      const isCriticalState = totalSeconds <= 60; // 1 minute or less
-      const isWarningState = totalMinutes <= 60 && totalSeconds > 60; // 1 hour or less but more than 1 minute
+      const isCriticalState = totalSeconds <= 60;
+      const isWarningState = totalMinutes <= 60 && totalSeconds > 60;
       
       setIsCritical(isCriticalState);
       setIsWarning(isWarningState);
     }, 1000);
 
-    // Initial calculation
     setTimeLeft(calculateTimeLeft());
 
     return () => clearInterval(timer);
   }, [endTime]);
-
-  const formatTime = (value) => {
-    return value.toString().padStart(2, '0');
-  };
 
   const getTimeDisplay = () => {
     const { days, hours, minutes, seconds } = timeLeft;
@@ -79,95 +71,43 @@ export const CountdownTimer = ({ endTime }) => {
 const EventCard = ({ event }) => {
   const navigate = useNavigate();
   
-  // Handle loading state
   if (!event) {
     return (
       <div className="card animate-pulse" aria-label="Loading event...">
-        {/* Title and status area */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-md">
-          <div className="h-6 bg-gray-700 rounded w-3/4"></div>
-          <div className="flex items-center gap-4">
-            <div className="h-4 bg-gray-700 rounded w-8"></div>
-            <div className="h-4 bg-gray-700 rounded w-12"></div>
-            <div className="h-4 bg-gray-700 rounded w-16"></div>
-          </div>
+        <div className="h-6 bg-gray-700 rounded w-3/4 mb-4"></div>
+        <div className="h-4 bg-gray-700 rounded w-1/2 mb-4"></div>
+        <div className="flex justify-between mb-4">
+          <div className="h-10 bg-gray-700 rounded w-1/3"></div>
+          <div className="h-10 bg-gray-700 rounded w-1/3"></div>
         </div>
-        
-        {/* Sentiment bar skeleton */}
-        <div className="mb-md">
-          <div className="flex justify-between text-xs mb-1 px-1">
-            <div className="h-3 bg-gray-700 rounded w-16"></div>
-            <div className="h-3 bg-gray-700 rounded w-16"></div>
-          </div>
-          <div className="sentiment-bar bg-gray-700">
-            <div className="sentiment-fill bg-gray-600" style={{ width: '50%' }}></div>
-          </div>
-        </div>
-        
-        {/* Description skeleton */}
-        <div className="h-4 bg-gray-700 rounded mb-md"></div>
-        <div className="h-4 bg-gray-700 rounded w-3/4 mb-md"></div>
-        
-        {/* Stats bar skeleton */}
-        <div className="flex gap-md mb-md">
-          <div className="flex flex-col items-center">
-            <div className="h-3 bg-gray-700 rounded w-12 mb-1"></div>
-            <div className="h-4 bg-gray-700 rounded w-16"></div>
-          </div>
-          <div className="flex flex-col items-center">
-            <div className="h-3 bg-gray-700 rounded w-12 mb-1"></div>
-            <div className="h-4 bg-gray-700 rounded w-16"></div>
-          </div>
-        </div>
-        
-        {/* Option volume chart skeleton */}
-        <div className="bg-surface p-md rounded-md mb-md">
-          <div className="h-4 bg-gray-700 rounded w-24 mx-auto mb-sm"></div>
-          <div className="space-y-2">
-            {[1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="h-3 bg-gray-700 rounded w-16"></div>
-                <div className="flex-grow bg-gray-700 rounded-full h-3"></div>
-                <div className="h-3 bg-gray-700 rounded w-8"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Button skeleton */}
-        <div className="text-center">
-          <div className="btn bg-gray-700 text-transparent">View & Place Bet</div>
-        </div>
+        <div className="h-12 bg-gray-700 rounded w-full"></div>
       </div>
     );
   }
 
   const eventOptions = React.useMemo(() => normalizeEventOptions(event.options), [event.options]);
 
-  // Helper function to determine if an event is closing soon (within 1 hour)
   const isEventClosingSoon = (event) => {
     const now = new Date();
     const endTime = new Date(event.end_time);
-    const timeDiff = endTime - now; // difference in milliseconds
-    const oneHour = 60 * 60 * 1000; // one hour in milliseconds
+    const timeDiff = endTime - now;
+    const oneHour = 60 * 60 * 1000;
     return timeDiff > 0 && timeDiff <= oneHour;
   };
 
-  // Helper function to determine if an event is expired
   const isEventExpired = (event) => {
     const now = new Date();
     const endTime = new Date(event.end_time);
     return now >= endTime;
   };
 
-  // Don't render expired events
   if (isEventExpired(event)) {
     return null;
   }
 
   return (
     <div
-      className="card"
+      className="card p-4 sm:p-6 space-y-4"
       onClick={() => navigate(`/events/${event.id}`)}
       role="button"
       tabIndex={0}
@@ -178,20 +118,30 @@ const EventCard = ({ event }) => {
         }
       }}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-primary text-lg sm:text-xl font-semibold leading-tight">{event.title}</h3>
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          <span className="text-secondary text-sm sm:text-base" aria-label={`${event.current_participants} participants`}>
-            👥{event.current_participants}
-          </span>
-          <div className={`text-sm sm:text-base ${isEventClosingSoon(event) ? 'text-orange font-medium' : 'text-success'}`}>
+        <div className={`text-sm sm:text-base ${isEventClosingSoon(event) ? 'text-orange font-medium' : 'text-success'}`}>
             {isEventClosingSoon(event) ? 'Closing' : 'Active'}
-          </div>
-          <CountdownTimer endTime={event.end_time} />
         </div>
       </div>
-      
-      {/* Dynamic Community Sentiment Bar */}
+
+      <p className="text-primary text-sm sm:text-base leading-relaxed">{event.description}</p>
+
+      <div className="flex gap-4 sm:gap-6 justify-around">
+        <div className="flex flex-col items-center">
+          <span className="text-secondary text-xs sm:text-sm mb-1">Prize Pool</span>
+          <span className="text-primary font-semibold text-sm sm:text-base">💰 ${event.prize_pool?.toLocaleString() || 0}</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-secondary text-xs sm:text-sm mb-1">Participants</span>
+          <span className="text-primary font-semibold text-sm sm:text-base">👥{event.current_participants}</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-secondary text-xs sm:text-sm mb-1">Entry Fee</span>
+          <span className="text-primary font-semibold text-sm sm:text-base">🎫 {typeof event.entry_fee === 'number' ? `${event.entry_fee} PTS` : 'N/A'}</span>
+        </div>
+      </div>
+
       {event.prediction_distribution && (event.prediction_distribution.up > 0 || event.prediction_distribution.down > 0) && (
         <div className="mb-sm">
           <div className="flex justify-between text-xs text-secondary mb-1 px-1">
@@ -216,56 +166,10 @@ const EventCard = ({ event }) => {
           </div>
         </div>
       )}
-      
-      <p className="text-primary mb-sm text-sm sm:text-base leading-relaxed">{event.description}</p>
-      
-      {/* Key Event Stats Bar */}
-      <div className="flex gap-4 sm:gap-6 mb-sm flex-nowrap justify-around">
-        <div className="flex flex-col items-center">
-          <span className="text-secondary text-xs sm:text-sm mb-1">Prize Pool</span>
-          <span className="text-primary font-semibold text-sm sm:text-base">💰 ${event.prize_pool?.toLocaleString() || 0}</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-secondary text-xs sm:text-sm mb-1">Entry Fee</span>
-          <span className="text-primary font-semibold text-sm sm:text-base">🎫 {typeof event.entry_fee === 'number' ? `${event.entry_fee} PTS` : 'N/A'}</span>
-        </div>
-      </div>
-      
-      {/* Option Volume Chart */}
-      {event.option_volumes && Object.keys(event.option_volumes).length > 0 && (
-        <div className="bg-surface p-2 sm:p-3 rounded-md mb-sm">
-          <h4 className="text-primary text-center mb-2 text-sm sm:text-base font-medium">Betting Volume</h4>
-          <div className="space-y-2">
-            {Object.entries(event.option_volumes).map(([option, data]) => (
-              <div key={option} className="flex items-center gap-1">
-                <span className="text-secondary text-xs sm:text-sm w-12 sm:w-16 truncate">
-                  {option.includes('up') ? '📈 ' : '📉 '}
-                  {option}
-                </span>
-                <div className="flex-grow bg-charcoal rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-2 rounded-full ${
-                      option.includes('up') ? 'bg-success' : 'bg-danger'
-                    }`}
-                    style={{
-                      width: `${Math.min((data.total_amount / event.prize_pool) * 100, 100)}%`
-                    }}
-                    title={`${data.total_amount.toLocaleString()} points (${Math.round((data.total_amount / event.prize_pool) * 100)}%)`}
-                  ></div>
-                </div>
-                <span className="text-secondary text-xs w-10 sm:w-12 text-right">
-                  {Math.round((data.total_amount / event.prize_pool) * 100)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {/* Call to Action Button */}
-      <div className="text-center">
-        <button className="btn btn-primary w-full sm:w-auto px-4 py-2 text-sm sm:text-base" onClick={(e) => {
-          e.stopPropagation(); // Prevent card's onClick from firing twice
+
+      <div className="text-center pt-2">
+        <button className="btn btn-primary w-full sm:w-auto px-6 py-3 text-base" onClick={(e) => {
+          e.stopPropagation();
           navigate(`/events/${event.id}`);
         }}>
           View & Place Bet
