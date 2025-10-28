@@ -189,3 +189,5 @@ const PointsHistory = () => {
     </div>
   );
 };
+
+export default PointsHistory;
