@@ -18,27 +18,27 @@ const OutcomeVisualizer = ({ options, optionVolumes, totalPool, onSelectPredicti
         return (
             <div
                 key={option.id}
-                className={`p-4 sm:p-6 rounded-lg cursor-pointer border-2 transition-all duration-200 bg-charcoal ${
+                className={`p-3 sm:p-4 rounded-lg cursor-pointer border-2 transition-all duration-200 bg-charcoal flex flex-col justify-between h-full ${
                     isSelected ? 'border-orange-primary scale-105 shadow-lg' : 'border-charcoal hover:border-gray-600'
                 }`}
                 onClick={() => onSelectPrediction({ ...option, multiplier: volumeData.multiplier })}
                 role="button"
             >
-                <div className="flex flex-col justify-between items-start mb-4">
-                    <span className={`font-bold text-xl ${colorClass}`}>{option.label}</span>
-                    <div className="text-left mt-2">
-                        <span className="text-primary font-semibold text-lg block">{volumeData.multiplier ? volumeData.multiplier.toFixed(2) : '0.00'}x Payout</span>
-                        <span className="text-secondary text-xs">(Win {exampleReward} PTS with a 100 PTS bet)</span>
-                    </div>
+                <div className="flex items-center justify-between mb-2"> {/* Changed to flex-row for label and multiplier */}
+                    <span className={`font-bold text-lg sm:text-xl ${colorClass}`}>{option.label}</span>
+                    <span className="text-primary font-semibold text-base">{volumeData.multiplier ? volumeData.multiplier.toFixed(2) : '0.00'}x</span>
+                </div>
+                <div className="flex-grow"> {/* This div will push the pool info to the bottom */}
+                    {/* Removed example reward text */}
                 </div>
                 <div>
-                    <div className="w-full bg-surface rounded-full h-2.5 overflow-hidden">
+                    <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden mb-1"> {/* Smaller progress bar */}
                         <div
-                            className={`h-2.5 rounded-full ${isUp ? 'bg-success' : 'bg-danger'}`}
+                            className={`h-1.5 rounded-full ${isUp ? 'bg-success' : 'bg-danger'}`}
                             style={{ width: `${totalPool > 0 ? (volumeData.total_amount / totalPool) * 100 : 0}%` }}
                         ></div>
                     </div>
-                    <div className="text-right text-xs sm:text-sm text-secondary mt-2">
+                    <div className="text-right text-xs text-secondary"> {/* Smaller text for pool info */}
                         {volumeData.total_amount.toLocaleString()} PTS in Pool
                     </div>
                 </div>

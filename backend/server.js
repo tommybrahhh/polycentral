@@ -753,7 +753,7 @@ async function createEvent(initialPrice) {
 
   // Generate formatted title with closing price question and creation price
   const eventDate = new Date().toISOString().split('T')[0];
-  const title = `Which will be the closing price of Bitcoin at the end of the day? (Creation price: $${initialPrice.toFixed(2)})`;
+  const title = `Closing price of Bitcoin today`;
   
   // Create simplified Higher/Lower options
   const options = [

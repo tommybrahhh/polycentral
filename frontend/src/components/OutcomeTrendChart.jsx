@@ -32,7 +32,7 @@ ChartJS.register(
 const OutcomeTrendChart = ({ eventId, options }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState('last_month'); // 'last_7_days', 'last_month', 'last_3_months', 'all'
+  const [timeframe, setTimeframe] = useState('last_24_hours'); // 'last_24_hours', 'last_7_days', 'all'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,18 +88,17 @@ const OutcomeTrendChart = ({ eventId, options }) => {
     let startDate;
 
     switch (timeframe) {
+      case 'last_24_hours':
+        startDate = new Date(now.getTime() - (24 * 60 * 60 * 1000)); // 24 hours ago
+        break;
       case 'last_7_days':
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-        break;
-      case 'last_3_months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
         break;
       case 'all':
         startDate = sortedData.length > 0 ? new Date(sortedData[0].created_at) : now;
         break;
-      case 'last_month':
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      default: // Fallback to last_24_hours if an invalid timeframe is somehow set
+        startDate = new Date(now.getTime() - (24 * 60 * 60 * 1000));
         break;
     }
 
@@ -200,52 +199,41 @@ const OutcomeTrendChart = ({ eventId, options }) => {
 
   return (
     <div className="bg-surface p-4 rounded-md">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-        <h3 className="text-lg font-semibold mb-4 sm:mb-0">Outcome Trend Analysis</h3>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setTimeframe('last_7_days')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              timeframe === 'last_7_days'
-                ? 'bg-primary text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            Last 7d
-          </button>
-          <button
-            onClick={() => setTimeframe('last_month')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              timeframe === 'last_month'
-                ? 'bg-primary text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            Last Month
-          </button>
-          <button
-            onClick={() => setTimeframe('last_3_months')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              timeframe === 'last_3_months'
-                ? 'bg-primary text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            Last 3m
-          </button>
-          <button
-            onClick={() => setTimeframe('all')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              timeframe === 'all'
-                ? 'bg-primary text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            All Time
-          </button>
-        </div>
-      </div>
-
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                <h3 className="text-lg font-semibold mb-4 sm:mb-0">Outcome Trend Analysis</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setTimeframe('last_24_hours')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      timeframe === 'last_24_hours'
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Last 24 Hours
+                  </button>
+                  <button
+                    onClick={() => setTimeframe('last_7_days')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      timeframe === 'last_7_days'
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Last 7 Days
+                  </button>
+                  <button
+                    onClick={() => setTimeframe('all')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      timeframe === 'all'
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    All Time
+                  </button>
+                </div>
+              </div>
       <div className="mb-4 p-3 bg-charcoal rounded">
         <h4 className="text-sm font-medium mb-2">Current Distribution</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
