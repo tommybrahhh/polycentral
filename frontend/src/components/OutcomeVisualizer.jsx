@@ -24,11 +24,11 @@ const OutcomeVisualizer = ({ options, optionVolumes, totalPool, onSelectPredicti
                 onClick={() => onSelectPrediction({ ...option, multiplier: volumeData.multiplier })}
                 role="button"
             >
-                <div className="flex flex-col sm:flex-row justify-between items-start mb-4">
-                    <span className={`font-bold text-xl sm:text-2xl ${colorClass}`}>{option.label}</span>
-                    <div className="text-left sm:text-right mt-2 sm:mt-0">
-                        <span className="text-primary font-semibold text-lg sm:text-xl block">{volumeData.multiplier ? volumeData.multiplier.toFixed(2) : '0.00'}x Payout</span>
-                        <span className="text-secondary text-xs sm:text-sm">(Win {exampleReward} PTS with a 100 PTS bet)</span>
+                <div className="flex flex-col justify-between items-start mb-4">
+                    <span className={`font-bold text-xl ${colorClass}`}>{option.label}</span>
+                    <div className="text-left mt-2">
+                        <span className="text-primary font-semibold text-lg block">{volumeData.multiplier ? volumeData.multiplier.toFixed(2) : '0.00'}x Payout</span>
+                        <span className="text-secondary text-xs">(Win {exampleReward} PTS with a 100 PTS bet)</span>
                     </div>
                 </div>
                 <div>
@@ -51,7 +51,7 @@ const OutcomeVisualizer = ({ options, optionVolumes, totalPool, onSelectPredicti
         const higherOption = parsedOptions.find(opt => opt.value === 'Higher');
 
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 gap-4 md:gap-6">
                 {lowerOption && renderOptionCard(lowerOption)}
                 {higherOption && renderOptionCard(higherOption)}
             </div>
