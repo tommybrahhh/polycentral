@@ -374,6 +374,79 @@ small {
   }
 }
 
+/* ===== EVENT LIST LAYOUT ===== */
+.events-container {
+  max-width: 1200px; /* Same as nav-container for consistency */
+  margin: 0 auto;
+  padding: var(--spacing-lg); /* Add some padding around the list */
+}
+
+.events-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Responsive grid */
+  gap: var(--spacing-lg); /* Gap between cards */
+}
+
+@media (max-width: 768px) {
+  .events-container {
+    padding: var(--spacing-md);
+  }
+  .events-list {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .events-container {
+    padding: var(--spacing-sm);
+  }
+  .events-list {
+    grid-template-columns: 1fr; /* Single column on very small screens */
+    gap: var(--spacing-sm);
+  }
+}
+
+/* ===== COUNTDOWN TIMER ===== */
+.countdown-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--off-white);
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: all var(--transition-fast);
+}
+
+.countdown-timer .icon {
+  font-size: 16px;
+}
+
+.countdown-timer.normal {
+  background-color: rgba(34, 197, 94, 0.2); /* Greenish background */
+  color: var(--success-green);
+}
+
+.countdown-timer.warning {
+  background-color: rgba(255, 140, 0, 0.2); /* Orangeish background */
+  color: var(--orange-primary);
+}
+
+.countdown-timer.critical {
+  background-color: rgba(239, 68, 68, 0.2); /* Reddish background */
+  color: var(--danger-red);
+  animation: pulse-timer 1s infinite;
+}
+
+@keyframes pulse-timer {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* ===== ANIMATIONS ===== */
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;

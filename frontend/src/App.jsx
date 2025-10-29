@@ -309,80 +309,26 @@ const App = () => {
   return (
     <Router>
       <div className="app-container main-container">
-        <nav className="main-nav" style={{
-          background: 'var(--ui-surface)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid var(--ui-border)',
-          padding: 'var(--spacing-md) var(--spacing-xl)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100
-        }}>
-          <div className="nav-container" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            maxWidth: '1200px',
-            margin: '0 auto',
-            width: '100%'
-          }}>
-            <div className="nav-links" style={{
-              display: 'flex',
-              gap: 'var(--spacing-xl)',
-              alignItems: 'center'
-            }}>
-              <Link to="/events" className="nav-link" style={{
-                color: 'var(--off-white)',
-                textDecoration: 'none',
-                fontWeight: '500',
-                padding: 'var(--spacing-sm) var(--spacing-md)',
-                borderRadius: 'var(--radius-sm)',
-                transition: 'all var(--transition-medium)'
-              }}>Events</Link>
+        <nav className="main-nav bg-[var(--ui-surface)] backdrop-blur-lg border-b border-[var(--ui-border)] py-4 px-8 sticky top-0 z-50">
+          <div className="nav-container flex justify-between items-center max-w-6xl mx-auto w-full">
+            <div className="nav-links flex gap-8 items-center">
+              <Link to="/events" className="nav-link text-[var(--off-white)] no-underline font-medium py-2 px-4 rounded-md transition-all duration-250">Events</Link>
             </div>
             {/* --- User Status Display --- */}
-            <div className="user-status" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--spacing-md)'
-            }}>
+            <div className="user-status flex items-center gap-4">
             {username ? (
-              <div className="user-dropdown" style={{ position: 'relative' }} ref={userMenuRef}>
-                <button 
-                  className="button button-icon" 
+              <div className="user-dropdown relative" ref={userMenuRef}>
+                <button
+                  className="button button-icon bg-transparent border-none cursor-pointer text-[var(--off-white)]"
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--off-white)'
-                  }}
                 >
                   <UserIcon />
                 </button>
                 {showUserMenu && (
-                  <div className="dropdown-menu" style={{
-                    position: 'absolute',
-                    top: 'calc(100% + var(--spacing-sm))',
-                    right: 0,
-                    background: 'var(--dark-charcoal)',
-                    backdropFilter: 'blur(16px)',
-                    border: '1px solid var(--ui-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: 'var(--spacing-sm)',
-                    minWidth: '220px',
-                    boxShadow: 'var(--shadow-elevated)',
-                    zIndex: 110,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'var(--spacing-xs)'
-                  }}>
-                    <div className="dropdown-header" style={{
-                      padding: 'var(--spacing-sm) var(--spacing-md)',
-                      borderBottom: '1px solid var(--ui-border)',
-                    }}>
-                      <span style={{ fontWeight: '600', display: 'block' }}>Hello, {username}!</span>
-                      <span style={{ fontSize: '0.875rem', color: 'var(--light-gray)' }}>{points} Points</span>
+                  <div className="dropdown-menu absolute top-[calc(100%+var(--spacing-sm))] right-0 bg-[var(--dark-charcoal)] backdrop-blur-lg border border-[var(--ui-border)] rounded-lg p-2 min-w-[220px] max-w-full shadow-[var(--shadow-elevated)] z-[110] flex flex-col gap-1">
+                    <div className="dropdown-header py-2 px-4 border-b border-[var(--ui-border)]">
+                      <span className="font-semibold block">Hello, {username}!</span>
+                      <span className="text-sm text-[var(--light-gray)]">{points} Points</span>
                     </div>
                     <Link to="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>Profile</Link>
                     {isAdmin && <Link to="/admin" className="dropdown-item" onClick={() => setShowUserMenu(false)}>Admin Dashboard</Link>}
@@ -404,7 +350,7 @@ const App = () => {
                     >
                       Claim Free Points
                     </button>
-                    <div style={{ borderTop: '1px solid var(--ui-border)', margin: 'var(--spacing-xs) 0' }}></div>
+                    <div className="border-t border-[var(--ui-border)] my-1"></div>
                     <button
                       className="dropdown-item"
                       onClick={() => {
@@ -423,27 +369,16 @@ const App = () => {
                 )}
               </div>
             ) : (
-              <div className="auth-buttons" style={{
-                display: 'flex',
-                gap: 'var(--spacing-sm)'
-              }}>
+              <div className="auth-buttons flex gap-2">
                 <button
-                  className="button button-secondary"
+                  className="button button-secondary py-2 px-4 text-sm"
                   onClick={() => setShowRegisterModal(true)}
-                  style={{
-                    padding: 'var(--spacing-sm) var(--spacing-md)',
-                    fontSize: '0.875rem'
-                  }}
                 >
                   Register
                 </button>
                 <button
-                  className="button button-primary"
+                  className="button button-primary py-2 px-4 text-sm"
                   onClick={() => setShowLoginModal(true)}
-                  style={{
-                    padding: 'var(--spacing-sm) var(--spacing-md)',
-                    fontSize: '0.875rem'
-                  }}
                 >
                   Login
                 </button>
