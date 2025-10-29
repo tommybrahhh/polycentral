@@ -12,6 +12,8 @@ import { CountdownTimer } from './EventCard';
 import BetSlip from './BetSlip';
 import SuccessAnimation from './SuccessAnimation';
 import Snackbar from './Snackbar';
+import PredictionModal from './PredictionModal';
+
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -20,6 +22,7 @@ const EventDetail = () => {
   const [error, setError] = useState(null);
   const [selectedPrediction, setSelectedPrediction] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
@@ -53,6 +56,7 @@ const EventDetail = () => {
 
   const handleSubmitPrediction = async (stake) => {
     setIsModalOpen(false);
+
     try {
       const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       if (!token) throw new Error('User not authenticated');
@@ -137,34 +141,32 @@ const EventDetail = () => {
             />
         </div>
 
-        <AnimatePresence>
-          {selectedPrediction && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-surface p-4 rounded-lg border-2 border-orange-primary"
-            >
-              <h3 className="text-center text-lg font-semibold mb-4">Place Your Bet</h3>
-              <BetSlip 
-                selectedPrediction={selectedPrediction}
-                currentUserPoints={JSON.parse(localStorage.getItem('user') || '{}').points || 0}
-                onSubmit={handleSubmitPrediction}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <PredictionModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          selectedPrediction={selectedPrediction}
-          event={event}
-          currentUserPoints={JSON.parse(localStorage.getItem('user') || '{}').points || 0}
-          onSubmit={handleSubmitPrediction}
-        />
-
-        {showSuccess && <SuccessAnimation />}
+                        <AnimatePresence>
+                          {selectedPrediction && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 20 }}
+                              className="bg-surface p-4 rounded-lg border-2 border-orange-primary"
+                            >
+                              <h3 className="text-center text-lg font-semibold mb-4">Place Your Bet</h3>
+                              <BetSlip 
+                                selectedPrediction={selectedPrediction}
+                                currentUserPoints={JSON.parse(localStorage.getItem('user') || '{}').points || 0}
+                                onSubmit={handleSubmitPrediction}
+                              />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>                <PredictionModal
+                  isOpen={isModalOpen}
+                  onClose={() => setIsModalOpen(false)}
+                  selectedPrediction={selectedPrediction}
+                  event={event}
+                  currentUserPoints={JSON.parse(localStorage.getItem('user') || '{}').points || 0}
+                  onSubmit={handleSubmitPrediction}
+                />
+        
+                {showSuccess && <SuccessAnimation />}
 
         <AnimatePresence>
           {snackbarMessage && <Snackbar message={snackbarMessage} />}
