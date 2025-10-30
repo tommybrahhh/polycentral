@@ -1358,27 +1358,10 @@ app.get('/api/events/:id/participations', async (req, res) => {
   }
 });
 
-// GET participation history for chart
-app.get('/api/events/:id/participations', async (req, res) => {
-  try {
-    const { id } = req.params;
 
-    // Fetch all participant entries for the event, ordered by creation time
-    const { rows } = await db.raw(
-      `SELECT prediction, created_at FROM participants WHERE event_id = ? ORDER BY created_at ASC`,
-      [id]
-    );
-
-    res.json(rows);
-    
-  } catch (error) {
-    console.error('Error fetching participation history:', error);
-    res.status(500).json({ error: 'Internal server error while fetching participation history' });
-  }
-});
 
 // THE NEW ROUTE ABOVE MUST BE PLACED BEFORE THE EXISTING ROUTE BELOW
-app.get('/api/events/:id', async (req, res) => {
+app.get('/api/events/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -1391,7 +1374,7 @@ app.get('/api/events/:id', async (req, res) => {
     
     // Get event data with participant counts and prize pool
     let query;
-    let params = [req.userId, eventId];
+    let params = [eventId, eventId, req.userId, eventId];
     
     if (db.client.config.client === 'pg') {
       query = `WITH event_totals AS (
