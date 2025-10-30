@@ -26,6 +26,8 @@ exports.up = async function(knex) {
   }
 };
 
+exports.config = { transaction: false };
+
 /**
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
