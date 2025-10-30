@@ -10,7 +10,7 @@ exports.up = async function(knex) {
       -- Migration v16 to v17: Add points_history table for tracking point transactions
 
       -- This script creates the table to log all points transactions.
-      CREATE TABLE points_history (
+      CREATE TABLE IF NOT EXISTS points_history (
           id SERIAL PRIMARY KEY,
 
           -- Foreign key to your existing 'users' table.
@@ -34,7 +34,7 @@ exports.up = async function(knex) {
       );
 
       -- An index to speed up queries for a specific user's history.
-      CREATE INDEX idx_points_history_user_id ON points_history(user_id);
+      CREATE INDEX IF NOT EXISTS idx_points_history_user_id ON points_history(user_id);
     `);
   } else if (client === 'sqlite3') {
     await knex.schema.raw(`

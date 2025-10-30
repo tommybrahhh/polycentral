@@ -30,10 +30,14 @@ exports.up = async function(knex) {
       UPDATE events SET pot_enabled = true WHERE pot_enabled IS NULL;
 
       -- Add constraint to ensure min_bet <= max_bet
+      ALTER TABLE events
+      DROP CONSTRAINT IF EXISTS chk_min_max_bet;
       ALTER TABLE events 
       ADD CONSTRAINT chk_min_max_bet CHECK (min_bet <= max_bet);
 
       -- Add constraint to ensure min_bet >= 1
+      ALTER TABLE events
+      DROP CONSTRAINT IF EXISTS chk_min_bet_positive;
       ALTER TABLE events 
       ADD CONSTRAINT chk_min_bet_positive CHECK (min_bet >= 1);
     `);

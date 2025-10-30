@@ -7,6 +7,10 @@ exports.up = async function(knex) {
 
   if (client === 'pg') {
     await knex.schema.raw(`
+      -- Drop the constraint if it exists, to make the migration re-runnable
+      ALTER TABLE tournaments
+      DROP CONSTRAINT IF EXISTS entry_fee_check;
+
       -- Add entry fee check constraint for tournaments
       ALTER TABLE tournaments
       ADD CONSTRAINT entry_fee_check

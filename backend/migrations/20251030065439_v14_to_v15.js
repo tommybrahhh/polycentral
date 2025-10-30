@@ -8,7 +8,7 @@ exports.up = async function(knex) {
   if (client === 'pg') {
     await knex.schema.raw(`
       -- Add platform fee tracking columns
-      ALTER TABLE events ADD COLUMN platform_fee INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS platform_fee INTEGER NOT NULL DEFAULT 0;
 
       -- Create platform fees tracking table
       CREATE TABLE IF NOT EXISTS platform_fees (
