@@ -11,6 +11,7 @@ console.log("Starting in " + (isProduction ? 'PRODUCTION' : 'development') + " m
 console.log("Environment variables source: " + (isProduction ? '.env.production' : '.env'));
 
 // Load environment variables
+console.log('Deployment verification: 2025-10-30 12:00:00');
 require('dotenv').config({
   path: path.join(__dirname, isProduction ? '.env.production' : '.env')
 });
