@@ -40,3 +40,10 @@ exports.down = async function(knex) {
       DROP INDEX IF EXISTS idx_participants_event_user;
       DROP INDEX IF EXISTS idx_users_wallet;
     `);
+  } else if (client === 'sqlite3') {
+    await knex.raw(`
+      DROP INDEX IF EXISTS idx_participants_event_user;
+      DROP INDEX IF EXISTS idx_users_wallet;
+    `);
+  }
+};
