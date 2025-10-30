@@ -2,7 +2,6 @@
 // This handles all API endpoints, database operations, and event management
 
 const path = require('path');
-const fs = require('fs'); // Add fs import here
 
 // Robust production detection (Render sets RENDER=true, Railway sets RAILWAY_ENVIRONMENT_NAME=production)
 const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_NAME === 'production';
