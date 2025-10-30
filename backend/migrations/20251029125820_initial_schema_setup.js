@@ -87,13 +87,15 @@ exports.up = async function(knex) {
           is_admin BOOLEAN DEFAULT FALSE,
           is_suspended BOOLEAN DEFAULT FALSE
       );
-
+    `);
+    await knex.schema.raw(`
       CREATE TABLE IF NOT EXISTS event_types (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT UNIQUE NOT NULL,
           description TEXT
       );
-
+    `);
+    await knex.schema.raw(`
       CREATE TABLE IF NOT EXISTS events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT UNIQUE NOT NULL,
@@ -119,7 +121,8 @@ exports.up = async function(knex) {
           prediction_window TEXT DEFAULT '24 hours',
           is_daily BOOLEAN DEFAULT false
       );
-
+    `);
+    await knex.schema.raw(`
       CREATE TABLE IF NOT EXISTS participants (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           event_id INTEGER REFERENCES events(id),

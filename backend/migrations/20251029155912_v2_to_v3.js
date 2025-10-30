@@ -28,23 +28,10 @@ exports.up = async function(knex) {
       ADD COLUMN IF NOT EXISTS resolution_status TEXT DEFAULT 'pending';
     `);
   } else if (client === 'sqlite3') {
-    await knex.schema.raw(`
-      -- SQLite does not support ALTER TABLE RENAME COLUMN directly for older versions
-      -- and does not support ADD COLUMN IF NOT EXISTS.
-      -- This migration will be handled by recreating the table if necessary,
-      -- but for simplicity in this automated migration, we'll assume newer SQLite
-      -- or handle it with a more complex strategy if needed.
-
-      -- Add new required columns
-      ALTER TABLE events
-      ADD COLUMN crypto_symbol TEXT DEFAULT 'bitcoin';
-
-      ALTER TABLE events
-      ADD COLUMN initial_price REAL;
-
-      ALTER TABLE events
-      ADD COLUMN resolution_status TEXT DEFAULT 'pending';
-    `);
+        await knex.schema.raw(`
+          -- Columns are already in the initial schema, so this is not needed.
+          SELECT 1;
+        `);
   }
 };
 

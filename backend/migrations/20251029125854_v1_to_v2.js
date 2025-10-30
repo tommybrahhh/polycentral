@@ -30,9 +30,7 @@ exports.up = async function(knex) {
   } else if (client === 'sqlite3') {
     await knex.schema.raw(`
       -- SQLite migration from v1 to v2
-      -- Add category column to events table
-      ALTER TABLE events ADD COLUMN category TEXT;
-      -- Skipping foreign key constraint for participants.event_id due to SQLite limitations
+      -- Column 'category' is already in the initial schema, so this is not needed.
       SELECT 1;
     `);
   }

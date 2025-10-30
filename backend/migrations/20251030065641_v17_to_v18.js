@@ -48,10 +48,17 @@ exports.up = async function(knex) {
       CREATE INDEX IF NOT EXISTS idx_email_change_tokens_token ON email_change_verifications(verification_token);
       CREATE INDEX IF NOT EXISTS idx_email_change_tokens_user ON email_change_verifications(user_id);
       CREATE INDEX IF NOT EXISTS idx_email_change_tokens_expires ON email_change_verifications(expires_at);
-
-      -- Add email verification status to users table
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE;
     `);
+    try {
+      await knex.schema.raw(`
+        -- Add email verification status to users table
+        ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT TRUE;
+      `);
+    } catch (e) {
+      if (!e.message.includes('duplicate column name')) {
+        throw e;
+      }
+    }
   }
 };
 

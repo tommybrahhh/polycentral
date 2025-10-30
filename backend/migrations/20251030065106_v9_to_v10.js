@@ -41,13 +41,18 @@ exports.up = async function(knex) {
 
       CREATE INDEX IF NOT EXISTS idx_tournament_entries_user ON tournament_entries(user_id);
       CREATE INDEX IF NOT EXISTS idx_tournament_entries_tournament ON tournament_entries(tournament_id);
+    `);
 
-      -- Add version tracking for schema changes (if not already handled by Knex)
+    // Add version tracking for schema changes (if not already handled by Knex)
+    await knex.schema.raw(`
       CREATE TABLE IF NOT EXISTS schema_versions (
           version INTEGER PRIMARY KEY,
           applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       COMMENT ON TABLE schema_versions IS 'Tracks database schema migration versions';
+    `);
+
+    await knex.schema.raw(`
       INSERT INTO schema_versions (version) VALUES (10)
       ON CONFLICT (version) DO NOTHING;
     `);

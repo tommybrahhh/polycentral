@@ -8,25 +8,6 @@ exports.up = async function(knex) {
   if (client === 'pg') {
     await knex.schema.raw(`
       -- Migration v10 to v11: Add prediction and settled columns to participants
-      -- Check current version (Knex handles versioning, so this is mostly for historical context)
-      DO $$
-      DECLARE
-          current_version INTEGER;
-      BEGIN
-          SELECT MAX(version) INTO current_version FROM schema_versions;
-          IF current_version != 10 THEN
-              RAISE EXCEPTION 'Schema version mismatch. Expected 10, found %', current_version;
-          END IF;
-      END $$;
-
-      -- Create participants table if it doesn't exist
-      CREATE TABLE IF NOT EXISTS participants (
-          event_id INTEGER REFERENCES events(id),
-          user_id INTEGER REFERENCES users(id),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          PRIMARY KEY (event_id, user_id)
-      );
-
       -- Add prediction column if it doesn't exist
       DO $$
       BEGIN
@@ -52,12 +33,6 @@ exports.up = async function(knex) {
       -- Idempotent index creation
       CREATE INDEX IF NOT EXISTS idx_participants_unsettled ON participants (event_id)
       WHERE settled = FALSE;
-
-      -- Update schema version (Knex handles this, so this is for historical context)
-      INSERT INTO schema_versions (version) VALUES (11);
-
-      -- Rollback safeguard
-      COMMENT ON TABLE participants IS 'Contains event participation records v2';
     `);
   } else if (client === 'sqlite3') {
     // SQLite: Migration v10 to v11: Add missing total_bets column to events table
@@ -84,8 +59,6 @@ exports.down = async function(knex) {
       ALTER TABLE participants
       DROP COLUMN IF EXISTS settled,
       DROP COLUMN IF EXISTS prediction;
-      DROP TABLE IF EXISTS participants;
-      DELETE FROM schema_versions WHERE version = 11;
     `);
   } else if (client === 'sqlite3') {
     console.log('SQLite: Dropping columns and tables is not directly supported via ALTER TABLE. Manual intervention or table recreation may be required.');
