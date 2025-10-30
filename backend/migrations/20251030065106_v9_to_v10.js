@@ -45,6 +45,7 @@ exports.up = async function(knex) {
 
     // Add version tracking for schema changes (if not already handled by Knex)
     await knex.schema.raw(`
+      DROP TABLE IF EXISTS schema_versions;
       CREATE TABLE IF NOT EXISTS schema_versions (
           version INTEGER PRIMARY KEY,
           applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
