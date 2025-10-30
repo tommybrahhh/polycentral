@@ -6,7 +6,7 @@ exports.up = async function(knex) {
   const client = knex.client.config.client;
 
   if (client === 'pg') {
-    await knex.schema.raw(`
+    await knex.raw(`
       -- Add performance indexes
       CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_participants_event_user
       ON participants(event_id, user_id);
@@ -36,7 +36,7 @@ exports.down = async function(knex) {
   const client = knex.client.config.client;
 
   if (client === 'pg') {
-    await knex.schema.raw(`
+    await knex.raw(`
       DROP INDEX CONCURRENTLY IF EXISTS idx_participants_event_user;
       DROP INDEX CONCURRENTLY IF EXISTS idx_users_wallet;
     `);
