@@ -2,6 +2,7 @@
 // This handles all API endpoints, database operations, and event management
 
 const path = require('path');
+const fs = require('fs'); // Add fs import here
 
 // Robust production detection (Render sets RENDER=true, Railway sets RAILWAY_ENVIRONMENT_NAME=production)
 const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_NAME === 'production';
@@ -14,6 +15,12 @@ console.log("Environment variables source: " + (isProduction ? '.env.production'
 require('dotenv').config({
   path: path.join(__dirname, isProduction ? '.env.production' : '.env')
 });
+
+// Knex.js setup
+const knex = require('knex');
+const knexConfig = require('./knexfile');
+
+let db; // This will hold the knex instance
 
 // Log critical environment variables
 console.log("Critical environment variables:");
@@ -79,7 +86,7 @@ const authenticateAdmin = async (req, res, next) => {
             const userId = decoded.userId;
             
             // Check if user is admin directly from database
-            const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [userId]);
+            const { rows } = await db.raw('SELECT is_admin FROM users WHERE id = ?', [userId]);
             
             if (rows.length === 0) {
                 return res.status(404).json({ error: 'User not found' });
@@ -153,118 +160,48 @@ app.use('/api/admin', adminRouter);
 
 // --- Database Setup ---
 const fs = require('fs').promises;
-let pool;
-let clients = new Set();
 
-if (dbType === 'postgres') {
-  const { Pool } = require('pg');
-  
-  // Try to connect with the main DATABASE_URL first
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  
-  // Add error handling for connection issues
-  pool.on('error', async (err) => {
-    console.error('PostgreSQL connection error:', err);
-    
-    // If connection fails, try with the public URL
-    if (process.env.DATABASE_PUBLIC_URL && err.code === 'ECONNREFUSED') {
-      console.log('Trying to connect with public database URL...');
-      pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
-    }
-  });
-  
-  console.log('💾 PostgreSQL database connected');
+// Initialize Knex based on environment
+if (isProduction) {
+  db = knex(knexConfig.production);
+  console.log('💾 Initialized Knex for PRODUCTION (PostgreSQL)');
 } else {
-  const sqlite3 = require('sqlite3').verbose();
-  const db = new sqlite3.Database(':memory:'); // Use in-memory database for testing
-
-  pool = {
-    query: (text, params) => {
-      return new Promise((resolve, reject) => {
-        // SQLite uses '?' instead of '$1, $2', so we convert them
-        const sqliteQuery = text.replace(/\$\d+/g, '?');
-        db.all(sqliteQuery, params, (err, rows) => {
-          if (err) reject(err);
-          else resolve({ rows });
-        });
-      });
-    },
-    // Add a mock .connect() method to support transactions in SQLite
-    connect: () => Promise.resolve({
-        query: async (text, params) => {
-            if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') return { rows: [] };
-            return pool.query(text, params);
-        },
-        release: () => {}
-    })
-  };
-  console.log('💾 SQLite database connected');
+  // For development, use DB_CLIENT env var or default to sqlite3
+  const client = process.env.DB_CLIENT || 'sqlite3';
+  if (client === 'pg') {
+    db = knex(knexConfig.development);
+    console.log('💾 Initialized Knex for DEVELOPMENT (PostgreSQL)');
+  } else {
+    // Ensure SQLite database file exists for development
+    const sqliteDbPath = path.join(__dirname, 'database.sqlite');
+    if (!fs.existsSync(sqliteDbPath)) {
+      fs.writeFileSync(sqliteDbPath, ''); // Create empty file if it doesn't exist
+    }
+    db = knex({
+      ...knexConfig.development,
+      connection: { filename: sqliteDbPath }
+    });
+    console.log('💾 Initialized Knex for DEVELOPMENT (SQLite)');
+  }
 }
+
+// Attach knex to the global object for easier access in other modules if needed
+// global.db = db;
+
+// Test database connection
+db.raw('SELECT 1')
+  .then(() => console.log("Database connection successful"))
+  .catch((err) => {
+    console.error("❌ Database connection failed:", err);
+    process.exit(1);
+  });
 
 // --- Database Initialization ---
 async function initializeDatabase() {
-  const dbType = getDatabaseType();
   try {
-    console.log(`🛠️ Initializing database (${dbType}) tables and constraints...`);
-    // Log current schema version
-    try {
-      const { rows } = await pool.query('SELECT * FROM schema_versions ORDER BY applied_at DESC');
-      console.log('Current schema versions:', rows);
-    } catch (error) {
-      console.log('schema_versions table does not exist yet');
-    }
-    
-    // Load and execute schema initialization
-    const initSql = await fs.readFile(
-      path.join(__dirname, 'sql', dbType, 'init_tables.sql'),
-      'utf8'
-    );
-    
-    // SQLite requires executing each statement individually
-    if (dbType === 'sqlite') {
-      const statements = initSql.split(';').filter(stmt => stmt.trim());
-      for (const stmt of statements) {
-        await pool.query(stmt);
-      }
-    } else {
-      await pool.query(initSql);
-    }
-    
-    // Load and execute seed data
-    const seedSql = await fs.readFile(
-      path.join(__dirname, 'sql', dbType, 'seed_data.sql'),
-      'utf8'
-    );
-    
-    if (dbType === 'sqlite') {
-      const statements = seedSql.split(';').filter(stmt => stmt.trim());
-      for (const stmt of statements) {
-        await pool.query(stmt);
-      }
-    } else {
-      await pool.query(seedSql);
-    }
-    
-    // Create sample events and test users in all environments
-    // Development-only sample data creation (removed in production)
-    
-    // Run database migrations BEFORE creating sample data
-    await runMigrations();
-
-    // Ensure table integrity for all tables
-    console.log('🔧 Ensuring table integrity for all tables...');
-    await ensureUsersTableIntegrity();
-    await ensureParticipantsTableIntegrity();
-    await ensureEventsTableIntegrity();
-    console.log('✅ Table integrity checks completed');
-    
-    // Apply new migrations if any
-    await runMigrations();
-
-    // Skip sample data in production - removed entirely to prevent errors
-    console.log('⏭️ Skipping sample data creation in production');
-    
-    console.log('✅ Database initialization complete');
+    console.log(`🛠️ Running database migrations...`);
+    await db.migrate.latest(knexConfig);
+    console.log('✅ Database migrations complete');
   } catch (err) {
     console.error('❌ Database initialization failed:', err);
     process.exit(1);
@@ -277,473 +214,6 @@ async function initializeDatabase() {
 
 // --- Event Resolution Job ---
 // --- Event Creation Job ---
-async function constraintExists(table, constraintName) {
-  if (dbType === 'postgres') {
-    const res = await pool.query(
-      `SELECT 1 FROM information_schema.table_constraints
-       WHERE table_name = $1 AND constraint_name = $2`,
-      [table, constraintName]
-    );
-    return res.rows.length > 0;
-  } else {
-    // SQLite doesn't have a direct way to check constraints
-    // We'll rely on try-catch during migration execution
-    return false;
-  }
-}
-
-async function runMigrationSafe(sql) {
-  try {
-    await pool.query(sql);
-  } catch (error) {
-    if (!error.message.includes('already exists') && error.code !== '42710') {
-      throw error;
-    }
-    console.warn(`Migration item already exists: ${error.message}`);
-  }
-}
-
-// Ensure participants table has the correct column structure
-async function ensureParticipantsTableIntegrity() {
-  const dbType = getDatabaseType();
-  try {
-    console.log('🔧 Checking participants table column integrity...');
-    
-    // Query to check column names - different for PostgreSQL and SQLite
-    let columnsQuery;
-    if (dbType === 'postgres') {
-      columnsQuery = `
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'participants' 
-        AND column_name IN ('amount', 'points_paid')
-      `;
-    } else {
-      // SQLite
-      columnsQuery = `
-        PRAGMA table_info(participants)
-      `;
-    }
-    
-    const result = await pool.query(columnsQuery);
-    const columns = dbType === 'postgres' 
-      ? result.rows.map(row => row.column_name) 
-      : result.rows.filter(row => ['amount', 'points_paid'].includes(row.name)).map(row => row.name);
-    
-    const hasAmount = columns.includes('amount');
-    const hasPointsPaid = columns.includes('points_paid');
-    
-    if (hasAmount && !hasPointsPaid) {
-      console.log('✅ Participants table has correct column: amount');
-      return;
-    }
-    
-    if (!hasAmount && hasPointsPaid) {
-      // Rename points_paid to amount
-      const renameQuery = dbType === 'postgres'
-        ? 'ALTER TABLE participants RENAME COLUMN points_paid TO amount'
-        : `
-          CREATE TABLE participants_new AS SELECT id, event_id, user_id, prediction, points_paid as amount, created_at FROM participants;
-          DROP TABLE participants;
-          ALTER TABLE participants_new RENAME TO participants;
-        `;
-      
-      await pool.query(renameQuery);
-      console.log('✅ Renamed points_paid column to amount in participants table');
-      return;
-    }
-    
-    if (hasAmount && hasPointsPaid) {
-      // Both columns exist, drop the old one
-      const dropQuery = dbType === 'postgres'
-        ? 'ALTER TABLE participants DROP COLUMN points_paid'
-        : 'ALTER TABLE participants DROP COLUMN points_paid'; // SQLite 3.35.0+ supports DROP COLUMN
-      
-      try {
-        await pool.query(dropQuery);
-        console.log('✅ Removed deprecated points_paid column from participants table');
-      } catch (error) {
-        console.warn('⚠️ Could not drop points_paid column, may need manual cleanup:', error.message);
-      }
-      return;
-    }
-    
-    // Neither column exists - create amount column
-    const addColumnQuery = dbType === 'postgres'
-      ? 'ALTER TABLE participants ADD COLUMN IF NOT EXISTS amount INTEGER NOT NULL DEFAULT 0'
-      : 'ALTER TABLE participants ADD COLUMN amount INTEGER NOT NULL DEFAULT 0';
-    
-    await pool.query(addColumnQuery);
-    console.log('✅ Added amount column to participants table');
-    
-  } catch (error) {
-    console.error('❌ Error checking participants table integrity:', error);
-    // Don't throw - this is a best-effort fix, not critical to startup
-  }
-}
-
-// Ensure users table has the correct column structure
-async function ensureUsersTableIntegrity() {
-  const dbType = getDatabaseType();
-  try {
-    console.log('🔧 Checking users table column integrity...');
-    
-    // Query to check column names - different for PostgreSQL and SQLite
-    let columnsQuery;
-    if (dbType === 'postgres') {
-      columnsQuery = `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'users'
-        AND column_name IN ('last_claimed', 'last_claim_date')
-      `;
-    } else {
-      // SQLite
-      columnsQuery = `
-        PRAGMA table_info(users)
-      `;
-    }
-    
-    const result = await pool.query(columnsQuery);
-    const columns = dbType === 'postgres'
-      ? result.rows.map(row => row.column_name)
-      : result.rows.filter(row => ['last_claimed', 'last_claim_date'].includes(row.name)).map(row => row.name);
-    
-    const hasLastClaimed = columns.includes('last_claimed');
-    const hasLastClaimDate = columns.includes('last_claim_date');
-    
-    if (hasLastClaimed && !hasLastClaimDate) {
-      console.log('✅ Users table has correct column: last_claimed');
-      return;
-    }
-    
-    if (!hasLastClaimed && hasLastClaimDate) {
-      // Rename last_claim_date to last_claimed
-      const renameQuery = dbType === 'postgres'
-        ? 'ALTER TABLE users RENAME COLUMN last_claim_date TO last_claimed'
-        : `
-          CREATE TABLE users_new AS SELECT id, email, username, password_hash, wallet_address, points, total_events, won_events, last_claim_date as last_claimed, last_login_date, created_at FROM users;
-          DROP TABLE users;
-          ALTER TABLE users_new RENAME TO users;
-        `;
-      
-      await pool.query(renameQuery);
-      console.log('✅ Renamed last_claim_date column to last_claimed in users table');
-      return;
-    }
-    
-    if (hasLastClaimed && hasLastClaimDate) {
-      // Both columns exist, migrate data and drop the old one
-      if (dbType === 'postgres') {
-        // Update last_claimed with data from last_claim_date where last_claimed is NULL
-        await pool.query(
-          `UPDATE users
-           SET last_claimed = last_claim_date
-           WHERE last_claimed IS NULL AND last_claim_date IS NOT NULL`
-        );
-        
-        // Drop the old column
-        await pool.query('ALTER TABLE users DROP COLUMN last_claim_date');
-      } else {
-        // For SQLite, we need to recreate the table
-        await pool.query(`
-          CREATE TABLE users_new AS
-          SELECT id, email, username, password_hash, wallet_address, points, total_events, won_events,
-                 COALESCE(last_claimed, last_claim_date) as last_claimed, last_login_date, created_at
-          FROM users
-        `);
-        await pool.query('DROP TABLE users');
-        await pool.query('ALTER TABLE users_new RENAME TO users');
-      }
-      console.log('✅ Migrated data from last_claim_date to last_claimed and removed old column');
-      return;
-    }
-    
-    // Neither column exists - create last_claimed column
-    const addColumnQuery = dbType === 'postgres'
-      ? 'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_claimed TIMESTAMP'
-      : 'ALTER TABLE users ADD COLUMN last_claimed TEXT';
-    
-    await pool.query(addColumnQuery);
-    console.log('✅ Added last_claimed column to users table');
-    
-  } catch (error) {
-    console.error('❌ Error checking users table integrity:', error);
-    // Don't throw - this is a best-effort fix, not critical to startup
-  }
-}
-
-// Ensure events table has the correct column structure
-async function ensureEventsTableIntegrity() {
-  const dbType = getDatabaseType();
-  try {
-    console.log('🔧 Checking events table column integrity...');
-    
-    // Query to check column names - different for PostgreSQL and SQLite
-    let columnsQuery;
-    if (dbType === 'postgres') {
-      columnsQuery = `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'events'
-        AND column_name IN ('crypto_symbol', 'cryptocurrency', 'total_bets')
-      `;
-    } else {
-      // SQLite
-      columnsQuery = `
-        PRAGMA table_info(events)
-      `;
-    }
-    
-    const result = await pool.query(columnsQuery);
-    const columns = dbType === 'postgres'
-      ? result.rows.map(row => row.column_name)
-      : result.rows.filter(row => ['crypto_symbol', 'cryptocurrency', 'total_bets'].includes(row.name)).map(row => row.name);
-    
-    const hasCryptoSymbol = columns.includes('crypto_symbol');
-    const hasCryptocurrency = columns.includes('cryptocurrency');
-    const hasTotalBets = columns.includes('total_bets');
-    
-    // Check and fix total_bets column
-    if (!hasTotalBets) {
-      const addTotalBetsQuery = dbType === 'postgres'
-        ? 'ALTER TABLE events ADD COLUMN IF NOT EXISTS total_bets INTEGER NOT NULL DEFAULT 0'
-        : 'ALTER TABLE events ADD COLUMN total_bets INTEGER NOT NULL DEFAULT 0';
-      
-      await pool.query(addTotalBetsQuery);
-      console.log('✅ Added total_bets column to events table');
-    }
-    
-    if (hasCryptoSymbol && !hasCryptocurrency) {
-      console.log('✅ Events table has correct column: crypto_symbol');
-      return;
-    }
-    
-    if (!hasCryptoSymbol && hasCryptocurrency) {
-      // Rename cryptocurrency to crypto_symbol
-      const renameQuery = dbType === 'postgres'
-        ? 'ALTER TABLE events RENAME COLUMN cryptocurrency TO crypto_symbol'
-        : `
-          CREATE TABLE events_new AS SELECT id, title, description, category, options, 100 as entry_fee, max_participants, current_participants, prize_pool, total_bets, start_time, end_time, status, correct_answer, event_type_id, created_at, updated_at, cryptocurrency as crypto_symbol, initial_price, final_price, resolution_status, prediction_window, is_daily FROM events;
-          DROP TABLE events;
-          ALTER TABLE events_new RENAME TO events;
-        `;
-      
-      await pool.query(renameQuery);
-      console.log('✅ Renamed cryptocurrency column to crypto_symbol in events table');
-      return;
-    }
-    
-    // If both columns exist, we'll keep crypto_symbol and drop cryptocurrency
-    if (hasCryptoSymbol && hasCryptocurrency) {
-      if (dbType === 'postgres') {
-        // Update crypto_symbol with data from cryptocurrency where crypto_symbol is NULL
-        await pool.query(
-          `UPDATE events
-           SET crypto_symbol = cryptocurrency
-           WHERE crypto_symbol IS NULL AND cryptocurrency IS NOT NULL`
-        );
-        
-        // Drop the old column
-        await pool.query('ALTER TABLE events DROP COLUMN cryptocurrency');
-      } else {
-        // For SQLite, we need to recreate the table
-        await pool.query(`
-          CREATE TABLE events_new AS
-          SELECT id, title, description, category, options, entry_fee, max_participants, current_participants, prize_pool, total_bets, start_time, end_time, status, correct_answer, event_type_id, created_at, updated_at, COALESCE(crypto_symbol, cryptocurrency) as crypto_symbol, initial_price, final_price, resolution_status, prediction_window, is_daily
-          FROM events
-        `);
-        await pool.query('DROP TABLE events');
-        await pool.query('ALTER TABLE events_new RENAME TO events');
-      }
-      console.log('✅ Migrated data from cryptocurrency to crypto_symbol and removed old column');
-      return;
-    }
-    
-    // Check if crypto_symbol exists (no action needed)
-    if (hasCryptoSymbol && !hasCryptocurrency) {
-      console.log('✅ Events table has correct column: crypto_symbol');
-      return;
-    }
-    
-    // Neither column exists - create crypto_symbol column
-    const addColumnQuery = dbType === 'postgres'
-      ? 'ALTER TABLE events ADD COLUMN IF NOT EXISTS crypto_symbol TEXT DEFAULT \'bitcoin\''
-      : 'ALTER TABLE events ADD COLUMN crypto_symbol TEXT DEFAULT \'bitcoin\'';
-    
-    await pool.query(addColumnQuery);
-    console.log('✅ Added crypto_symbol column to events table');
-    
-  } catch (error) {
-    console.error('❌ Error checking events table integrity:', error);
-    // Don't throw - this is a best-effort fix, not critical to startup
-  }
-}
-
-async function runMigrations() {
-  const dbType = getDatabaseType();
-  try {
-    console.log(`🛠️ Running database migrations (${dbType})...`);
-    const migrationPath = path.join(__dirname, 'sql', dbType);
-    console.log('📁 Migration files directory:', migrationPath);
-    
-    // Verify migrations directory exists
-    if (!(await fs.access(migrationPath).then(() => true).catch(() => false))) {
-      throw new Error(`Migrations directory not found: ${migrationPath}`);
-    }
-    
-    // Create version tracking table if not exists
-    await runMigrationSafe(`
-      CREATE TABLE IF NOT EXISTS schema_versions (
-        id SERIAL PRIMARY KEY,
-        version INT NOT NULL,
-        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    
-    // Check current version
-    let currentVersion = 0;
-    try {
-      const { rows } = await pool.query('SELECT MAX(version) as current FROM schema_versions');
-      currentVersion = rows[0].current || 0;
-      console.log('Current database version:', currentVersion);
-    } catch (e) {
-      console.log('No existing schema versions, starting fresh');
-    }
-    
-    // Get all migration files sorted by version
-    const migrationFiles = (await fs.readdir(path.join(__dirname, 'sql', dbType)))
-        .filter(f => f.startsWith('migrate_v'))
-        .sort((a, b) => {
-            const aVersions = a.match(/\d+/g).map(Number);
-            const bVersions = b.match(/\d+/g).map(Number);
-            const aFrom = aVersions[0], aTo = aVersions[1];
-            const bFrom = bVersions[0], bTo = bVersions[1];
-            // Sort upgrades ascending
-            return aTo - bTo;
-        });
-    
-    console.log('📄 Found migration files:', migrationFiles);
-
-    for (const file of migrationFiles) {
-        const toVersion = parseInt(file.match(/\d+/g)[1]);
-        console.log(`🔍 Processing migration file: ${file} (toVersion: ${toVersion}, currentVersion: ${currentVersion})`);
-        if (currentVersion >= toVersion) {
-            console.log(`✅ Migration to v${toVersion} already applied. Skipping.`);
-            continue;
-        }
-
-        console.log(`🛠️ Applying migration from v${currentVersion}->v${toVersion}`);
-        const migrationSql = await fs.readFile(
-            path.join(__dirname, 'sql', dbType, file),
-            'utf8'
-        );
-
-        if (dbType === 'sqlite') {
-          const statements = migrationSql.split(';').filter(stmt => stmt.trim());
-          for (const stmt of statements) {
-            await runMigrationSafe(stmt);
-          }
-        } else {
-          // For PostgreSQL, we need to handle CREATE INDEX CONCURRENTLY and DO blocks differently
-          // as they cannot run inside a transaction block
-          // Split SQL but preserve DO blocks with $$ delimiters
-          const statements = splitSqlPreservingDoBlocks(migrationSql);
-          
-          for (const stmt of statements) {
-            const trimmedStmt = stmt.trim();
-            if (!trimmedStmt) continue;
-            
-            // Check if this is a CREATE INDEX CONCURRENTLY command
-            if (/^CREATE\s+INDEX\s+CONCURRENTLY/i.test(trimmedStmt)) {
-              console.log(`Executing CREATE INDEX CONCURRENTLY command outside transaction: ${trimmedStmt.substring(0, 100)}...`);
-              try {
-                await pool.query(trimmedStmt);
-                console.log(`✅ CREATE INDEX CONCURRENTLY executed successfully`);
-              } catch (error) {
-                if (!error.message.includes('already exists')) {
-                  throw error;
-                }
-                console.warn(`Index already exists: ${error.message}`);
-              }
-            } else if (/^DO\s*\$\$/i.test(trimmedStmt)) {
-              // Handle DO blocks with $$ delimiters
-              console.log(`Executing DO block outside transaction: ${trimmedStmt.substring(0, 100)}...`);
-              try {
-                await pool.query(trimmedStmt);
-                console.log(`✅ DO block executed successfully`);
-              } catch (error) {
-                throw error;
-              }
-            } else {
-              // For all other statements, execute with transaction safety
-              await runMigrationSafe(trimmedStmt);
-            }
-          }
-        }
-
-        // Record migration completion
-        await pool.query(
-            'INSERT INTO schema_versions (version) VALUES ($1)',
-            [toVersion]
-        );
-        console.log(`✅ Migration to v${toVersion} completed`);
-    }
-    
-    console.log('✅ Database migrations applied and version recorded');
-  } catch (error) {
-    console.error('❌ Database migrations failed:', error);
-    process.exit(1);
-  }
-}
-
-// Helper function to split SQL while preserving DO blocks with $$ delimiters
-function splitSqlPreservingDoBlocks(sql) {
-  const statements = [];
-  let currentStatement = '';
-  let inDoBlock = false;
-  
-  // Split by lines to process each line
-  const lines = sql.split('\n');
-  
-  for (const line of lines) {
-    // Check for DO block start
-    if (/^\s*DO\s*\$\$/.test(line)) {
-      inDoBlock = true;
-      currentStatement = line + '\n';
-      continue;
-    }
-    
-    // If we're in a DO block, check for the end
-    if (inDoBlock) {
-      currentStatement += line + '\n';
-      // Check for end of DO block (END followed by $$)
-      if (/\s*END\s*\$\$/.test(line) || /\s*END\s*\$\$;/.test(line)) {
-        inDoBlock = false;
-        statements.push(currentStatement.trim());
-        currentStatement = '';
-      }
-      continue;
-    }
-    
-    // Regular statement processing
-    currentStatement += line + '\n';
-    
-    // Check if line ends with semicolon (end of statement)
-    if (line.trim().endsWith(';')) {
-      statements.push(currentStatement.trim());
-      currentStatement = '';
-    }
-  }
-  
-  // Add any remaining statement
-  if (currentStatement.trim()) {
-    statements.push(currentStatement.trim());
-  }
-  
-  return statements.filter(stmt => stmt.trim());
-}
-
 // --- Event Creation Functions ---
 async function createEvent(initialPrice) {
   const startTime = new Date();
@@ -762,15 +232,15 @@ async function createEvent(initialPrice) {
   ];
   
   // Look up event type 'prediction'
-  const typeQuery = await pool.query(`SELECT id FROM event_types WHERE name = 'prediction'`);
+  const typeQuery = await db.raw(`SELECT id FROM event_types WHERE name = 'prediction'`);
   if (typeQuery.rows.length === 0) {
     throw new Error("Event type 'prediction' not found");
   }
   const eventTypeId = typeQuery.rows[0].id;
 
-  await pool.query(
+  await db.raw(
     `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee, options)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'pending', $8, $9)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'pending', ?, ?)`,
     [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee, JSON.stringify(options)]
   );
 }
@@ -783,9 +253,9 @@ async function resolvePendingEvents() {
     console.log(`🔍 Resolution timestamp: ${now.toISOString()}`);
     
     // Find events ready for resolution
-    const { rows: events } = await pool.query(
+    const { rows: events } = await db.raw(
       `SELECT id, end_time, initial_price FROM events
-       WHERE end_time < $1 AND resolution_status = 'pending'`,
+       WHERE end_time < ? AND resolution_status = 'pending'`,
       [now]
     );
 
@@ -807,10 +277,10 @@ async function resolvePendingEvents() {
         console.log(`🔍 Event ${event.id} final price from CoinGecko: $${finalPrice}`);
         
         // Update event with final price
-        await pool.query(
+        await db.raw(
           `UPDATE events
-           SET final_price = $1, resolution_status = 'resolved'
-           WHERE id = $2`,
+           SET final_price = ?, resolution_status = 'resolved'
+           WHERE id = ?`,
           [finalPrice, event.id]
         );
         
@@ -834,17 +304,17 @@ async function resolvePendingEvents() {
         console.log(`🔍 Event ${event.id} correct answer: ${correctAnswer}`);
         
         // Update event with correct answer
-        await pool.query(
+        await db.raw(
           `UPDATE events
-           SET correct_answer = $1
-           WHERE id = $2`,
+           SET correct_answer = ?
+           WHERE id = ?`,
           [correctAnswer, event.id]
         );
         
         // Calculate total pot from all participants
         console.log(`🔍 Calculating total pot for event ${event.id}...`);
-        const { rows: [potData] } = await pool.query(
-          `SELECT SUM(amount) as total_pot FROM participants WHERE event_id = $1`,
+        const { rows: [potData] } = await db.raw(
+          `SELECT SUM(amount) as total_pot FROM participants WHERE event_id = ?`,
           [event.id]
         );
         console.log(`🔍 Event ${event.id} total pot: ${potData.total_pot}`);
@@ -857,16 +327,16 @@ async function resolvePendingEvents() {
         
         // Update event with platform fee
         console.log(`🔍 Updating event ${event.id} with platform fee...`);
-        await pool.query(
-          'UPDATE events SET platform_fee = platform_fee + $1 WHERE id = $2',
+        await db.raw(
+          'UPDATE events SET platform_fee = platform_fee + ? WHERE id = ?',
           [platformFee, event.id]
         );
         console.log(`🔍 Event ${event.id} platform fee updated successfully`);
         
         if (potData.total_pot > 0) {
           // Get all winners with their bet amounts and participant IDs
-          const { rows: winners } = await pool.query(
-            `SELECT id, user_id, amount FROM participants WHERE event_id = $1 AND prediction = $2`,
+          const { rows: winners } = await db.raw(
+            `SELECT id, user_id, amount FROM participants WHERE event_id = ? AND prediction = ?`,
             [event.id, correctAnswer]
           );
           
@@ -887,59 +357,56 @@ async function resolvePendingEvents() {
               // Record fee contribution for this participant
               const winnerFee = Math.floor(winner.amount * 0.05);
               console.log(`🔍 Recording platform fee for winner ${winner.user_id}: ${winnerFee}`);
-              await pool.query(
-                'INSERT INTO platform_fees (event_id, participant_id, fee_amount) VALUES ($1, $2, $3)',
+              await db.raw(
+                'INSERT INTO platform_fees (event_id, participant_id, fee_amount) VALUES (?, ?, ?)',
                 [event.id, winner.id, winnerFee]
               );
               
               
               // Use a transaction for each winner to ensure consistency
-              const client = await pool.connect();
+              const trx = await db.transaction();
               try {
                 console.log(`🔍 Distributing points to winner ${winner.user_id}...`);
-                await client.query('BEGIN');
                 
                 // Update user points using centralized function
                 console.log(`🔍 Adding ${winnerShare} points to user ${winner.user_id}`);
-                const newBalance = await updateUserPoints(client, winner.user_id, winnerShare, 'event_win', event.id);
+                const newBalance = await updateUserPoints(trx, winner.user_id, winnerShare, 'event_win', event.id);
                 
                 // Record winning outcome
                 console.log(`🔍 Recording winning outcome for participant ${winner.id}`);
-                await client.query(
+                await trx.raw(
                   `INSERT INTO event_outcomes (participant_id, result, points_awarded)
-                   VALUES ($1, 'win', $2)`,
+                   VALUES (?, 'win', ?)`,
                   [winner.id, winnerShare]
                 );
                 
                 // Add diagnostic logging
                 console.log(`🔍 Inserted event_outcome for winner: participant_id=${winner.id}, result=win, points_awarded=${winnerShare}`);
                 
-                await client.query('COMMIT');
+                await trx.commit();
                 console.log(`🔍 Transaction committed for winner ${winner.user_id}`);
               } catch (error) {
-                await client.query('ROLLBACK');
+                await trx.rollback();
                 console.log(`❌ Transaction rolled back for winner ${winner.user_id} due to error:`, error);
                 // Continue with other winners even if one fails
                 continue;
-              } finally {
-                client.release();
               }
             }
 
             // Record losing outcomes
             console.log(`🔍 Identifying losers for event ${event.id}`);
-            const losers = await pool.query(
+            const losers = await db.raw(
               `SELECT p.id, p.user_id FROM participants p
-               WHERE p.event_id = $1 AND p.prediction != $2`,
+               WHERE p.event_id = ? AND p.prediction != ?`,
               [event.id, correctAnswer]
             );
             console.log(`🔍 Event ${event.id} losers found: ${losers.rows.length}`);
             
             for (const loser of losers.rows) {
               console.log(`🔍 Recording losing outcome for participant ${loser.id} (user ${loser.user_id})`);
-              await pool.query(
+              await db.raw(
                 `INSERT INTO event_outcomes (participant_id, result, points_awarded)
-                 VALUES ($1, 'loss', 0)`,
+                 VALUES (?, 'loss', 0)`,
                 [loser.id]
               );
               
@@ -949,17 +416,17 @@ async function resolvePendingEvents() {
 
             // Get all participants for the audit log
             console.log(`🔍 Getting all participants for audit log of event ${event.id}`);
-            const { rows: participants } = await pool.query(
-              'SELECT * FROM participants WHERE event_id = $1',
+            const { rows: participants } = await db.raw(
+              'SELECT * FROM participants WHERE event_id = ?',
               [event.id]
             );
             console.log(`🔍 Event ${event.id} total participants: ${participants.length}`);
             
             // Add audit log entry
             console.log(`🔍 Adding audit log entry for event ${event.id}`);
-            await pool.query(
+            await db.raw(
               `INSERT INTO audit_logs (event_id, action, details)
-               VALUES ($1, 'event_resolution', $2)`,
+               VALUES (?, 'event_resolution', ?)`,
               [event.id, JSON.stringify({
                  totalParticipants: participants.length,
                  totalWinners: winners.length,
@@ -1043,7 +510,7 @@ app.get('/', (req, res) => res.json({ status: 'OK' }));
 // Temporary debug endpoint to check users
 app.get('/api/debug/users', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, username, email, points FROM users LIMIT 10');
+    const { rows } = await db.raw('SELECT id, username, email, points FROM users LIMIT 10');
     res.json(rows);
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -1082,8 +549,8 @@ app.post('/api/auth/register', async (req, res) => {
 
   // Check for existing username or email
   try {
-    const existingUser = await pool.query(
-      'SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR email = $2',
+    const existingUser = await db.raw(
+      'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR email = ?',
       [username, email]
     );
     if (existingUser.rows.length > 0) {
@@ -1097,21 +564,20 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
-    const client = await pool.connect();
+    const trx = await db.transaction(); // Start a transaction
     try {
-      await client.query('BEGIN');
       
       // Create user with default points (0)
-      const { rows: [newUser] } = await client.query(
-        `INSERT INTO users (username, email, password_hash, last_login_date) VALUES (LOWER($1), $2, $3, NOW()) RETURNING id, username, email, points`,
-        [username, email, passwordHash]
+      const [newUser] = await trx('users').insert(
+        { username: username.toLowerCase(), email, password_hash: passwordHash, last_login_date: new Date() },
+        ['id', 'username', 'email', 'points']
       );
       
       // Award starting points using centralized function
       const startingPoints = 1000; // Give new users 1000 starting points
-      const newBalance = await updateUserPoints(client, newUser.id, startingPoints, 'registration', null);
+      const newBalance = await updateUserPoints(trx, newUser.id, startingPoints, 'registration', null);
       
-      await client.query('COMMIT');
+      await trx.commit(); // Commit the transaction
       
       // Ensure username is returned in original case for the response
       newUser.username = username;
@@ -1120,10 +586,8 @@ app.post('/api/auth/register', async (req, res) => {
       const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
       res.status(201).json({ token, user: newUser });
     } catch (error) {
-      await client.query('ROLLBACK');
+      await trx.rollback(); // Rollback the transaction on error
       throw error;
-    } finally {
-      client.release();
     }
   } catch (error) {
     if (error.code === '23505') {
@@ -1144,11 +608,11 @@ app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     if (!identifier || !password) return res.status(400).json({ error: 'Identifier and password are required' });
     try {
-        const { rows: [user] } = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $1', [identifier]);
+        const { rows: [user] } = await db.raw('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
         if (!user || !(await bcrypt.compare(password, user.password_hash))) return res.status(401).json({ error: 'Invalid credentials' });
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
         // Update last login date on successful login
-        await pool.query('UPDATE users SET last_login_date = NOW() WHERE id = $1', [user.id]);
+        await db.raw('UPDATE users SET last_login_date = NOW() WHERE id = ?', [user.id]);
         res.json({ token, user: { id: user.id, username: user.username, email: user.email, points: user.points } });
     } catch (error) {
         console.error('❌ Login error:', error);
@@ -1190,8 +654,8 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
     
     try {
         // Check for existing event with same title
-        const existingEvent = await pool.query(
-            'SELECT * FROM events WHERE title = $1',
+        const existingEvent = await db.raw(
+            'SELECT * FROM events WHERE title = ?',
             [title]
         );
         if (existingEvent.rows.length > 0) {
@@ -1199,7 +663,7 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
         }
 
         // Look up event type 'prediction'
-        const typeQuery = await pool.query(`SELECT id FROM event_types WHERE name = 'prediction'`);
+        const typeQuery = await db.raw(`SELECT id FROM event_types WHERE name = 'prediction'`);
         if (typeQuery.rows.length === 0) {
             return res.status(400).json({ error: "Event type 'prediction' not found" });
         }
@@ -1221,13 +685,13 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
 
         // Pre-flight table check with database-specific queries
         let tableExists;
-        if (dbType === 'postgres') {
-          tableExists = await pool.query(
+        if (db.client.config.client === 'pg') {
+          tableExists = await db.raw(
             "SELECT 1 FROM information_schema.tables WHERE table_name='events'"
           );
         } else {
           // SQLite check
-          tableExists = await pool.query(
+          tableExists = await db.raw(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='events'"
           );
         }
@@ -1253,12 +717,12 @@ app.post('/api/events', authenticateToken, validateEntryFee, async (req, res) =>
 
         try {
           // Create new event with all parameters
-          const { rows: [newEvent] } = await pool.query(
+          const { rows: [newEvent] } = await db.raw(
             `INSERT INTO events (
                 title, description, options, entry_fee, start_time, end_time,
                 location, max_participants, current_participants, prize_pool,
                 status, event_type_id, crypto_symbol, initial_price
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 'active', $9, $10, $11)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 'active', ?, ?, ?)
             RETURNING *`,
             [
                 title, description, JSON.stringify(options), entry_fee,
@@ -1306,13 +770,11 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'Entry fee must be between 100-1000 and divisible by 25' });
   }
 
-  const client = await pool.connect();
+  const trx = await db.transaction();
   try {
-    await client.query('BEGIN');
-
     // Verify event is active
-    const event = await client.query(
-      'SELECT status, end_time FROM events WHERE id = $1 FOR UPDATE',
+    const event = await trx.raw(
+      'SELECT status, end_time FROM events WHERE id = ? FOR UPDATE',
       [eventId]
     );
     
@@ -1321,8 +783,8 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
     }
 
     // Check existing participation
-    const existing = await client.query(
-      'SELECT 1 FROM participants WHERE event_id = $1 AND user_id = $2',
+    const existing = await trx.raw(
+      'SELECT 1 FROM participants WHERE event_id = ? AND user_id = ?',
       [eventId, userId]
     );
     
@@ -1331,8 +793,8 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
     }
 
     // Validate and deduct entry fee using centralized function
-    const balanceCheck = await client.query(
-      'SELECT points FROM users WHERE id = $1 FOR UPDATE',
+    const balanceCheck = await trx.raw(
+      'SELECT points FROM users WHERE id = ? FOR UPDATE',
       [userId]
     );
     
@@ -1341,21 +803,21 @@ app.post('/api/events/:id/participate', authenticateToken, async (req, res) => {
     }
 
     // Use centralized function to deduct points and log transaction
-    const newBalance = await updateUserPoints(client, userId, -entryFee, 'event_entry', eventId);
+    const newBalance = await updateUserPoints(trx, userId, -entryFee, 'event_entry', eventId);
     
     // Record participation
-    await client.query(
-      'INSERT INTO participants (event_id, user_id, prediction, amount) VALUES ($1, $2, $3, $4)',
+    await trx.raw(
+      'INSERT INTO participants (event_id, user_id, prediction, amount) VALUES (?, ?, ?, ?)',
       [eventId, userId, prediction, entryFee]
     );
 
-    await client.query('COMMIT');
+    await trx.commit();
     res.json({ success: true, newBalance });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await trx.rollback();
     handleParticipationError(error, res);
   } finally {
-    client.release();
+    // No need to release client with Knex transactions
   }
 });
 
@@ -1383,52 +845,49 @@ app.post('/api/events/:id/join', authenticateToken, async (req, res) => {
     const tournamentId = req.params.id;
     const userId = req.userId;
     
-    let client;
+    let trx;
     try {
-        client = await pool.connect();
-        await client.query('BEGIN');
+        trx = await db.transaction();
 
         // Get tournament details
-        const tournament = await client.query(
-            'SELECT entry_fee FROM events WHERE id = $1',
+        const tournament = await trx.raw(
+            'SELECT entry_fee FROM events WHERE id = ?',
             [tournamentId]
         );
         if (tournament.rows.length === 0) {
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(404).json({ error: 'Tournament not found' });
         }
         const entryFee = tournament.rows[0].entry_fee;
 
         // Check user balance
-        const user = await client.query(
-            'SELECT points FROM users WHERE id = $1',
+        const user = await trx.raw(
+            'SELECT points FROM users WHERE id = ?',
             [userId]
         );
         if (user.rows[0].points < entryFee) {
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(400).json({ error: 'Insufficient points' });
         }
 
         // Deduct entry fee
-        await client.query(
-            'UPDATE users SET points = points - $1 WHERE id = $2',
+        await trx.raw(
+            'UPDATE users SET points = points - ? WHERE id = ?',
             [entryFee, userId]
         );
 
         // Add participant
-        await client.query(
-            'INSERT INTO event_participants (event_id, user_id) VALUES ($1, $2)',
+        await trx.raw(
+            'INSERT INTO event_participants (event_id, user_id) VALUES (?, ?)',
             [tournamentId, userId]
         );
 
-        await client.query('COMMIT');
+        await trx.commit();
         res.json({ success: true, message: 'Joined tournament successfully' });
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (trx) await trx.rollback();
         console.error('Tournament join error:', error);
         res.status(500).json({ error: 'Failed to join tournament' });
-    } finally {
-        client?.release();
     }
 });
 
@@ -1441,63 +900,60 @@ app.post('/api/tournaments/:id/entries', authenticateToken, async (req, res) => 
         return res.status(400).json({ error: 'Invalid entries format' });
     }
 
-    let client;
+    let trx;
     try {
-        client = await pool.connect();
-        await client.query('BEGIN');
+        trx = await db.transaction();
 
         // Verify tournament exists
-        const tournament = await client.query(
-            'SELECT entry_fee FROM tournaments WHERE id = $1',
+        const tournament = await trx.raw(
+            'SELECT entry_fee FROM tournaments WHERE id = ?',
             [tournamentId]
         );
         if (tournament.rows.length === 0) {
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(404).json({ error: 'Tournament not found' });
         }
         const entryFee = tournament.rows[0].entry_fee;
 
         // Check user balance for total entries
         const totalCost = entryFee * entries.length;
-        const user = await client.query(
-            'SELECT points FROM users WHERE id = $1',
+        const user = await trx.raw(
+            'SELECT points FROM users WHERE id = ?',
             [userId]
         );
         if (user.rows[0].points < totalCost) {
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(400).json({ error: 'Insufficient points' });
         }
 
         // Deduct points
-        await client.query(
-            'UPDATE users SET points = points - $1 WHERE id = $2',
+        await trx.raw(
+            'UPDATE users SET points = points - ? WHERE id = ?',
             [totalCost, userId]
         );
 
         // Create entries
         for (const entry of entries) {
-            await client.query(
-                'INSERT INTO tournament_entries (tournament_id, user_id, entry_fee) VALUES ($1, $2, $3)',
+            await trx.raw(
+                'INSERT INTO tournament_entries (tournament_id, user_id, entry_fee) VALUES (?, ?, ?)',
                 [tournamentId, userId, entryFee]
             );
         }
 
-        await client.query('COMMIT');
+        await trx.commit();
         res.json({ success: true, entries_created: entries.length });
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (trx) await trx.rollback();
         console.error('Tournament entry error:', error);
         res.status(500).json({ error: 'Failed to create tournament entries' });
-    } finally {
-        client?.release();
     }
 });
 
 app.get('/api/events/:id/pot', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(
-            'SELECT SUM(entry_fee) AS total_pot FROM tournament_entries WHERE tournament_id = $1',
+        const result = await db.raw(
+            'SELECT SUM(entry_fee) AS total_pot FROM tournament_entries WHERE tournament_id = ?',
             [id]
         );
         res.json({ pot: result.rows[0].total_pot || 0 });
@@ -1518,8 +974,8 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     // Validate event configuration first
     try {
         // Get event details including entry fee
-        const eventQuery = await pool.query(
-            'SELECT entry_fee, end_time, status FROM events WHERE id = $1',
+        const eventQuery = await db.raw(
+            'SELECT entry_fee, end_time, status FROM events WHERE id = ?',
             [eventId]
         );
         
@@ -1561,7 +1017,7 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
 
     // Dynamically validate prediction against the event's actual options
     try {
-        const eventOptionsQuery = await pool.query('SELECT options FROM events WHERE id = $1', [eventId]);
+        const eventOptionsQuery = await db.raw('SELECT options FROM events WHERE id = ?', [eventId]);
         if (eventOptionsQuery.rows.length === 0) {
             return res.status(404).json({ error: 'Event not found for validation' });
         }
@@ -1590,10 +1046,10 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         return res.status(500).json({ error: 'Server error during prediction validation' });
     }
 
-    let client;
+    let trx;
     try {
         console.log('DEBUG: Attempting to acquire database client');
-        client = await pool.connect();
+        trx = await db.transaction();
         console.log('DEBUG: Database client acquired successfully');
     } catch (error) {
         console.error('Failed to acquire database client:', error);
@@ -1602,15 +1058,15 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
     
     try {
         console.log('DEBUG: Starting transaction');
-        await client.query('BEGIN');
+        // await trx.query('BEGIN'); // Knex handles BEGIN implicitly
         console.log('DEBUG: Transaction started');
 
         // Check event exists
         console.log('DEBUG: Checking if event exists', { eventId });
-        const eventQuery = await client.query('SELECT * FROM events WHERE id = $1', [eventId]);
+        const eventQuery = await trx.raw('SELECT * FROM events WHERE id = ?', [eventId]);
         if (eventQuery.rows.length === 0) {
             console.log('DEBUG: Event not found', { eventId });
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(404).json({ error: 'Event not found' });
         }
         const event = eventQuery.rows[0];
@@ -1622,16 +1078,16 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         console.log('DEBUG: Checking event time', { now, endTime, isEnded: now >= endTime });
         if (now >= endTime) {
             console.log('DEBUG: Event has ended', { eventId });
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(400).json({ error: 'Event has ended' });
         }
         
         // Check user has sufficient points
         console.log('DEBUG: Checking user points', { userId });
-        const userQuery = await client.query('SELECT points FROM users WHERE id = $1', [userId]);
+        const userQuery = await trx.raw('SELECT points FROM users WHERE id = ?', [userId]);
         if (userQuery.rows.length === 0) {
             console.log('DEBUG: User not found', { userId });
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(404).json({ error: 'User not found' });
         }
         
@@ -1644,7 +1100,7 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         });
         if (user.points < selectedEntryFee) {
             console.log('DEBUG: Insufficient points', { userId, userPoints: user.points, entryFee: selectedEntryFee });
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(400).json({ error: 'Insufficient points' });
         }
 
@@ -1654,8 +1110,8 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         
         // First, check if the amount column exists in the participants table
         try {
-            if (dbType === 'postgres') {
-                const columnCheck = await client.query(
+            if (db.client.config.client === 'pg') {
+                const columnCheck = await trx.raw(
                     `SELECT column_name
                      FROM information_schema.columns
                      WHERE table_name = 'participants' AND column_name = 'amount'`
@@ -1663,31 +1119,31 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
                 
                 if (columnCheck.rows.length === 0) {
                     console.error('ERROR: amount column does not exist in participants table');
-                    await client.query('ROLLBACK');
+                    await trx.rollback();
                     return res.status(500).json({ error: 'Database schema error: amount column missing' });
                 }
             } else {
                 // For SQLite
-                const columnCheck = await client.query(
+                const columnCheck = await trx.raw(
                     `PRAGMA table_info(participants)`
                 );
                 
                 const hasAmountColumn = columnCheck.rows.some(row => row.name === 'amount');
                 if (!hasAmountColumn) {
                     console.error('ERROR: amount column does not exist in participants table');
-                    await client.query('ROLLBACK');
+                    await trx.rollback();
                     return res.status(500).json({ error: 'Database schema error: amount column missing' });
                 }
             }
         } catch (schemaError) {
             console.error('ERROR: Failed to check participants table schema', schemaError);
-            await client.query('ROLLBACK');
+            await trx.rollback();
             return res.status(500).json({ error: 'Database schema check failed' });
         }
         
-        const { rows: [newBet] } = await client.query(
+        const { rows: [newBet] } = await trx.raw(
             `INSERT INTO participants (event_id, user_id, prediction, amount)
-             VALUES ($1, $2, $3, $4)
+             VALUES (?, ?, ?, ?)
              RETURNING *`,
             [eventId, userId, prediction, selectedEntryFee]
         );
@@ -1695,42 +1151,42 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
 
         // Deduct the bet amount from the user's points
         console.log('DEBUG: Deducting bet amount from user points', { userId, amount: selectedEntryFee });
-        await client.query(
-            'UPDATE users SET points = points - $1 WHERE id = $2',
+        await trx.raw(
+            'UPDATE users SET points = points - ? WHERE id = ?',
             [selectedEntryFee, userId]
         );
         console.log('DEBUG: Entry fee deducted successfully');
         
         // Remove prize_pool update as it's now calculated from participants table
         console.log('DEBUG: Updating event total_bets', { eventId });
-        await client.query(
+        await trx.raw(
             `UPDATE events
              SET total_bets = total_bets + 1
-             WHERE id = $1`,
+             WHERE id = ?`,
             [eventId]
         );
         console.log('DEBUG: Event total_bets updated successfully');
         
         // Update current_participants count
         console.log('DEBUG: Updating event current_participants count', { eventId });
-        await client.query(
+        await trx.raw(
             `UPDATE events
              SET current_participants = (
-               SELECT COUNT(*) FROM participants WHERE event_id = $1
+               SELECT COUNT(*) FROM participants WHERE event_id = ?
              )
-             WHERE id = $1`,
-            [eventId]
+             WHERE id = ?`,
+            [eventId, eventId]
         );
         console.log('DEBUG: Event current_participants count updated successfully');
         
-        await client.query('COMMIT');
+        await trx.commit();
         console.log('DEBUG: Transaction committed successfully', { newBet });
         res.status(201).json(newBet);
     } catch (error) {
         console.log('DEBUG: Error in bet placement, attempting rollback', { error });
-        if (client) {
+        if (trx) {
             try {
-                await client.query('ROLLBACK');
+                await trx.rollback();
                 console.log('DEBUG: Transaction rolled back successfully');
             } catch (rollbackError) {
                 console.error('Failed to rollback transaction:', rollbackError);
@@ -1739,10 +1195,7 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         console.error('❌ Bet placement error:', error);
         res.status(500).json({ error: 'Server error' });
     } finally {
-        if (client) {
-            console.log('DEBUG: Releasing database client');
-            client.release();
-        }
+        // Knex transactions automatically release the connection
     }
 });
 
@@ -1821,7 +1274,7 @@ app.get('/api/events/active', async (req, res) => {
     sqlLogger.debug({query: queryText}, "Executing active events query");
     console.log('DEBUG: Executing query:', queryText);
     
-    const { rows } = await pool.query(queryText);
+    const { rows } = await db.raw(queryText);
     console.log('DEBUG: Query result rows count:', rows.length);
     const now = new Date();
 
@@ -1886,17 +1339,16 @@ app.get('/api/events/active', async (req, res) => {
   }
 });
 
-// GET event details
-// GET participation history for chart
 app.get('/api/events/:id/participations', async (req, res) => {
   try {
     const { id } = req.params;
 
     // Fetch all participant entries for the event, ordered by creation time
-    const { rows } = await pool.query(
-      `SELECT prediction, created_at FROM participants WHERE event_id = $1 ORDER BY created_at ASC`,
+    const { rows } = await db.raw(
+      `SELECT prediction, created_at FROM participants WHERE event_id = ? ORDER BY created_at ASC`,
       [id]
     );
+
 
     res.json(rows);
     
@@ -1912,8 +1364,8 @@ app.get('/api/events/:id/participations', async (req, res) => {
     const { id } = req.params;
 
     // Fetch all participant entries for the event, ordered by creation time
-    const { rows } = await pool.query(
-      `SELECT prediction, created_at FROM participants WHERE event_id = $1 ORDER BY created_at ASC`,
+    const { rows } = await db.raw(
+      `SELECT prediction, created_at FROM participants WHERE event_id = ? ORDER BY created_at ASC`,
       [id]
     );
 
@@ -1941,26 +1393,26 @@ app.get('/api/events/:id', async (req, res) => {
     let query;
     let params = [req.userId, eventId];
     
-    if (dbType === 'postgres') {
+    if (db.client.config.client === 'pg') {
       query = `WITH event_totals AS (
         SELECT
           id,
           COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = events.id), 0) AS prize_pool
         FROM events
-        WHERE id = $2
+        WHERE id = ?
       ), option_volumes_pre AS (
         SELECT
           p.prediction,
           SUM(p.amount) as total_amount
         FROM participants p
-        WHERE p.event_id = $2
+        WHERE p.event_id = ?
         GROUP BY p.prediction
       )
       SELECT
         e.*,
         (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
         et.prize_pool,
-        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = $1) AS user_prediction,
+        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = ?) AS user_prediction,
         (
           SELECT json_object_agg(
             ov.prediction,
@@ -1977,7 +1429,7 @@ app.get('/api/events/:id', async (req, res) => {
         ) as option_volumes
       FROM events e
       JOIN event_totals et ON e.id = et.id
-      WHERE e.id = $2`;
+      WHERE e.id = ?`;
     } else {
       // SQLite-compatible version
       query = `WITH event_totals AS (
@@ -2021,7 +1473,7 @@ app.get('/api/events/:id', async (req, res) => {
       params = [eventId, eventId, req.userId, eventId];
     }
     
-    const { rows } = await pool.query(query, params);
+    const { rows } = await db.raw(query, params);
     
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
@@ -2073,8 +1525,8 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
 
     // Check if user has already claimed points today
     // Query only last_claimed column as ensureUsersTableIntegrity ensures this is the correct column
-    const { rows: claimCheck } = await pool.query(
-      `SELECT id, points, last_claimed, last_login_date FROM users WHERE id = $1`,
+    const { rows: claimCheck } = await db.raw(
+      `SELECT id, points, last_claimed, last_login_date FROM users WHERE id = ?`,
       [req.userId]
     );
 
@@ -2145,25 +1597,23 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
     console.log('Awarding 250 points to user:', req.userId);
     
     // Use transaction for all database operations
-    const client = await pool.connect();
+    const trx = await db.transaction();
     try {
-      await client.query('BEGIN');
-
       // Award 250 points to the user using centralized function
       const pointsToAward = 250;
-      const newBalance = await updateUserPoints(client, req.userId, pointsToAward, 'daily_claim', null);
+      const newBalance = await updateUserPoints(trx, req.userId, pointsToAward, 'daily_claim', null);
       
       // Update last_claimed and last_login_date timestamps
-      const { rows: [updatedUser] } = await client.query(
+      const { rows: [updatedUser] } = await trx.raw(
         `UPDATE users
          SET last_claimed = NOW(), last_login_date = NOW()
-         WHERE id = $1
+         WHERE id = ?
          RETURNING id, username`,
         [req.userId]
       );
       updatedUser.points = newBalance;
 
-      await client.query('COMMIT');
+      await trx.commit();
       
       // Log successful claim
       console.log('Successfully awarded points to user:', {
@@ -2178,11 +1628,9 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
         newTotal: updatedUser.points
       });
     } catch (transactionError) {
-      await client.query('ROLLBACK');
+      await trx.rollback();
       console.error('Error during transaction, rolled back.', transactionError);
       res.status(500).json({ error: 'Failed to claim points due to a database error.' });
-    } finally {
-      client.release();
     }
   } catch (error) {
     console.error('Error in claim-free-points endpoint:', error);
@@ -2193,8 +1641,8 @@ app.post('/api/user/claim-free-points', authenticateToken, async (req, res) => {
 // GET user profile endpoint
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT id, username, email, points, is_admin FROM users WHERE id = $1',
+    const { rows } = await db.raw(
+      'SELECT id, username, email, points, is_admin FROM users WHERE id = ?',
       [req.userId]
     );
     
@@ -2215,19 +1663,19 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
     const userId = req.userId;
     
     // First, let's check what participants this user has
-    const participantCheck = await pool.query(
-      `SELECT id, event_id, prediction, amount FROM participants WHERE user_id = $1`,
+    const participantCheck = await db.raw(
+      `SELECT id, event_id, prediction, amount FROM participants WHERE user_id = ?`,
       [userId]
     );
     console.log(`Participants for user ${userId}:`, JSON.stringify(participantCheck.rows, null, 2));
     
     // Then check what's in the event_outcomes table for debugging
-    const outcomeCheck = await pool.query(
+    const outcomeCheck = await db.raw(
       `SELECT * FROM event_outcomes LIMIT 10`
     );
     console.log('Event outcomes table contents (first 10 rows):', JSON.stringify(outcomeCheck.rows, null, 2));
     
-    const { rows } = await pool.query(
+    const { rows } = await db.raw(
       `SELECT
          p.id AS participation_id,
          e.id AS event_id,
@@ -2256,7 +1704,7 @@ app.get('/api/user/history', authenticateToken, async (req, res) => {
        JOIN events e ON p.event_id = e.id
        LEFT JOIN event_outcomes o ON p.id = o.participant_id
        LEFT JOIN audit_logs a ON e.id = a.event_id AND a.action = 'event_resolution'
-       WHERE p.user_id = $1
+       WHERE p.user_id = ?
        ORDER BY e.start_time DESC`,
       [userId]
     );
@@ -2289,8 +1737,8 @@ app.post('/api/user/request-email-change', authenticateToken, async (req, res) =
     }
 
     // Check if new email is same as current email
-    const { rows: [user] } = await pool.query(
-      'SELECT email, password_hash FROM users WHERE id = $1',
+    const { rows: [user] } = await db.raw(
+      'SELECT email, password_hash FROM users WHERE id = ?',
       [userId]
     );
     
@@ -2309,8 +1757,8 @@ app.post('/api/user/request-email-change', authenticateToken, async (req, res) =
     }
 
     // Check if new email is already in use
-    const { rows: existingUser } = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
+    const { rows: existingUser } = await db.raw(
+      'SELECT id FROM users WHERE email = ?',
       [newEmail]
     );
     
@@ -2323,9 +1771,9 @@ app.post('/api/user/request-email-change', authenticateToken, async (req, res) =
     const expiresAt = getExpirationTime();
 
     // Store verification request in database
-    await pool.query(
+    await db.raw(
       `INSERT INTO email_change_verifications (user_id, new_email, verification_token, expires_at)
-       VALUES ($1, $2, $3, $4)`,
+       VALUES (?, ?, ?, ?)`,
       [userId, newEmail, verificationToken, expiresAt]
     );
 
@@ -2353,9 +1801,9 @@ app.post('/api/user/verify-email-change', async (req, res) => {
     }
 
     // Find and validate verification token
-    const { rows: [verification] } = await pool.query(
+    const { rows: [verification] } = await db.raw(
       `SELECT * FROM email_change_verifications
-       WHERE verification_token = $1 AND expires_at > NOW() AND used = FALSE`,
+       WHERE verification_token = ? AND expires_at > NOW() AND used = FALSE`,
       [token]
     );
 
@@ -2363,29 +1811,27 @@ app.post('/api/user/verify-email-change', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired verification token' });
     }
 
-    const client = await pool.connect();
+    const trx = await db.transaction();
     try {
-      await client.query('BEGIN');
-
       // Update user's email
-      const { rows: [updatedUser] } = await client.query(
-        'UPDATE users SET email = $1 WHERE id = $2 RETURNING id, email, username',
+      const { rows: [updatedUser] } = await trx.raw(
+        'UPDATE users SET email = ? WHERE id = ? RETURNING id, email, username',
         [verification.new_email, verification.user_id]
       );
 
       // Mark token as used
-      await client.query(
-        'UPDATE email_change_verifications SET used = TRUE WHERE id = $1',
+      await trx.raw(
+        'UPDATE email_change_verifications SET used = TRUE WHERE id = ?',
         [verification.id]
       );
 
       // Clean up expired tokens for this user
-      await client.query(
-        'DELETE FROM email_change_verifications WHERE user_id = $1 AND (expires_at <= NOW() OR used = TRUE)',
+      await trx.raw(
+        'DELETE FROM email_change_verifications WHERE user_id = ? AND (expires_at <= NOW() OR used = TRUE)',
         [verification.user_id]
       );
 
-      await client.query('COMMIT');
+      await trx.commit();
 
       res.json({
         success: true,
@@ -2394,10 +1840,8 @@ app.post('/api/user/verify-email-change', async (req, res) => {
       });
 
     } catch (error) {
-      await client.query('ROLLBACK');
+      await trx.rollback();
       throw error;
-    } finally {
-      client.release();
     }
 
   } catch (error) {
@@ -2421,8 +1865,8 @@ app.post('/api/user/change-password', authenticateToken, async (req, res) => {
   try {
     // 2. Fetch the user's current HASHED password from the database
     // This MUST match your 'users' table schema. It is 'password_hash'.
-    const userResult = await pool.query(
-      'SELECT password_hash FROM users WHERE id = $1',
+    const userResult = await db.raw(
+      'SELECT password_hash FROM users WHERE id = ?',
       [userId]
     );
 
@@ -2442,8 +1886,8 @@ app.post('/api/user/change-password', authenticateToken, async (req, res) => {
     const newHashedPassword = await bcrypt.hash(newPassword, salt);
 
     // 5. Update the 'password_hash' column in the database
-    await pool.query(
-      'UPDATE users SET password_hash = $1 WHERE id = $2',
+    await db.raw(
+      'UPDATE users SET password_hash = ? WHERE id = ?',
       [newHashedPassword, userId]
     );
 
@@ -2462,10 +1906,10 @@ app.get('/api/user/points-history', authenticateToken, async (req, res) => {
     const userId = req.userId;
     
     // Query to get all points history for the logged-in user
-    const { rows } = await pool.query(
+    const { rows } = await db.raw(
       `SELECT change_amount, new_balance, reason, event_id, created_at
        FROM points_history
-       WHERE user_id = $1
+       WHERE user_id = ?
        ORDER BY created_at ASC`,
       [userId]
     );
@@ -2498,10 +1942,10 @@ cron.schedule('0 * * * *', () => resolvePendingEvents()); // Run hourly at minut
 // --- Initial Event Creation Function ---
 async function createInitialEvent() {
   try {
-    const query = dbType === 'postgres'
+    const query = db.client.config.client === 'pg'
       ? "SELECT 1 FROM events WHERE start_time > NOW() - INTERVAL '1 day' LIMIT 1"
       : "SELECT 1 FROM events WHERE start_time > datetime('now', '-1 day') LIMIT 1";
-    const existing = await pool.query(query);
+    const existing = await db.raw(query);
     if (existing.rows.length === 0) {
       const price = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
       console.log('Initial event creation triggered with price:', price);
@@ -2611,8 +2055,8 @@ adminRouter.post('/events/create', async (req, res) => {
     }
 
     // Check for existing event with same title
-    const existingEvent = await pool.query(
-      'SELECT * FROM events WHERE title = $1',
+    const existingEvent = await db.raw(
+      'SELECT * FROM events WHERE title = ?',
       [title]
     );
     
@@ -2621,7 +2065,7 @@ adminRouter.post('/events/create', async (req, res) => {
     }
 
     // Look up event type 'prediction'
-    const typeQuery = await pool.query(`SELECT id FROM event_types WHERE name = 'prediction'`);
+    const typeQuery = await db.raw(`SELECT id FROM event_types WHERE name = 'prediction'`);
     if (typeQuery.rows.length === 0) {
       return res.status(400).json({ error: "Event type 'prediction' not found" });
     }
@@ -2639,12 +2083,12 @@ adminRouter.post('/events/create', async (req, res) => {
     }
 
     // Create new event with all parameters
-    const { rows: [newEvent] } = await pool.query(
+    const { rows: [newEvent] } = await db.raw(
       `INSERT INTO events (
         title, description, category, options, entry_fee, max_participants,
         start_time, end_time, crypto_symbol, initial_price, prediction_window,
         event_type_id, status, resolution_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', 'pending')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'pending')
       RETURNING *`,
       [
         title,
@@ -2688,7 +2132,7 @@ app.get('/api/admin/events/status', authenticateAdmin, async (req, res) => {
 // Admin endpoint to get total platform fees
 adminRouter.get('/platform-fees/total', async (req, res) => {
   try {
-    const result = await pool.query('SELECT COALESCE(SUM(platform_fee), 0) as total_fees FROM events');
+    const result = await db.raw('SELECT COALESCE(SUM(platform_fee), 0) as total_fees FROM events');
     const totalFees = parseInt(result.rows[0].total_fees) || 0;
     res.json({ total_platform_fees: totalFees });
   } catch (error) {
@@ -2698,14 +2142,12 @@ adminRouter.get('/platform-fees/total', async (req, res) => {
 });
 
 // Manual event resolution function
-async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
-  const client = await pool.connect();
+async function manualResolveEvent(trx, eventId, correctAnswer, finalPrice = null) {
+  // const trx = await db.transaction(); // Transaction is passed in
   try {
-    await client.query('BEGIN');
-
     // Get event details
-    const eventQuery = await client.query(
-      'SELECT * FROM events WHERE id = $1 FOR UPDATE',
+    const eventQuery = await trx.raw(
+      'SELECT * FROM events WHERE id = ? FOR UPDATE',
       [eventId]
     );
     
@@ -2722,18 +2164,18 @@ async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
 
     // Update event with manual resolution
     const updateQuery = finalPrice
-      ? `UPDATE events SET correct_answer = $1, final_price = $2, resolution_status = 'resolved' WHERE id = $3 RETURNING *`
-      : `UPDATE events SET correct_answer = $1, resolution_status = 'resolved' WHERE id = $2 RETURNING *`;
+      ? `UPDATE events SET correct_answer = ?, final_price = ?, resolution_status = 'resolved' WHERE id = ? RETURNING *`
+      : `UPDATE events SET correct_answer = ?, resolution_status = 'resolved' WHERE id = ? RETURNING *`;
     
     const updateParams = finalPrice
       ? [correctAnswer, finalPrice, eventId]
       : [correctAnswer, eventId];
     
-    const { rows: [updatedEvent] } = await client.query(updateQuery, updateParams);
+    const { rows: [updatedEvent] } = await trx.raw(updateQuery, updateParams);
 
     // Calculate total pot from participants
-    const { rows: [potData] } = await client.query(
-      `SELECT SUM(amount) as total_pot FROM participants WHERE event_id = $1`,
+    const { rows: [potData] } = await trx.raw(
+      `SELECT SUM(amount) as total_pot FROM participants WHERE event_id = ?`,
       [eventId]
     );
 
@@ -2745,14 +2187,14 @@ async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
       const remainingPot = totalPot - platformFee;
 
       // Update event with platform fee
-      await client.query(
-        'UPDATE events SET platform_fee = platform_fee + $1 WHERE id = $2',
+      await trx.raw(
+        'UPDATE events SET platform_fee = platform_fee + ? WHERE id = ?',
         [platformFee, eventId]
       );
 
       // Get all winners with their bet amounts
-      const { rows: winners } = await client.query(
-        `SELECT id, user_id, amount FROM participants WHERE event_id = $1 AND prediction = $2`,
+      const { rows: winners } = await trx.raw(
+        `SELECT id, user_id, amount FROM participants WHERE event_id = ? AND prediction = ?`,
         [eventId, correctAnswer]
       );
 
@@ -2766,40 +2208,40 @@ async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
           const winnerFee = Math.floor(winner.amount * 0.05);
 
           // Record fee contribution
-          await client.query(
-            'INSERT INTO platform_fees (event_id, participant_id, fee_amount) VALUES ($1, $2, $3)',
+          await trx.raw(
+            'INSERT INTO platform_fees (event_id, participant_id, fee_amount) VALUES (?, ?, ?)',
             [eventId, winner.id, winnerFee]
           );
 
           // Update user points using centralized function and record outcome
-          const newBalance = await updateUserPoints(client, winner.user_id, winnerShare, 'event_win', eventId);
+          const newBalance = await updateUserPoints(trx, winner.user_id, winnerShare, 'event_win', eventId);
 
-          await client.query(
+          await trx.raw(
             `INSERT INTO event_outcomes (participant_id, result, points_awarded)
-             VALUES ($1, 'win', $2)`,
+             VALUES (?, 'win', ?)`,
             [winner.id, winnerShare]
           );
         }
 
         // Record losing outcomes
-        const { rows: losers } = await client.query(
+        const { rows: losers } = await trx.raw(
           `SELECT p.id, p.user_id FROM participants p
-           WHERE p.event_id = $1 AND p.prediction != $2`,
+           WHERE p.event_id = ? AND p.prediction != ?`,
           [eventId, correctAnswer]
         );
 
         for (const loser of losers) {
-          await client.query(
+          await trx.raw(
             `INSERT INTO event_outcomes (participant_id, result, points_awarded)
-             VALUES ($1, 'loss', 0)`,
+             VALUES (?, 'loss', 0)`,
             [loser.id]
           );
         }
 
         // Add audit log entry
-        await client.query(
+        await trx.raw(
           `INSERT INTO audit_logs (event_id, action, details)
-           VALUES ($1, 'manual_event_resolution', $2)`,
+           VALUES (?, 'manual_event_resolution', ?)`,
           [eventId, JSON.stringify({
             totalParticipants: winners.length + losers.length,
             totalWinners: winners.length,
@@ -2815,7 +2257,7 @@ async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
       }
     }
 
-    await client.query('COMMIT');
+    // await trx.query('COMMIT'); // Commit is handled by the caller
     
     // Broadcast resolution to all connected clients
     broadcastEventResolution(eventId, {
@@ -2827,10 +2269,8 @@ async function manualResolveEvent(eventId, correctAnswer, finalPrice = null) {
     return updatedEvent;
 
   } catch (error) {
-    await client.query('ROLLBACK');
+    // await trx.query('ROLLBACK'); // Rollback is handled by the caller
     throw error;
-  } finally {
-    client.release();
   }
 }
 
@@ -2896,14 +2336,14 @@ adminRouter.get('/events', async (req, res) => {
     queryParams.push(limit, offset);
 
     // Get events
-    const { rows: events } = await pool.query(query, queryParams);
+    const { rows: events } = await db.raw(query, queryParams);
 
     // Get total count for pagination
     let countQuery = `SELECT COUNT(*) FROM events e`;
     if (whereConditions.length > 0) {
       countQuery += ` WHERE ${whereConditions.join(' AND ')}`;
     }
-    const { rows: countRows } = await pool.query(countQuery, queryParams.slice(0, -2));
+    const { rows: countRows } = await db.raw(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countRows[0].count);
 
     res.json({
@@ -2933,7 +2373,7 @@ adminRouter.get('/events/:id/participants', async (req, res) => {
     }
 
     // Get participants for the event with user information
-    const { rows: participants } = await pool.query(`
+    const { rows: participants } = await db.raw(`
       SELECT
         p.id,
         p.user_id,
@@ -2946,7 +2386,7 @@ adminRouter.get('/events/:id/participants', async (req, res) => {
       FROM participants p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN event_outcomes o ON p.id = o.participant_id
-      WHERE p.event_id = $1
+      WHERE p.event_id = ?
       ORDER BY p.created_at DESC
     `, [eventId]);
 
@@ -3000,14 +2440,14 @@ adminRouter.get('/users', async (req, res) => {
     queryParams.push(limit, offset);
     
     // Get users
-    const { rows: users } = await pool.query(query, queryParams);
+    const { rows: users } = await db.raw(query, queryParams);
     
     // Get total count for pagination
     let countQuery = `SELECT COUNT(*) FROM users`;
     if (whereConditions.length > 0) {
       countQuery += ` WHERE ${whereConditions.join(' AND ')}`;
     }
-    const { rows: countRows } = await pool.query(countQuery, queryParams.slice(0, -2));
+    const { rows: countRows } = await db.raw(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countRows[0].count);
     
     res.json({
@@ -3035,12 +2475,12 @@ adminRouter.get('/users/:id', async (req, res) => {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
     
-    const { rows } = await pool.query(`
+    const { rows } = await db.raw(`
       SELECT
         id, username, email, points, is_admin, is_suspended,
         total_events, won_events, last_login_date, created_at
       FROM users
-      WHERE id = $1
+      WHERE id = ?
     `, [userId]);
     
     if (rows.length === 0) {
@@ -3072,62 +2512,109 @@ adminRouter.put('/users/:id/points', async (req, res) => {
       return res.status(400).json({ error: 'Reason is required' });
     }
     
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
-      // Get current points
-      const { rows: userRows } = await client.query(
-        'SELECT points, username FROM users WHERE id = $1 FOR UPDATE',
-        [userId]
-      );
-      
-      if (userRows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      const currentPoints = userRows[0].points;
-      const username = userRows[0].username;
-      const newPoints = currentPoints + points;
-      
-      // Update user points
-      await client.query(
-        'UPDATE users SET points = $1 WHERE id = $2',
-        [newPoints, userId]
-      );
-      
-      // Log the adjustment in audit_logs
-      await client.query(
-        `INSERT INTO audit_logs (action, details) VALUES ('points_adjustment', $1)`,
-        [JSON.stringify({
-          admin_id: req.userId,
-          user_id: userId,
-          user_username: username,
-          points_adjustment: points,
-          reason: reason.trim(),
-          points_before: currentPoints,
-          points_after: newPoints,
-          timestamp: new Date().toISOString()
-        })]
-      );
-      
-      await client.query('COMMIT');
-      
-      res.json({
-        success: true,
-        points_adjusted: points,
-        new_total: newPoints,
-        user_id: userId,
-        user_username: username
-      });
-      
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+        const trx = await db.transaction();
+    
+        try {
+    
+          // Get current points
+    
+          const { rows: userRows } = await trx.raw(
+    
+            'SELECT points, username FROM users WHERE id = ? FOR UPDATE',
+    
+            [userId]
+    
+          );
+    
+          
+    
+          if (userRows.length === 0) {
+    
+            await trx.rollback();
+    
+            return res.status(404).json({ error: 'User not found' });
+    
+          }
+    
+          
+    
+          const currentPoints = userRows[0].points;
+    
+          const username = userRows[0].username;
+    
+          const newPoints = currentPoints + points;
+    
+          
+    
+          // Update user points
+    
+          await trx.raw(
+    
+            'UPDATE users SET points = ? WHERE id = ?',
+    
+            [newPoints, userId]
+    
+          );
+    
+          
+    
+          // Log the adjustment in audit_logs
+    
+          await trx.raw(
+    
+            `INSERT INTO audit_logs (action, details) VALUES ('points_adjustment', ?) `,
+    
+            [JSON.stringify({
+    
+              admin_id: req.userId,
+    
+              user_id: userId,
+    
+              user_username: username,
+    
+              points_adjustment: points,
+    
+              reason: reason.trim(),
+    
+              points_before: currentPoints,
+    
+              points_after: newPoints,
+    
+              timestamp: new Date().toISOString()
+    
+            })]
+    
+          );
+    
+          
+    
+          await trx.commit();
+    
+          
+    
+          res.json({
+    
+            success: true,
+    
+            points_adjusted: points,
+    
+            new_total: newPoints,
+    
+            user_id: userId,
+    
+            user_username: username
+    
+          });
+    
+          
+    
+        } catch (error) {
+    
+          await trx.rollback();
+    
+          throw error;
+    
+        }
   } catch (error) {
     console.error('Error adjusting user points:', error);
     res.status(500).json({ error: 'Failed to adjust user points' });
@@ -3148,8 +2635,8 @@ adminRouter.put('/users/:id/role', async (req, res) => {
       return res.status(400).json({ error: 'is_admin must be a boolean' });
     }
     
-    const { rows } = await pool.query(
-      'UPDATE users SET is_admin = $1 WHERE id = $2 RETURNING id, username, is_admin',
+    const { rows } = await db.raw(
+      'UPDATE users SET is_admin = ? WHERE id = ? RETURNING id, username, is_admin',
       [is_admin, userId]
     );
     
@@ -3183,8 +2670,8 @@ adminRouter.put('/users/:id/suspend', async (req, res) => {
       return res.status(400).json({ error: 'is_suspended must be a boolean' });
     }
     
-    const { rows } = await pool.query(
-      'UPDATE users SET is_suspended = $1 WHERE id = $2 RETURNING id, username, is_suspended',
+    const { rows } = await db.raw(
+      'UPDATE users SET is_suspended = ? WHERE id = ? RETURNING id, username, is_suspended',
       [is_suspended, userId]
     );
     
@@ -3213,8 +2700,8 @@ adminRouter.post('/users/:id/reset-claims', async (req, res) => {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
     
-    const { rows } = await pool.query(
-      'UPDATE users SET last_claimed = NULL WHERE id = $1 RETURNING id, username',
+    const { rows } = await db.raw(
+      'UPDATE users SET last_claimed = NULL WHERE id = ? RETURNING id, username',
       [userId]
     );
     
@@ -3256,8 +2743,15 @@ adminRouter.post('/events/:id/resolve-manual', async (req, res) => {
       return res.status(400).json({ error: 'final_price must be a positive number if provided' });
     }
 
-    const result = await manualResolveEvent(eventId, correct_answer, final_price);
-    res.json({ success: true, data: result });
+    const trx = await db.transaction(); // Start transaction
+    try {
+      const result = await manualResolveEvent(trx, eventId, correct_answer, final_price);
+      await trx.commit(); // Commit transaction
+      res.json({ success: true, data: result });
+    } catch (transactionError) {
+      await trx.rollback(); // Rollback on error
+      throw transactionError;
+    }
 
   } catch (error) {
     console.error('Manual resolution error:', error);
@@ -3283,10 +2777,10 @@ adminRouter.post('/events/:id/suspend', async (req, res) => {
     }
 
     // Update the event's status and is_suspended flag in the database
-    const { rows } = await pool.query(
+    const { rows } = await db.raw(
       `UPDATE events
-       SET is_suspended = $1, status = $2
-       WHERE id = $3
+       SET is_suspended = ?, status = ?
+       WHERE id = ?
        RETURNING id, title, is_suspended, status`,
       [is_suspended, is_suspended ? 'suspended' : 'active', eventId]
     );
@@ -3321,28 +2815,26 @@ adminRouter.delete('/events/:id', async (req, res) => {
     return res.status(400).json({ error: 'Invalid event ID' });
   }
 
-  const client = await pool.connect();
+  const trx = await db.transaction();
 
   try {
-    await client.query('BEGIN');
-
     // Step 1: Delete associated participants first to avoid foreign key violations.
-    await client.query('DELETE FROM participants WHERE event_id = $1', [eventId]);
+    await trx.raw('DELETE FROM participants WHERE event_id = ?', [eventId]);
     
     // NOTE: If other tables like 'event_outcomes' or 'audit_logs' also reference 'events',
     // you would add similar DELETE statements for them here.
 
     // Step 2: Delete the event itself.
-    const result = await client.query('DELETE FROM events WHERE id = $1', [eventId]);
+    const result = await trx.raw('DELETE FROM events WHERE id = ?', [eventId]);
 
     if (result.rowCount === 0) {
       // If the event didn't exist, no harm done, but we should rollback and inform the user.
-      await client.query('ROLLBACK');
+      await trx.rollback();
       return res.status(404).json({ error: 'Event not found' });
     }
 
     // Step 3: If both deletions were successful, commit the transaction.
-    await client.query('COMMIT');
+    await trx.commit();
     
     res.json({
       success: true,
@@ -3351,12 +2843,9 @@ adminRouter.delete('/events/:id', async (req, res) => {
 
   } catch (error) {
     // If any step fails, roll back the entire transaction.
-    await client.query('ROLLBACK');
+    await trx.rollback();
     console.error('Error deleting event with transaction:', error);
     res.status(500).json({ error: 'Failed to delete event' });
-  } finally {
-    // Always release the client back to the pool.
-    client.release();
   }
 });
 
@@ -3374,12 +2863,10 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
     return res.status(400).json({ error: 'amount must be a positive number' });
   }
   
-  const client = await pool.connect();
+  const trx = await db.transaction();
   try {
-    await client.query('BEGIN');
-    
     // Get total platform fees
-    const totalFeesResult = await client.query('SELECT COALESCE(SUM(platform_fee), 0) as total_fees FROM events');
+    const totalFeesResult = await trx.raw('SELECT COALESCE(SUM(platform_fee), 0) as total_fees FROM events');
     const totalFees = parseInt(totalFeesResult.rows[0].total_fees) || 0;
     
     if (amount > totalFees) {
@@ -3391,9 +2878,9 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
     }
     
     // Check if user exists
-    const userResult = await client.query('SELECT id, username, points FROM users WHERE id = $1', [userId]);
+    const userResult = await trx.raw('SELECT id, username, points FROM users WHERE id = ?', [userId]);
     if (userResult.rows.length === 0) {
-      await client.query('ROLLBACK');
+      await trx.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -3404,8 +2891,8 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
     const newBalance = await updateUserPoints(client, userId, amount, 'platform_fee_transfer', null);
     
     // Log the transfer in audit_logs
-    await client.query(
-      `INSERT INTO audit_logs (action, details) VALUES ('platform_fee_transfer', $1)`,
+    await trx.raw(
+      `INSERT INTO audit_logs (action, details) VALUES ('platform_fee_transfer', ?)`,
       [JSON.stringify({
         admin_id: req.userId || 'unknown',
         user_id: userId,
@@ -3418,7 +2905,7 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
       })]
     );
     
-    await client.query('COMMIT');
+    await trx.commit();
     
     res.json({
       success: true,
@@ -3429,11 +2916,9 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
       user_points_after: userBeforePoints + amount
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await trx.rollback();
     console.error('Error transferring platform fees:', error);
     res.status(500).json({ error: 'Failed to transfer platform fees' });
-  } finally {
-    client.release();
   }
 });
 
@@ -3450,20 +2935,20 @@ adminRouter.post('/platform-fees/transfer', async (req, res) => {
  */
 adminRouter.get('/metrics', async (req, res) => {
   try {
-    const totalEventsQuery = await pool.query('SELECT COUNT(*) FROM events');
-    const activeEventsQuery = await pool.query(
-      'SELECT COUNT(*) FROM events WHERE resolution_status = $1',
+    const totalEventsQuery = await db.raw('SELECT COUNT(*) FROM events');
+    const activeEventsQuery = await db.raw(
+      'SELECT COUNT(*) FROM events WHERE resolution_status = ?',
       ['pending']
     );
-    const completedEventsQuery = await pool.query(
-      'SELECT COUNT(*) FROM events WHERE resolution_status = $1',
+    const completedEventsQuery = await db.raw(
+      'SELECT COUNT(*) FROM events WHERE resolution_status = ?',
       ['resolved']
     );
-    const totalFeesQuery = await pool.query(
+    const totalFeesQuery = await db.raw(
       'SELECT COALESCE(SUM(platform_fee), 0) FROM events'
     );
-    const pendingEventsQuery = await pool.query(
-      'SELECT COUNT(*) FROM events WHERE resolution_status = $1 AND end_time < NOW()',
+    const pendingEventsQuery = await db.raw(
+      'SELECT COUNT(*) FROM events WHERE resolution_status = ? AND end_time < NOW()',
       ['pending']
     );
 
@@ -3486,7 +2971,7 @@ async function startServer() {
     await initializeDatabase();
     
     // Test database connection
-    await pool.query('SELECT 1');
+    await db.raw('SELECT 1');
     console.log("Database connection successful");
     
     // Try to start the server on the specified port or an alternative port
@@ -3614,7 +3099,7 @@ app.use((req, res) => {
 
 process.on('SIGINT', () => {
     console.log("\nShutting down server...");
-    pool.end(() => {
+    db.destroy(() => {
         console.log('✅ Database connection closed');
         process.exit(0);
     });
