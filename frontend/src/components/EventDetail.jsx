@@ -102,7 +102,10 @@ const EventDetail = () => {
 
     } catch (error) {
       console.error('Submission failed', error);
-      setSnackbarMessage('Prediction failed. Please try again.');
+      const errorMessage = error.response && error.response.data && error.response.data.error
+        ? error.response.data.error
+        : 'Prediction failed. Please try again.';
+      setSnackbarMessage(errorMessage);
       setTimeout(() => setSnackbarMessage(''), 3000);
     }
   };
