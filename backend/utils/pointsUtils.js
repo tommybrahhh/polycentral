@@ -15,27 +15,27 @@ async function updateUserPoints(dbClient, userId, amount, reason, eventId = null
   // connected client, or it can create its own transaction if `dbClient` is the pool.
   // The provided `server.js` correctly passes a connected client.
 
-  const isPostgres = dbClient.constructor.name === 'PoolClient' || process.env.DATABASE_URL?.startsWith('postgres');
+  const isPostgres = dbClient.client.config.client === 'pg';
 
   try {
     // Lock the user row to prevent race conditions (only works in PostgreSQL).
     const lockClause = isPostgres ? 'FOR UPDATE' : '';
-    const userResult = await dbClient.query(`SELECT points FROM users WHERE id = $1 ${lockClause}`, [userId]);
+    const { rows: userResult } = await dbClient.raw(`SELECT points FROM users WHERE id = ? ${lockClause}`, [userId]);
     
-    if (userResult.rows.length === 0) {
+    if (userResult.length === 0) {
       throw new Error(`User not found with ID: ${userId}`);
     }
 
-    const currentBalance = userResult.rows[0].points;
+    const currentBalance = userResult[0].points;
     const newBalance = currentBalance + amount;
 
     // 1. Update the user's total points in the 'users' table.
-    await dbClient.query('UPDATE users SET points = $1 WHERE id = $2', [newBalance, userId]);
+    await dbClient.raw('UPDATE users SET points = ? WHERE id = ?', [newBalance, userId]);
 
     // 2. Log the transaction in the 'points_history' table.
-    await dbClient.query(
+    await dbClient.raw(
       `INSERT INTO points_history (user_id, change_amount, new_balance, reason, event_id)
-       VALUES ($1, $2, $3, $4, $5)`,
+       VALUES (?, ?, ?, ?, ?)`,
       [userId, amount, newBalance, reason, eventId]
     );
 
