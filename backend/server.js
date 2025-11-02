@@ -1235,6 +1235,8 @@ app.get('/api/events/active', async (req, res) => {
       // We don't return an error for invalid parameters, just log them
     }
     
+    const isPostgres = db.client.config.client === 'pg';
+    
     const queryText = `
       WITH participant_stats AS (
         SELECT
@@ -1261,10 +1263,13 @@ app.get('/api/events/active', async (req, res) => {
         e.correct_answer,
         COALESCE(ps.total_participants, 0) AS current_participants,
         COALESCE(ps.total_prize_pool, 0) AS prize_pool,
-        json_build_object(
+        ${isPostgres ? `json_build_object(
           'up', COALESCE(ps.up_bets * 100.0 / NULLIF(ps.total_participants, 0), 0),
           'down', COALESCE(ps.down_bets * 100.0 / NULLIF(ps.total_participants, 0), 0)
-        ) AS prediction_distribution,
+        )` : `json_object(
+          'up', COALESCE(ps.up_bets * 100.0 / CASE WHEN ps.total_participants = 0 THEN NULL ELSE ps.total_participants END, 0),
+          'down', COALESCE(ps.down_bets * 100.0 / CASE WHEN ps.total_participants = 0 THEN NULL ELSE ps.total_participants END, 0)
+        )`} AS prediction_distribution,
         et.name as event_type
       FROM events e
       LEFT JOIN participant_stats ps ON e.id = ps.event_id
@@ -1365,108 +1370,52 @@ app.get('/api/events/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Validate that id is a number
     if (isNaN(id) || !Number.isInteger(parseFloat(id))) {
       return res.status(400).json({ error: 'Invalid event ID format' });
     }
     
     const eventId = parseInt(id);
-    
-    // Get event data with participant counts and prize pool
-    let query;
-    let params = [eventId, eventId, req.userId, eventId];
-    
-    if (db.client.config.client === 'pg') {
-      query = `WITH event_totals AS (
-        SELECT
-          id,
-          COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = events.id), 0) AS prize_pool
-        FROM events
-        WHERE id = ?
-      ), option_volumes_pre AS (
-        SELECT
-          p.prediction,
-          SUM(p.amount) as total_amount
-        FROM participants p
-        WHERE p.event_id = ?
-        GROUP BY p.prediction
-      )
-      SELECT
-        e.*,
-        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        et.prize_pool,
-        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = ?) AS user_prediction,
-        (
-          SELECT json_object_agg(
-            ov.prediction,
-            json_build_object(
-              'total_amount', ov.total_amount,
-              'multiplier',
-                CASE
-                  WHEN ov.total_amount > 0 THEN et.prize_pool / ov.total_amount
-                  ELSE 0
-                END
-            )
-          )
-          FROM option_volumes_pre ov, event_totals et
-        ) as option_volumes
-      FROM events e
-      JOIN event_totals et ON e.id = et.id
-      WHERE e.id = ?`;
-    } else {
-      // SQLite-compatible version
-      query = `WITH event_totals AS (
-        SELECT
-          id,
-          COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = events.id), 0) AS prize_pool
-        FROM events
-        WHERE id = ?
-      ), option_volumes_pre AS (
-        SELECT
-          p.prediction,
-          SUM(p.amount) as total_amount
-        FROM participants p
-        WHERE p.event_id = ?
-        GROUP BY p.prediction
-      )
-      SELECT
-        e.*,
-        (SELECT COUNT(*) FROM participants WHERE event_id = e.id) AS current_participants,
-        et.prize_pool,
-        (SELECT prediction FROM participants WHERE event_id = e.id AND user_id = ?) AS user_prediction,
-        (
-          SELECT json_group_object(
-            prediction,
-            json_object(
-              'total_amount', total_amount,
-              'multiplier',
-                CASE
-                  WHEN total_amount > 0 THEN (SELECT prize_pool FROM event_totals) / total_amount
-                  ELSE 0
-                END
-            )
-          )
-          FROM option_volumes_pre
-        ) as option_volumes
-      FROM events e
-      JOIN event_totals et ON e.id = et.id
-      WHERE e.id = ?`;
-      
-      // Convert PostgreSQL-style parameters to SQLite-style
-      params = [eventId, eventId, req.userId, eventId];
-    }
-    
-    const { rows } = await db.raw(query, params);
-    
-    if (rows.length === 0) {
+
+    const event = await db('events').where('id', eventId).first();
+
+    if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
+
+    const prizePool = await db('participants')
+      .where('event_id', eventId)
+      .sum('amount as total')
+      .first();
     
-    // Add current price from CoinGecko if event is active
-    const event = rows[0];
+    event.prize_pool = prizePool.total || 0;
+
+    const userPrediction = await db('participants')
+      .where('event_id', eventId)
+      .andWhere('user_id', req.userId)
+      .select('prediction')
+      .first();
+
+    event.user_prediction = userPrediction ? userPrediction.prediction : null;
+
+    const optionVolumes = await db('participants')
+      .select('prediction')
+      .sum('amount as total_amount')
+      .where('event_id', eventId)
+      .groupBy('prediction');
+
+    event.option_volumes = optionVolumes.reduce((acc, row) => {
+      acc[row.prediction] = {
+        total_amount: row.total_amount,
+        multiplier: event.prize_pool > 0 && row.total_amount > 0 ? event.prize_pool / row.total_amount : 0
+      };
+      return acc;
+    }, {});
+
+    const participants = await db('participants').where('event_id', eventId).count('id as count').first();
+    event.current_participants = participants.count;
+
     if (event.status === 'active' || event.resolution_status === 'pending') {
       try {
-        // Convert symbol to CoinGecko ID - 'btc' -> 'bitcoin', 'eth' -> 'ethereum', etc.
         const coinGeckoIdMap = {
           'btc': 'bitcoin',
           'eth': 'ethereum',
@@ -1476,7 +1425,6 @@ app.get('/api/events/:id', authenticateToken, async (req, res) => {
         const coinGeckoId = coinGeckoIdMap[event.crypto_symbol] || 'bitcoin';
         event.current_price = await coingecko.getCurrentPrice(coinGeckoId);
         
-        // Add price range information for active events
         if (event.initial_price) {
           event.price_ranges = coingecko.calculatePriceRanges(event.initial_price);
         }
