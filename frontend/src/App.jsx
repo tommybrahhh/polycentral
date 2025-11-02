@@ -352,9 +352,7 @@ const App = () => {
                             ? error.response.data.message
                             : 'Failed to claim free points.';
                           console.error('Claim failed:', error.response ? error.response.data : error);
-                          setSnackbarMessage(errorMessage);
-                          setShowSnackbar(true);
-                          setTimeout(() => setShowSnackbar(false), 3000); // Hide after 3 seconds
+                          alert(errorMessage);
                         }
                         setShowUserMenu(false);
                       }}
