@@ -30,7 +30,9 @@ const EventDetail = () => {
     const fetchEvent = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/${id}`);
+        const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/events/${id}`, { headers });
         setEvent(response.data);
       } catch (err) {
         console.error('Failed to fetch event:', err);
