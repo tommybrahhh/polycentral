@@ -112,7 +112,7 @@ adminRouter.use(authenticateAdmin);
 // --- Middleware Setup ---
 app.use(helmet());
 // Set allowed origins for CORS
-const raw = process.env.CORS_ORIGIN || 'https://polycentral-production.up.railway.app,https://polyc-seven.vercel.app,http://localhost:5173';
+const raw = process.env.CORS_ORIGIN || 'https://polycentral-production.up.railway.app,https://polyc-seven.vercel.app,http://localhost:5173,https://polyc-hxdso9cwj-tommybrahhhs-projects.vercel.app,https://polyc-7dzllhjyy-tommybrahhhs-projects.vercel.app';
 const allowedOrigins = raw.split(',').map(o => o.trim()).filter(Boolean);
 
 console.log('✅ CORS allowed origins configured:', allowedOrigins);
@@ -223,7 +223,7 @@ async function createEvent(initialPrice) {
 
   // Generate formatted title with closing price question and creation price
   const eventDate = new Date().toISOString().split('T')[0];
-  const title = `Closing price of Bitcoin today`;
+  const title = `Closing price of Bitcoin on ${eventDate}`;
   
   // Create simplified Higher/Lower options
   const options = [
@@ -608,7 +608,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     if (!identifier || !password) return res.status(400).json({ error: 'Identifier and password are required' });
     try {
-        const { rows: [user] } = await db.raw('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
+        const { rows: [user] } = await db.raw('SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR email = ?', [identifier, identifier]);
         if (!user || !(await bcrypt.compare(password, user.password_hash))) return res.status(401).json({ error: 'Invalid credentials' });
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
         // Update last login date on successful login
@@ -871,10 +871,7 @@ app.post('/api/events/:id/join', authenticateToken, async (req, res) => {
         }
 
         // Deduct entry fee
-        await trx.raw(
-            'UPDATE users SET points = points - ? WHERE id = ?',
-            [entryFee, userId]
-        );
+        await updateUserPoints(trx, userId, -entryFee, 'event_join', tournamentId);
 
         // Add participant
         await trx.raw(
@@ -927,10 +924,7 @@ app.post('/api/tournaments/:id/entries', authenticateToken, async (req, res) => 
         }
 
         // Deduct points
-        await trx.raw(
-            'UPDATE users SET points = points - ? WHERE id = ?',
-            [totalCost, userId]
-        );
+        await updateUserPoints(trx, userId, -totalCost, 'tournament_entry', tournamentId);
 
         // Create entries
         for (const entry of entries) {
@@ -1151,10 +1145,7 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
 
         // Deduct the bet amount from the user's points
         console.log('DEBUG: Deducting bet amount from user points', { userId, amount: selectedEntryFee });
-        await trx.raw(
-            'UPDATE users SET points = points - ? WHERE id = ?',
-            [selectedEntryFee, userId]
-        );
+        await updateUserPoints(trx, userId, -selectedEntryFee, 'bet', eventId);
         console.log('DEBUG: Entry fee deducted successfully');
         
         // Remove prize_pool update as it's now calculated from participants table
