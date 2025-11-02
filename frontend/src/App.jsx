@@ -342,7 +342,7 @@ const App = () => {
                           setPoints(response.data.newTotal);
                           // Show success toast
                         } catch (error) {
-                          console.error('Claim failed:', error);
+                          console.error('Claim failed:', error.response ? error.response.data : error);
                           // Show error toast
                         }
                         setShowUserMenu(false);
