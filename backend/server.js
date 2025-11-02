@@ -1032,7 +1032,8 @@ app.post('/api/events/:id/bet', authenticateToken, async (req, res) => {
         }
 
         if (!validPredictions.includes(prediction)) {
-            console.log('DEBUG: Invalid prediction value', { prediction, validOptions: validPredictions });
+            console.log('DEBUG: Invalid prediction value received:', prediction);
+            console.log('DEBUG: Valid predictions for this event:', validPredictions);
             return res.status(400).json({ error: 'Invalid prediction value submitted' });
         }
     } catch (e) {

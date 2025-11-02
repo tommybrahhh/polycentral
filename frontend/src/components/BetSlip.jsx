@@ -21,15 +21,17 @@ const BetSlip = ({ selectedPrediction, currentUserPoints, onSubmit }) => {
       </div>
       <div>
         <label htmlFor="stake-amount" className="block text-sm font-medium text-secondary mb-1">Amount (PTS)</label>
-        <input
-          type="number"
+        <select
           id="stake-amount"
           value={stake}
           onChange={handleStakeChange}
-          min="100"
-          step="100"
           className="w-full p-2 rounded-md bg-charcoal border border-gray-600 focus:ring-orange-primary focus:border-orange-primary"
-        />
+        >
+          <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
+          <option value="1000">1000</option>
+        </select>
       </div>
       <button 
         onClick={() => onSubmit(stake)}
