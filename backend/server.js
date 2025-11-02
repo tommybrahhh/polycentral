@@ -1874,7 +1874,22 @@ async function createInitialEvent() {
       await createEvent(price);
     }
   } catch (error) {
-    console.error('Initial event creation failed:', error);
+    console.error('Initial event creation failed:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    try {
+      console.log('Attempting fallback event creation with default price...');
+      await createEvent(50000); // Default price
+      console.log("Created fallback Bitcoin event with default price: $50000");
+    } catch (fallbackError) {
+      console.error('Fallback event creation also failed:', {
+        message: fallbackError.message,
+        stack: fallbackError.stack,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 }
 

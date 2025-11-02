@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminRoute from './components/admin/AdminRoute';
@@ -9,6 +10,7 @@ import RegisterForm from './RegisterForm';
 import LoginForm from './LoginForm';
 import EventList from './components/EventList';
 import EventDetail from './components/EventDetail';
+import Snackbar from './components/Snackbar';
 
 // Main App Component
 const App = () => {
@@ -19,6 +21,8 @@ const App = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   const userMenuRef = useRef(null);
 
   const UserIcon = () => (
@@ -340,10 +344,17 @@ const App = () => {
                             headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
                           });
                           setPoints(response.data.newTotal);
-                          // Show success toast
+                          setSnackbarMessage('Successfully claimed free points!');
+                          setShowSnackbar(true);
+                          setTimeout(() => setShowSnackbar(false), 3000); // Hide after 3 seconds
                         } catch (error) {
+                          const errorMessage = error.response && error.response.data && error.response.data.message
+                            ? error.response.data.message
+                            : 'Failed to claim free points.';
                           console.error('Claim failed:', error.response ? error.response.data : error);
-                          // Show error toast
+                          setSnackbarMessage(errorMessage);
+                          setShowSnackbar(true);
+                          setTimeout(() => setShowSnackbar(false), 3000); // Hide after 3 seconds
                         }
                         setShowUserMenu(false);
                       }}
@@ -407,6 +418,10 @@ const App = () => {
       
       {/* Particle effect container */}
       <div className="particles" id="particles-container"></div>
+
+      <AnimatePresence>
+        {showSnackbar && <Snackbar message={snackbarMessage} />}
+      </AnimatePresence>
     </Router>
   );
 };
