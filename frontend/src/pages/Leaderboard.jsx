@@ -10,6 +10,7 @@ const Leaderboard = () => {
   const [error, setError] = useState(null);
   const usersPerPage = 20; // Matches backend limit
   const [loggedInUserId, setLoggedInUserId] = useState(null);
+  const [timeframe, setTimeframe] = useState('all-time'); // all-time, monthly, weekly
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -26,11 +27,11 @@ const Leaderboard = () => {
           params: {
             page: currentPage,
             limit: usersPerPage,
+            timeframe: timeframe // Add timeframe parameter
           },
         });
-        setLeaderboardData(response.data.users); // Assuming response.data contains { users, total, page, limit, pages }
+        setLeaderboardData(response.data.users);
         setTotalPages(response.data.pages);
-        // The backend now sends total pages, so we use that directly.
       } catch (err) {
         console.error('Error fetching leaderboard:', err);
         setError('Failed to load leaderboard. Please try again later.');
@@ -40,7 +41,7 @@ const Leaderboard = () => {
     };
 
     fetchLeaderboard();
-  }, [currentPage]);
+  }, [currentPage, timeframe]);
 
   const handleNextPage = () => {
     setCurrentPage((prevPage) => prevPage + 1);
@@ -48,6 +49,11 @@ const Leaderboard = () => {
 
   const handlePreviousPage = () => {
     setCurrentPage((prevPage) => Math.max(1, prevPage - 1));
+  };
+
+  const handleTimeframeChange = (newTimeframe) => {
+    setTimeframe(newTimeframe);
+    setCurrentPage(1); // Reset to first page when timeframe changes
   };
 
   if (loading) {
@@ -61,6 +67,27 @@ const Leaderboard = () => {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold text-white mb-6 text-center">Leaderboard</h1>
+      
+      {/* Timeframe Selection Tabs */}
+      <div className="flex justify-center mb-6">
+        <div className="bg-gray-700 rounded-lg p-1 flex">
+          {['all-time', 'monthly', 'weekly'].map((time) => (
+            <button
+              key={time}
+              onClick={() => handleTimeframeChange(time)}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                timeframe === time
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-600'
+              }`}
+            >
+              {time === 'all-time' ? 'All Time' :
+               time === 'monthly' ? 'Monthly' : 'Weekly'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-gray-800 rounded-lg shadow-lg p-6">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-700">
@@ -77,19 +104,44 @@ const Leaderboard = () => {
             </tr>
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
-            {leaderboardData.map((user, index) => (
-              <tr key={user.id} className={`hover:bg-gray-700 ${user.id === loggedInUserId ? 'bg-blue-900' : ''}`}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                  {(currentPage - 1) * usersPerPage + index + 1}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
-                  {user.username}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
-                  {user.points}
-                </td>
-              </tr>
-            ))}
+            {leaderboardData.map((user, index) => {
+              const isCurrentUser = user.id === loggedInUserId;
+              const rank = (currentPage - 1) * usersPerPage + index + 1;
+              
+              return (
+                <tr
+                  key={user.id}
+                  className={`hover:bg-gray-700 transition-colors ${
+                    isCurrentUser
+                      ? 'bg-blue-900 border-2 border-blue-400'
+                      : ''
+                  }`}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center">
+                      <span className={`${isCurrentUser ? 'text-blue-200' : 'text-white'}`}>
+                        {rank}
+                      </span>
+                      {isCurrentUser && (
+                        <span className="ml-2 px-2 py-1 bg-blue-500 text-xs text-white rounded-full">
+                          You
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={isCurrentUser ? 'text-blue-200 font-semibold' : 'text-gray-200'}>
+                      {user.username}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={isCurrentUser ? 'text-blue-200 font-semibold' : 'text-gray-200'}>
+                      {user.points.toLocaleString()}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <div className="flex justify-between items-center mt-4">
