@@ -11,6 +11,7 @@ import LoginForm from './LoginForm';
 import EventList from './components/EventList';
 import EventDetail from './components/EventDetail';
 import Snackbar from './components/Snackbar';
+import Leaderboard from './pages/Leaderboard';
 
 // Main App Component
 const App = () => {
@@ -317,6 +318,7 @@ const App = () => {
           <div className="nav-container flex justify-between items-center max-w-6xl mx-auto w-full">
             <div className="nav-links flex gap-8 items-center">
               <Link to="/events" className="nav-link text-[var(--off-white)] no-underline font-medium py-2 px-4 rounded-md transition-all duration-250">Events</Link>
+              <Link to="/leaderboard" className="nav-link text-[var(--off-white)] no-underline font-medium py-2 px-4 rounded-md transition-all duration-250">Leaderboard</Link>
             </div>
             {/* --- User Status Display --- */}
             <div className="user-status flex items-center gap-4">
@@ -402,6 +404,7 @@ const App = () => {
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/" element={<EventList />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
