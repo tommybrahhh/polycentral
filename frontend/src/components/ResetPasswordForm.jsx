@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { resetPassword } from '../services/authService';
+import { resetPassword } from '../../services/authService';
 
 // SVG Icon Components
 const EyeIcon = () => (

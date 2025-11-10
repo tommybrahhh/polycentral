@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { register } from '../services/authService.js';
+import { register } from './services/authService.js';
 
 // SVG Icon Components
 const EyeIcon = () => (

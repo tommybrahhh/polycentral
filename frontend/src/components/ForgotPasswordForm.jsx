@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { forgotPassword } from '../services/authService';
+import { forgotPassword } from '../../services/authService';
 
 const ForgotPasswordForm = ({ onClose }) => {
   const [formData, setFormData] = useState({
