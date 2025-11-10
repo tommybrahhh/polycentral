@@ -2,7 +2,7 @@
 const http = require('http');
 
 const testData = JSON.stringify({
-  email: 'test@example.com'
+  email: 'user1@test.com'
 });
 
 const options = {
