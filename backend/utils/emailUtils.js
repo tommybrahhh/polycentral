@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'Set' : 'Not Set');
 const emailFrom = process.env.EMAIL_FROM;
 
 // Generate a secure random token for email verification
