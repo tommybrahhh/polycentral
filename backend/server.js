@@ -59,9 +59,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
+const crypto = require('crypto');
 const coingecko = require('./lib/coingecko');
 const { updateUserPoints } = require('./utils/pointsUtils');
-const { generateVerificationToken, getExpirationTime, sendVerificationEmail } = require('./utils/emailUtils');
+const { generateVerificationToken, getExpirationTime, sendVerificationEmail, sendPasswordResetEmail } = require('./utils/emailUtils');
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 8080;
@@ -146,6 +147,18 @@ app.use((req, res, next) => {
 });
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
 app.use('/api/', limiter);
+
+// Specific rate limiting for password reset to prevent abuse
+// More lenient for testing - higher max attempts with shorter window
+const passwordResetLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute for testing (was 15 minutes)
+  max: 10, // Max 10 attempts per minute for testing (was 3 per 15 minutes)
+  message: { error: 'Too many password reset attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' // Skip rate limiting in test environment
+});
+app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use((req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD') {
     next();
@@ -200,7 +213,9 @@ db.raw('SELECT 1')
 async function initializeDatabase() {
   try {
     console.log(`🛠️ Running database migrations...`);
-    await db.migrate.latest(knexConfig);
+    await db.migrate.latest({
+      directory: path.join(__dirname, 'migrations')
+    });
     console.log('✅ Database migrations complete');
   } catch (err) {
     console.error('❌ Database initialization failed:', err);
@@ -232,11 +247,13 @@ async function createEvent(initialPrice) {
   ];
   
   // Look up event type 'prediction'
-  const typeQuery = await db.raw(`SELECT id FROM event_types WHERE name = 'prediction'`);
-  if (typeQuery.rows.length === 0) {
+  const typeQueryResult = await db.raw(`SELECT id FROM event_types WHERE name = 'prediction'`);
+  const eventTypes = typeQueryResult.rows || typeQueryResult; // Handle both PG and SQLite raw query results
+
+  if (eventTypes.length === 0) {
     throw new Error("Event type 'prediction' not found");
   }
-  const eventTypeId = typeQuery.rows[0].id;
+  const eventTypeId = eventTypes[0].id;
 
   await db.raw(
     `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee, options)
@@ -1714,6 +1731,209 @@ app.post('/api/user/request-email-change', authenticateToken, async (req, res) =
   }
 });
 
+// Password reset request endpoint
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate email
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+
+    // Find user by email
+    const result = await db.raw(
+      'SELECT id, email FROM users WHERE email = ?',
+      [email]
+    );
+    // Handle different database result structures (SQLite vs PostgreSQL)
+    // Knex returns { rows: [...] } for PostgreSQL and array for SQLite
+    let user = null;
+    if (result && result.rows && Array.isArray(result.rows)) {
+      user = result.rows[0];
+    } else if (Array.isArray(result)) {
+      user = result[0];
+    } else {
+      // Handle case where result is an object with rows property that might be undefined
+      user = null;
+    }
+
+    // If user doesn't exist, return success to prevent email enumeration
+    // Use consistent response format and timing to prevent enumeration
+    if (!user) {
+      console.log('Password reset requested for non-existent email (enumeration protection):', email);
+      // Add small delay to prevent timing attacks (50-150ms random delay)
+      await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+      return res.json({
+        message: 'If an account with that email exists, a password reset link has been sent'
+      });
+    }
+
+    // Generate reset token and expiration
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = await bcrypt.hash(resetToken, 10);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour expiration
+
+    // Store hashed token and expiration in database
+    await db.raw(
+      `UPDATE users
+       SET password_reset_token = ?, password_reset_expires = ?
+       WHERE id = ?`,
+      [hashedToken, expiresAt, user.id]
+    );
+
+    // Create reset link
+    const resetLink = `${process.env.FRONTEND_BASE_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+
+    // Send reset email
+    await sendPasswordResetEmail(email, resetLink);
+
+    res.json({
+      message: 'If an account with that email exists, a password reset link has been sent'
+    });
+
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+// Password reset confirmation endpoint
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    // Validate required fields
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Token, new password, and confirm password are required' });
+    }
+
+    // Validate password matching
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    // Validate password strength (same as registration but with special character requirement)
+    // Updated to match test expectations: at least 8 chars, uppercase, lowercase, number, and special char
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        error: 'Password must contain at least 8 characters, including uppercase, lowercase, numeric, and special characters.'
+      });
+    }
+
+    // Find user by token (check if token exists and hasn't expired)
+    const now = new Date();
+    const result = await db.raw(
+      `SELECT id, password_reset_token, password_reset_expires
+       FROM users
+       WHERE password_reset_token IS NOT NULL
+       AND password_reset_expires > ?`,
+      [now]
+    );
+    // Handle different database result structures (SQLite vs PostgreSQL)
+    // Knex returns { rows: [...] } for PostgreSQL and array for SQLite
+    let users = [];
+    if (result && result.rows && Array.isArray(result.rows)) {
+      users = result.rows;
+    } else if (Array.isArray(result)) {
+      users = result;
+    } else {
+      // Handle case where result is an object with rows property that might be undefined
+      users = [];
+    }
+
+    // Find the user with matching token using bcrypt.compare
+    let userWithMatchingToken = null;
+    for (const user of users) {
+      const isTokenMatch = await bcrypt.compare(token, user.password_reset_token);
+      if (isTokenMatch) {
+        userWithMatchingToken = user;
+        break;
+      }
+    }
+
+    if (!userWithMatchingToken) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Hash the new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update user password and clear reset token fields
+    await db.raw(
+      `UPDATE users
+       SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL
+       WHERE id = ?`,
+      [passwordHash, userWithMatchingToken.id]
+    );
+
+    res.json({ message: 'Password successfully reset' });
+
+  } catch (error) {
+    console.error('Password reset confirmation error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// HEAD method for token validation - early token validation without password reset
+app.head('/api/auth/reset-password', async (req, res) => {
+  try {
+    // Extract token from X-Token-Validation header
+    const token = req.headers['x-token-validation'];
+    
+    if (!token) {
+      return res.status(400).json({ error: 'X-Token-Validation header is required' });
+    }
+
+    // Find users with valid reset tokens (not expired)
+    const now = new Date();
+    const result = await db.raw(
+      `SELECT id, password_reset_token, password_reset_expires
+       FROM users
+       WHERE password_reset_token IS NOT NULL
+       AND password_reset_expires > ?`,
+      [now]
+    );
+    
+    // Handle different database result structures (SQLite vs PostgreSQL)
+    let users = [];
+    if (result && result.rows && Array.isArray(result.rows)) {
+      users = result.rows;
+    } else if (Array.isArray(result)) {
+      users = result;
+    } else {
+      users = [];
+    }
+
+    // Find the user with matching token using bcrypt.compare
+    let userWithMatchingToken = null;
+    for (const user of users) {
+      const isTokenMatch = await bcrypt.compare(token, user.password_reset_token);
+      if (isTokenMatch) {
+        userWithMatchingToken = user;
+        break;
+      }
+    }
+
+    if (!userWithMatchingToken) {
+      return res.status(404).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Token is valid - return 200 OK
+    res.status(200).end();
+
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ error: 'Failed to validate token' });
+  }
+});
+
 // Email verification endpoint
 app.post('/api/user/verify-email-change', async (req, res) => {
   try {
@@ -1921,7 +2141,8 @@ async function createInitialEvent() {
       ? "SELECT 1 FROM events WHERE start_time > NOW() - INTERVAL '1 day' LIMIT 1"
       : "SELECT 1 FROM events WHERE start_time > datetime('now', '-1 day') LIMIT 1";
     const existing = await db.raw(query);
-    if (existing.rows.length === 0) {
+    const existingEvents = existing.rows || existing; // Handle both PG and SQLite raw query results
+    if (existingEvents.length === 0) {
       const price = await coingecko.getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
       console.log('Initial event creation triggered with price:', price);
       await createEvent(price);
@@ -3079,6 +3300,8 @@ app.use((req, res) => {
         '/api/events',
         '/api/auth/register',
         '/api/auth/login',
+        '/api/auth/forgot-password',
+        '/api/auth/reset-password',
         '/api/admin/events/create',
         '/api/admin/events/status',
         '/api/admin/platform-fees/total',

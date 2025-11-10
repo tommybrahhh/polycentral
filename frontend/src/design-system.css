@@ -247,6 +247,34 @@ small {
   box-shadow: var(--shadow-glow);
 }
 
+/* ===== FORGOT PASSWORD LINK ===== */
+.forgot-password-link {
+  background: transparent;
+  border: none;
+  color: var(--light-gray);
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color var(--transition-fast);
+  padding: var(--spacing-xs) 0;
+  margin-top: var(--spacing-sm);
+  text-align: center;
+  width: 100%;
+  font-family: var(--font-family);
+}
+
+.forgot-password-link:hover {
+  color: var(--orange-primary);
+}
+
+.forgot-password-container {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--ui-border);
+}
+
 /* ===== FORM ELEMENTS ===== */
 .form-input {
   width: 100%;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { register } from '../services/authService';
 
 // SVG Icon Components
 const EyeIcon = () => (
@@ -104,59 +105,42 @@ const RegisterForm = ({ onClose, onAuthentication }) => {
     
     setSubmitting(true);
     try {
-      // Use Vite environment variable for API base URL
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      const data = await register(formData.username, formData.email, formData.password);
+      console.log('Registration successful', data);
       
-      const response = await fetch(`${apiBaseUrl}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        })
-      });
+      // Store the auth token in localStorage
+      localStorage.setItem('auth_token', data.token);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Registration successful', data);
-        // Store the auth token in localStorage
-        localStorage.setItem('auth_token', data.token);
-        
-        // Store user info in localStorage
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Update app state through callback
-        if (onAuthentication) {
-          console.log('Calling onAuthentication callback with:', data.user);
-          onAuthentication(data.user);
-          console.log('onAuthentication callback executed');
-        }
-        
-        // Close the modal
-        if (onClose) onClose();
-        
-      } else {
-        const errorData = await response.json();
-        
-        // Production-friendly error messages
-        let errorMessage = 'Registration failed. Please try again.';
-        if (errorData.message) {
-          if (errorData.message.includes('already exists')) {
-            errorMessage = 'Email already registered. Please use a different email.';
-          } else if (errorData.message.includes('password')) {
-            errorMessage = errorData.message;
-          }
-        }
-        
-        throw new Error(errorMessage);
+      // Store user info in localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Update app state through callback
+      if (onAuthentication) {
+        console.log('Calling onAuthentication callback with:', data.user);
+        onAuthentication(data.user);
+        console.log('onAuthentication callback executed');
       }
+      
+      // Close the modal
+      if (onClose) onClose();
+      
     } catch (error) {
       console.error('Registration failed:', error);
+      
+      // Production-friendly error messages
+      let errorMessage = 'Registration failed. Please try again.';
+      if (error.message) {
+        if (error.message.includes('already exists')) {
+          errorMessage = 'Email already registered. Please use a different email.';
+        } else if (error.message.includes('password')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setErrors({
-        submit: error.message || 'An unexpected error occurred. Please try again later.'
+        submit: errorMessage || 'An unexpected error occurred. Please try again later.'
       });
       
       // Fallback: Clear form on network errors

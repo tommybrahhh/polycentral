@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { login } from '../services/authService';
 
 // SVG Icon Components
 const EyeIcon = () => (
@@ -58,42 +60,24 @@ const LoginForm = ({ onClose, onAuthentication }) => {
     
     setSubmitting(true);
     try {
-      // Use Vite environment variable for API base URL
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      const data = await login(formData.email, formData.password);
+      console.log('Login successful', data);
       
-      const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identifier: formData.email,
-          password: formData.password
-        })
-      });
+      // Store the auth token in localStorage
+      localStorage.setItem('auth_token', data.token);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Login successful', data);
-        // Store the auth token in localStorage
-        localStorage.setItem('auth_token', data.token);
-        
-        // Store user info in localStorage
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Update app state through callback
-        if (onAuthentication) {
-          console.log('Calling onAuthentication callback with:', data.user);
-          onAuthentication(data.user);
-          console.log('onAuthentication callback executed');
-        }
-        
-        // Close the modal
-        if (onClose) onClose();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed. Please check your credentials.');
+      // Store user info in localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Update app state through callback
+      if (onAuthentication) {
+        console.log('Calling onAuthentication callback with:', data.user);
+        onAuthentication(data.user);
+        console.log('onAuthentication callback executed');
       }
+      
+      // Close the modal
+      if (onClose) onClose();
     } catch (error) {
       console.error('Login failed:', error);
       setErrors({
@@ -190,6 +174,12 @@ const LoginForm = ({ onClose, onAuthentication }) => {
               </>
             ) : 'Log In'}
           </button>
+
+          <div className="forgot-password-container">
+            <Link to="/forgot-password" className="forgot-password-link" onClick={handleClose}>
+              Forgot Password?
+            </Link>
+          </div>
         </form>
       </div>
     </div>

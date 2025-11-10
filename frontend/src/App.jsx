@@ -8,6 +8,8 @@ import AdminRoute from './components/admin/AdminRoute';
 import './index.css';
 import RegisterForm from './RegisterForm';
 import LoginForm from './LoginForm';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import EventList from './components/EventList';
 import EventDetail from './components/EventDetail';
 import Snackbar from './components/Snackbar';
@@ -405,6 +407,8 @@ const App = () => {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<EventList />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -414,7 +418,10 @@ const App = () => {
         <RegisterForm onClose={() => setShowRegisterModal(false)} onAuthentication={handleAuthentication} />
       )}
       {showLoginModal && (
-        <LoginForm onClose={() => setShowLoginModal(false)} onAuthentication={handleAuthentication} />
+        <LoginForm
+          onClose={() => setShowLoginModal(false)}
+          onAuthentication={handleAuthentication}
+        />
       )}
       
       {/* Particle effect container */}
