@@ -2,7 +2,7 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const { authenticateAdmin } = require('../middleware/authMiddleware');
 const { validateEntryFee } = require('../middleware/eventMiddleware');
-const { createEvent, participateInEvent, betOnEvent, getActiveEvents, getParticipationHistory, getEventDetails, getHealthStatus, triggerManualResolution } = require('../controllers/eventController');
+const { createEvent, participateInEvent, betOnEvent, listActiveEvents, getParticipationHistory, getEventDetails, getHealthStatus, triggerManualResolution } = require('../controllers/eventController');
 
 const router = express.Router();
 
@@ -39,7 +39,7 @@ router.post('/:id/bet', authenticateToken, async (req, res) => {
 // GET active events
 router.get('/active', async (req, res) => {
   try {
-    await getActiveEvents(req.db, req, res);
+    await listActiveEvents(req.db, req, res);
   } catch (error) {
     console.error('❌ Active events retrieval route error:', error);
     res.status(500).json({ error: 'Server error' });

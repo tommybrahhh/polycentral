@@ -418,7 +418,7 @@ async function betOnEvent(db, req, res) {
 }
 
 // Active events retrieval controller function
-async function getActiveEvents(db, req, res) {
+async function listActiveEvents(db, req, res) {
   try {
     // Log request details for debugging
     console.log('DEBUG: /api/events/active endpoint called');
@@ -439,53 +439,14 @@ async function getActiveEvents(db, req, res) {
     
     const isPostgres = db.client.config.client === 'pg';
     
-    const queryText = `
-      WITH participant_stats AS (
-        SELECT
-          event_id,
-          COUNT(*) AS total_participants,
-          SUM(amount) AS total_prize_pool,
-          SUM(CASE WHEN prediction LIKE '%up%' THEN 1 ELSE 0 END) AS up_bets,
-          SUM(CASE WHEN prediction LIKE '%down%' THEN 1 ELSE 0 END) AS down_bets
-        FROM participants
-        GROUP BY event_id
-      )
-      SELECT
-        e.id,
-        e.title,
-        e.description,
-        e.options,
-        e.entry_fee,
-        e.start_time,
-        e.end_time,
-        e.initial_price,
-        e.final_price,
-        e.status,
-        e.resolution_status,
-        e.correct_answer,
-        COALESCE(ps.total_participants, 0) AS current_participants,
-        COALESCE(ps.total_prize_pool, 0) AS prize_pool,
-        ${isPostgres ? `json_build_object(
-          'up', COALESCE(ps.up_bets * 100.0 / NULLIF(ps.total_participants, 0), 0),
-          'down', COALESCE(ps.down_bets * 100.0 / NULLIF(ps.total_participants, 0), 0)
-        )` : `json_object(
-          'up', COALESCE(ps.up_bets * 100.0 / CASE WHEN ps.total_participants = 0 THEN NULL ELSE ps.total_participants END, 0),
-          'down', COALESCE(ps.down_bets * 100.0 / CASE WHEN ps.total_participants = 0 THEN NULL ELSE ps.total_participants END, 0)
-        )`} AS prediction_distribution,
-        et.name as event_type
-      FROM events e
-      LEFT JOIN participant_stats ps ON e.id = ps.event_id
-      LEFT JOIN event_types et ON e.event_type_id = et.id
-      WHERE e.status = 'active' OR e.resolution_status = 'pending'`;
-    
-    console.log('DEBUG: Executing query:', queryText);
-    
-    const rows = await getActiveEvents(db);
-    console.log('DEBUG: Query result rows count:', rows.length);
+    // The actual database query should be handled by the service function
+    // The controller should call the service function to get the raw data
+    const rawEvents = await getActiveEvents(db); // Call the imported service function
+    console.log('DEBUG: Query result rows count:', rawEvents.length);
     const now = new Date();
 
     // More robust data transformation with error handling
-    const activeEvents = rows.map(event => {
+    const activeEvents = rawEvents.map(event => {
       try {
         // Handle null/undefined values gracefully
         const endTime = event.end_time ? new Date(event.end_time) : new Date();
@@ -646,7 +607,7 @@ module.exports = {
     participateInEvent,
     handleParticipationError,
     betOnEvent,
-    getActiveEvents,
+    listActiveEvents, // Export the renamed function
     getParticipationHistory,
     getEventDetails,
     getHealthStatus,
