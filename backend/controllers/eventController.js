@@ -507,12 +507,12 @@ async function listActiveEvents(db, req, res) {
 }
 
 // Event participation history controller function
-async function getParticipationHistory(db, req, res) {
+async function listParticipationHistory(db, req, res) {
   try {
     const { id } = req.params;
 
     // Fetch all participant entries for the event, ordered by creation time
-    const participationHistory = await getParticipationHistory(db, id);
+    const participationHistory = await getParticipationHistory(db, id); // Call the imported service function
     res.json(participationHistory);
     
   } catch (error) {
@@ -607,8 +607,8 @@ module.exports = {
     participateInEvent,
     handleParticipationError,
     betOnEvent,
-    listActiveEvents, // Export the renamed function
-    getParticipationHistory,
+    listActiveEvents,
+    listParticipationHistory, // Export the renamed function
     getEventDetails,
     getHealthStatus,
     triggerManualResolution
