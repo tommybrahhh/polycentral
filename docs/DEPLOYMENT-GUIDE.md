@@ -102,6 +102,8 @@ The backend includes scheduled jobs for:
 
 ## Future Improvements
 - Add caching for CoinGecko API responses
-- Implement WebSocket for real-time updates
 - Add admin dashboard for event management
 - Implement user verification system
+
+## Completed Features
+- ✅ WebSocket implementation for real-time updates (modular architecture in `backend/websocket/`)

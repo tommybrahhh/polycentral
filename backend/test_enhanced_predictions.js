@@ -34,7 +34,7 @@ if (dbType === 'postgres') {
 }
 
 // Import the coingecko module to test the helper functions
-const coingecko = require('./lib/coingecko');
+const { calculatePriceRanges, determinePriceRange } = require('./services/coingeckoService');
 
 // Test function to check enhanced prediction functionality
 async function testEnhancedPredictions() {
@@ -47,7 +47,7 @@ async function testEnhancedPredictions() {
     // Test 1: Price range calculation
     console.log('\n🧪 Test 1: Price range calculation');
     const initialPrice = 50000; // $50,000
-    const priceRanges = coingecko.calculatePriceRanges(initialPrice);
+    const priceRanges = calculatePriceRanges(initialPrice);
     
     console.log('Initial price: $' + initialPrice);
     console.log('Price ranges:', JSON.stringify(priceRanges, null, 2));
@@ -87,7 +87,7 @@ async function testEnhancedPredictions() {
     
     let allTestsPassed = true;
     for (const testCase of testCases) {
-      const result = coingecko.determinePriceRange(initialPrice, testCase.finalPrice);
+      const result = determinePriceRange(initialPrice, testCase.finalPrice);
       if (result === testCase.expected) {
         console.log(`✅ ${testCase.description} correctly identified as "${result}"`);
       } else {
@@ -116,7 +116,7 @@ async function testEnhancedPredictions() {
     
     let edgeTestsPassed = true;
     for (const edgeCase of edgeCases) {
-      const result = coingecko.determinePriceRange(initialPrice, edgeCase.finalPrice);
+      const result = determinePriceRange(initialPrice, edgeCase.finalPrice);
       // Note: Boundary cases might be in either range depending on implementation
       // We're just checking that it returns a valid range
       const validRanges = ['0-3% up', '3-5% up', '5%+ up', '0-3% down', '3-5% down', '5%+ down'];
@@ -137,7 +137,7 @@ async function testEnhancedPredictions() {
     
     // Test 4: No change scenario
     console.log('\n🧪 Test 4: No change scenario');
-    const noChangeResult = coingecko.determinePriceRange(initialPrice, initialPrice);
+    const noChangeResult = determinePriceRange(initialPrice, initialPrice);
     // With 0% change, it should be in the 0-3% down range (since it's not up)
     // or 0-3% up range (since it's not down)
     // The implementation puts it in 0-3% up (as it's >= initialPrice and <= initialPrice + 3% of initialPrice)
