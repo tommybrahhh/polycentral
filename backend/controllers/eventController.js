@@ -522,7 +522,7 @@ async function listParticipationHistory(db, req, res) {
 }
 
 // Event details retrieval controller function
-async function getEventDetails(db, req, res) {
+async function fetchEventDetails(db, req, res) {
   try {
     const { id } = req.params;
     
@@ -532,7 +532,7 @@ async function getEventDetails(db, req, res) {
     
     const eventId = parseInt(id);
 
-    const event = await getEventDetails(db, eventId);
+    const event = await getEventDetails(db, eventId); // Call the imported service function
 
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -608,8 +608,8 @@ module.exports = {
     handleParticipationError,
     betOnEvent,
     listActiveEvents,
-    listParticipationHistory, // Export the renamed function
-    getEventDetails,
+    listParticipationHistory,
+    fetchEventDetails, // Export the renamed function
     getHealthStatus,
     triggerManualResolution
 };
