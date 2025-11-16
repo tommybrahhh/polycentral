@@ -74,56 +74,7 @@ const jsonMiddleware = require('./middleware/jsonMiddleware');
 const dbMiddleware = require('./middleware/dbMiddleware');
 const notFoundMiddleware = require('./middleware/notFoundMiddleware');
 
-// Create admin router
-const adminRouter = express.Router();
 
-// --- Middleware Setup ---
-app.use(helmet());
-// Set allowed origins for CORS
-const raw = process.env.CORS_ORIGIN || 'https://polycentral-production.up.railway.app,https://polyc-seven.vercel.app,http://localhost:5173,https://polyc-hxdso9cwj-tommybrahhhs-projects.vercel.app,https://polyc-7dzllhjyy-tommybrahhhs-projects.vercel.app';
-const allowedOrigins = raw.split(',').map(o => o.trim()).filter(Boolean);
-
-console.log('✅ CORS allowed origins configured:', allowedOrigins);
-
-app.use(cors({
-    origin: function (origin, callback) {
-        // Log the incoming origin for debugging
-        console.log('CORS check: Incoming request origin:', origin);
-
-        // Allow requests with no origin (like mobile apps or curl requests)
-        // or if the origin is in our allowed list
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            console.error('❌ CORS Error: Origin not allowed:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    optionsSuccessStatus: 200 // For legacy browser support
-}));
-app.use(loggingMiddleware);
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
-app.use('/api/', limiter);
-
-// Specific rate limiting for password reset to prevent abuse
-// More lenient for testing - higher max attempts with shorter window
-const passwordResetLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute for testing (was 15 minutes)
-  max: 10, // Max 10 attempts per minute for testing (was 3 per 15 minutes)
-  message: { error: 'Too many password reset attempts, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === 'test' // Skip rate limiting in test environment
-});
-app.use('/api/auth/forgot-password', passwordResetLimiter);
-app.use(jsonMiddleware);
-app.use(express.urlencoded({ extended: true }));
-
-// Mount admin router
-app.use('/api/admin', adminRouter);
 
 // --- Database Setup ---
 const fs = require('fs');
@@ -182,10 +133,10 @@ async function initializeDatabase() {
 // REMOVED createTestUsers function entirely - not needed in production
 
 // Import route modules
-const { router: authRoutes, authenticateToken } = require('./routes/authRoutes');
+const authRoutes = require('./routes/authRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const userRoutes = require('./routes/userRoutes');
-const adminRoutes = require('./routes/adminRoutes');
+
 const leaderboardRoutes = require('./routes/leaderboardRoutes');
 
 // --- API Routes, Cron Job, and Server Startup ---
@@ -197,8 +148,7 @@ app.use(dbMiddleware(db));
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/user', userRoutes);
-const adminRoutes = require('./routes/adminRoutes');
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/leaderboard', leaderboardRoutes);
 
 // Add monitoring variables as globals for admin controller access
