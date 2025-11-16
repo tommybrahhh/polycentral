@@ -1,13 +1,15 @@
 const express = require('express');
 const { authenticateAdmin } = require('../middleware/authMiddleware');
-const adminController = require('../controllers/adminController'); // Import as a whole object
+
+// const adminController = require('../controllers/adminController'); // Import as a whole object
 
 const router = express.Router();
 
 // Apply admin authentication middleware to all admin routes
-router.use(authenticateAdmin);
+// router.use(authenticateAdmin); // Commented out for now
 
 // Admin manual event creation endpoint
+/*
 router.post('/events/create', adminController.adminCreateEvent);
 
 // Admin endpoint to get event creation status
@@ -52,5 +54,7 @@ router.post('/platform-fees/transfer', adminController.handleTransferPlatformFee
 
 // Admin metrics endpoint
 router.get('/metrics', adminController.handleGetMetrics);
+*/
 
+console.log('adminRoutes.js is exporting router');
 module.exports = router;

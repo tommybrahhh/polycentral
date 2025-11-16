@@ -73,6 +73,7 @@ const authenticateAdmin = async (req, res, next) => {
         console.error('Admin authentication error:', error);
         res.status(500).json({ error: 'Internal server error during authentication' });
     }
+    
 };
 
 module.exports = { authenticateToken, authenticateAdmin };
