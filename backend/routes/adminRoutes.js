@@ -56,5 +56,4 @@ router.post('/platform-fees/transfer', adminController.handleTransferPlatformFee
 router.get('/metrics', adminController.handleGetMetrics);
 */
 
-console.log('adminRoutes.js is exporting router');
 module.exports = router;
