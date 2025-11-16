@@ -56,6 +56,27 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
+
+// --- CORS Configuration ---
+const allowedOrigins = [
+  'https://polyc-seven.vercel.app',
+  // You can add your local dev environment too
+  'http://localhost:3000'
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (allowedOrigins.includes(origin) || !origin) {
+      // Allow requests from the whitelist or if there's no origin (like server-to-server)
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+};
+
+// Enable CORS with specific options
+app.use(cors(corsOptions));
 const {
   resolvePendingEvents,
   createInitialEvent,
