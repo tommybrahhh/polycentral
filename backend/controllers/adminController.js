@@ -20,7 +20,7 @@ const {
 } = require('../services/adminService');
 
 // Admin endpoint for manual event creation
-async function createEvent(req, res) {
+async function adminCreateEvent(req, res) {
   try {
     const {
       title,
@@ -73,7 +73,7 @@ async function createEvent(req, res) {
       return res.status(400).json({ error: 'Invalid options format. Must be a valid JSON array' });
     }
 
-    const newEvent = await createEvent(req.db, {
+    const newEvent = await createEvent(req.db, { // Call the imported service function
       title,
       description,
       category,
@@ -111,7 +111,7 @@ async function getEventStatus(req, res) {
 }
 
 // Admin endpoint to get total platform fees
-async function getTotalPlatformFees(req, res) {
+async function handleGetTotalPlatformFees(req, res) {
   try {
     const result = await getTotalPlatformFees(req.db);
     res.json(result);
@@ -122,7 +122,7 @@ async function getTotalPlatformFees(req, res) {
 }
 
 // Admin endpoint to get all events with pagination and filtering
-async function getEvents(req, res) {
+async function handleGetEvents(req, res) {
   try {
     const { page = 1, limit = 10, search = '', status = 'all' } = req.query;
     const result = await getEvents(req.db, { page, limit, search, status });
@@ -134,7 +134,7 @@ async function getEvents(req, res) {
 }
 
 // Admin endpoint to get event participants
-async function getEventParticipants(req, res) {
+async function handleGetEventParticipants(req, res) {
   try {
     const eventId = req.params.id;
     
@@ -152,7 +152,7 @@ async function getEventParticipants(req, res) {
 }
 
 // Admin endpoint for event templates (placeholder - returns empty array for now)
-async function getEventTemplates(req, res) {
+async function handleGetEventTemplates(req, res) {
   try {
     const templates = await getEventTemplates();
     res.json(templates);
@@ -163,7 +163,7 @@ async function getEventTemplates(req, res) {
 }
 
 // Admin user management endpoints
-async function getUsers(req, res) {
+async function handleGetUsers(req, res) {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const result = await getUsers(req.db, { page, limit, search });
@@ -174,7 +174,7 @@ async function getUsers(req, res) {
   }
 }
 
-async function getUserDetails(req, res) {
+async function handleGetUserDetails(req, res) {
   try {
     const userId = req.params.id;
     
@@ -194,7 +194,7 @@ async function getUserDetails(req, res) {
   }
 }
 
-async function adjustUserPoints(req, res) {
+async function handleAdjustUserPoints(req, res) {
   try {
     const userId = req.params.id;
     const { points, reason } = req.body;
@@ -224,7 +224,7 @@ async function adjustUserPoints(req, res) {
   }
 }
 
-async function updateUserRole(req, res) {
+async function handleUpdateUserRole(req, res) {
   try {
     const userId = req.params.id;
     const { is_admin } = req.body;
@@ -249,7 +249,7 @@ async function updateUserRole(req, res) {
   }
 }
 
-async function suspendUser(req, res) {
+async function handleSuspendUser(req, res) {
   try {
     const userId = req.params.id;
     const { is_suspended } = req.body;
@@ -274,7 +274,7 @@ async function suspendUser(req, res) {
   }
 }
 
-async function resetUserClaims(req, res) {
+async function handleResetUserClaims(req, res) {
   try {
     const userId = req.params.id;
     
@@ -300,7 +300,7 @@ async function resetUserClaims(req, res) {
 }
 
 // Admin endpoint for manual event resolution
-async function manualResolveEvent(req, res, clients, WebSocket) {
+async function handleManualResolveEvent(req, res, clients, WebSocket) {
   const { correct_answer, final_price } = req.body;
   const eventId = req.params.id;
 
@@ -323,7 +323,7 @@ async function manualResolveEvent(req, res, clients, WebSocket) {
 
     const trx = await req.db.transaction(); // Start transaction
     try {
-      const result = await manualResolveEvent(
+      const result = await manualResolveEvent( // Call the imported service function
         req.db,
         trx,
         eventId,
@@ -346,7 +346,7 @@ async function manualResolveEvent(req, res, clients, WebSocket) {
 }
 
 // Admin endpoint to suspend or unsuspend an event
-async function suspendEvent(req, res) {
+async function handleSuspendEvent(req, res) {
   try {
     const eventId = req.params.id;
     const { is_suspended } = req.body;
@@ -373,7 +373,7 @@ async function suspendEvent(req, res) {
 }
 
 // Admin endpoint to delete an event and its associated participants
-async function deleteEvent(req, res) {
+async function handleDeleteEvent(req, res) {
   const eventId = req.params.id;
 
   // Validate input
@@ -394,7 +394,7 @@ async function deleteEvent(req, res) {
 }
 
 // Admin endpoint to transfer platform fees to a user
-async function transferPlatformFees(req, res) {
+async function handleTransferPlatformFees(req, res) {
   const { userId, amount, reason } = req.body;
   
   // Validate input
@@ -432,7 +432,7 @@ async function transferPlatformFees(req, res) {
  * @apiSuccess {Number} completedEvents Number of completed events
  * @apiSuccess {Number} totalFees Total platform fees collected
  */
-async function getMetrics(req, res) {
+async function handleGetMetrics(req, res) {
   try {
     const metrics = await getMetrics(req.db);
     res.json(metrics);
@@ -443,21 +443,21 @@ async function getMetrics(req, res) {
 }
 
 module.exports = {
-  createEvent,
-  getEventStatus,
-  getTotalPlatformFees,
-  getEvents,
-  getEventParticipants,
-  getEventTemplates,
-  getUsers,
-  getUserDetails,
-  adjustUserPoints,
-  updateUserRole,
-  suspendUser,
-  resetUserClaims,
-  manualResolveEvent,
-  suspendEvent,
-  deleteEvent,
-  transferPlatformFees,
-  getMetrics
+  adminCreateEvent,
+  getEventStatus, // No conflict, not renamed
+  handleGetTotalPlatformFees,
+  handleGetEvents,
+  handleGetEventParticipants,
+  handleGetEventTemplates,
+  handleGetUsers,
+  handleGetUserDetails,
+  handleAdjustUserPoints,
+  handleUpdateUserRole,
+  handleSuspendUser,
+  handleResetUserClaims,
+  handleManualResolveEvent,
+  handleSuspendEvent,
+  handleDeleteEvent,
+  handleTransferPlatformFees,
+  handleGetMetrics
 };
