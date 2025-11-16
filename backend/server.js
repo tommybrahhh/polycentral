@@ -75,8 +75,6 @@ const corsOptions = {
   }
 };
 
-// Enable CORS with specific options
-app.use(cors(corsOptions));
 const {
   resolvePendingEvents,
   createInitialEvent,
@@ -86,6 +84,9 @@ const { initWebSocketServer, broadcastMessage } = require('./websocket/websocket
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 8080;
+
+// Enable CORS with specific options
+app.use(cors(corsOptions));
 
 // Import middleware
 const { authenticateAdmin } = require('./middleware/authMiddleware');
