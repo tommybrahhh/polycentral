@@ -88,6 +88,9 @@ const PORT = process.env.PORT || 8080;
 // Enable CORS with specific options
 app.use(cors(corsOptions));
 
+// Parse JSON request bodies
+app.use(express.json());
+
 // Import middleware
 const { authenticateAdmin } = require('./middleware/authMiddleware');
 const errorHandler = require('./middleware/errorHandler');
