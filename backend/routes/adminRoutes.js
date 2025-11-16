@@ -63,7 +63,7 @@ router.post('/events/:id/suspend', handleSuspendEvent);
 router.delete('/events/:id', handleDeleteEvent);
 
 // Admin endpoint to get total platform fees
-router.get('/platform-fees/total', getTotalPlatformFees);
+router.get('/platform-fees/total', handleGetTotalPlatformFees);
 
 // Admin endpoint to transfer platform fees to a user
 router.post('/platform-fees/transfer', handleTransferPlatformFees);
