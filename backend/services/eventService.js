@@ -8,22 +8,31 @@ const { broadcastEventResolution } = require('../websocket/websocketServer');
 async function createEvent(db, eventTypeName, title, initialPrice, options) {
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
-  console.log('Creating event with entry fee:', entryFee, 'and initial price:', initialPrice, 'for event type:', eventTypeName);
+  const entryFee = 100; // Assuming a default entry fee for now
+  console.log(`[createEvent] Attempting to create event: type=${eventTypeName}, title=${title}, initialPrice=${initialPrice}, options=${JSON.stringify(options)}`);
 
   // Look up event type dynamically
   const typeQueryResult = await db.raw(`SELECT id FROM event_types WHERE name = ?`, [eventTypeName]);
   const eventTypes = typeQueryResult.rows || typeQueryResult; // Handle both PG and SQLite raw query results
 
   if (eventTypes.length === 0) {
+    console.error(`[createEvent] Event type '${eventTypeName}' not found.`);
     throw new Error(`Event type '${eventTypeName}' not found`);
   }
   const eventTypeId = eventTypes[0].id;
+  console.log(`[createEvent] Found event type ID: ${eventTypeId} for type: ${eventTypeName}`);
 
-  await db.raw(
-    `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee, options)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'pending', ?, ?)`,
-    [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee, JSON.stringify(options)]
-  );
+  try {
+    await db.raw(
+      `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee, options)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'pending', ?, ?)`,
+      [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee, JSON.stringify(options)]
+    );
+    console.log(`[createEvent] Successfully inserted event: ${title}`);
+  } catch (dbError) {
+    console.error(`[createEvent] Database insert failed for event ${title}:`, dbError);
+    throw dbError;
+  }
 }
 
 // --- Event Resolution Job ---
@@ -299,9 +308,14 @@ async function createInitialEvent(db) {
 
 // --- Daily Event Creation Function ---
 async function createDailyEvent(db) {
+  console.log('Attempting to create daily Bitcoin prediction event...');
   try {
-    console.log('Creating daily Bitcoin prediction event...');
+    console.log('Fetching current price from CoinGecko...');
     const currentPrice = await getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
+    if (!currentPrice) {
+      console.error('Failed to get current price from CoinGecko. Aborting daily event creation.');
+      throw new Error('Could not retrieve current price.');
+    }
     console.log('Daily event creation triggered with price:', currentPrice);
     const eventDate = new Date().toISOString().split('T')[0];
     const title = `Closing price of Bitcoin on ${eventDate}`;
@@ -310,7 +324,7 @@ async function createDailyEvent(db) {
       { id: 'lower', label: 'Lower', value: 'Lower' }
     ];
     await createEvent(db, 'prediction', title, currentPrice, options);
-    console.log("Created new Bitcoin event with initial price: $" + currentPrice);
+    console.log("Successfully created new Bitcoin event with initial price: $" + currentPrice);
   } catch (error) {
     console.error('Error creating daily event:', {
       message: error.message,

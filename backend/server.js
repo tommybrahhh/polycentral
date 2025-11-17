@@ -182,7 +182,10 @@ global.lastEventCreationAttempt = null;
 global.lastEventCreationSuccess = null;
 
 // Schedule cron jobs
-cron.schedule('0 0 * * *', () => createDailyEvent(db)); // Run daily at midnight UTC
+cron.schedule('0 0 * * *', () => {
+  console.log('Cron job triggered: createDailyEvent');
+  createDailyEvent(db);
+}); // Run daily at midnight UTC
 cron.schedule('0 1 * * *', () => createDailyTournament(db)); // Run daily at 1 AM UTC
 cron.schedule('0 * * * *', () => resolvePendingEvents(db)); // Run hourly at minute 0
 
