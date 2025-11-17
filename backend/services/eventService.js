@@ -5,28 +5,17 @@ const { updateUserPoints } = require('../utils/pointsUtils');
 const { broadcastEventResolution } = require('../websocket/websocketServer');
 
 // --- Event Creation Functions ---
-async function createEvent(db, initialPrice) {
+async function createEvent(db, eventTypeName, title, initialPrice, options) {
   const startTime = new Date();
   const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24 hours
-  const entryFee = 100;
-  console.log('Creating event with entry fee:', entryFee, 'and initial price:', initialPrice);
+  console.log('Creating event with entry fee:', entryFee, 'and initial price:', initialPrice, 'for event type:', eventTypeName);
 
-  // Generate formatted title with closing price question and creation price
-  const eventDate = new Date().toISOString().split('T')[0];
-  const title = `Closing price of Bitcoin on ${eventDate}`;
-  
-  // Create simplified Higher/Lower options
-  const options = [
-    { id: 'higher', label: 'Higher', value: 'Higher' },
-    { id: 'lower', label: 'Lower', value: 'Lower' }
-  ];
-  
-  // Look up event type 'prediction'
-  const typeQueryResult = await db.raw(`SELECT id FROM event_types WHERE name = 'prediction'`);
+  // Look up event type dynamically
+  const typeQueryResult = await db.raw(`SELECT id FROM event_types WHERE name = ?`, [eventTypeName]);
   const eventTypes = typeQueryResult.rows || typeQueryResult; // Handle both PG and SQLite raw query results
 
   if (eventTypes.length === 0) {
-    throw new Error("Event type 'prediction' not found");
+    throw new Error(`Event type '${eventTypeName}' not found`);
   }
   const eventTypeId = eventTypes[0].id;
 
@@ -273,8 +262,14 @@ async function createInitialEvent(db) {
     const existingEvents = existing.rows || existing; // Handle both PG and SQLite raw query results
     if (existingEvents.length === 0) {
       const price = await getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
+      const eventDate = new Date().toISOString().split('T')[0];
+      const title = `Closing price of Bitcoin on ${eventDate}`;
+      const options = [
+        { id: 'higher', label: 'Higher', value: 'Higher' },
+        { id: 'lower', label: 'Lower', value: 'Lower' }
+      ];
       console.log('Initial event creation triggered with price:', price);
-      await createEvent(db, price);
+      await createEvent(db, 'prediction', title, price, options);
     }
   } catch (error) {
     console.error('Initial event creation failed:', {
@@ -284,7 +279,13 @@ async function createInitialEvent(db) {
     });
     try {
       console.log('Attempting fallback event creation with default price...');
-      await createEvent(db, 50000); // Default price
+      const eventDate = new Date().toISOString().split('T')[0];
+      const title = `Closing price of Bitcoin on ${eventDate}`;
+      const options = [
+        { id: 'higher', label: 'Higher', value: 'Higher' },
+        { id: 'lower', label: 'Lower', value: 'Lower' }
+      ];
+      await createEvent(db, 'prediction', title, 50000, options); // Default price
       console.log("Created fallback Bitcoin event with default price: $50000");
     } catch (fallbackError) {
       console.error('Fallback event creation also failed:', {
@@ -302,7 +303,13 @@ async function createDailyEvent(db) {
     console.log('Creating daily Bitcoin prediction event...');
     const currentPrice = await getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin');
     console.log('Daily event creation triggered with price:', currentPrice);
-    await createEvent(db, currentPrice);
+    const eventDate = new Date().toISOString().split('T')[0];
+    const title = `Closing price of Bitcoin on ${eventDate}`;
+    const options = [
+      { id: 'higher', label: 'Higher', value: 'Higher' },
+      { id: 'lower', label: 'Lower', value: 'Lower' }
+    ];
+    await createEvent(db, 'prediction', title, currentPrice, options);
     console.log("Created new Bitcoin event with initial price: $" + currentPrice);
   } catch (error) {
     console.error('Error creating daily event:', {
@@ -314,7 +321,13 @@ async function createDailyEvent(db) {
     // Try fallback with default price
     try {
       console.log('Attempting fallback event creation with default price...');
-      await createEvent(db, 50000); // Default price
+      const eventDate = new Date().toISOString().split('T')[0];
+      const title = `Closing price of Bitcoin on ${eventDate}`;
+      const options = [
+        { id: 'higher', label: 'Higher', value: 'Higher' },
+        { id: 'lower', label: 'Lower', value: 'Lower' }
+      ];
+      await createEvent(db, 'prediction', title, 50000, options); // Default price
       console.log("Created fallback Bitcoin event with default price: $50000");
     } catch (fallbackError) {
       console.error('Fallback event creation also failed:', {
@@ -596,11 +609,61 @@ async function calculatePriceRanges(initialPrice) {
   return { lower: 0, higher: 0 };
 }
 
+async function createDailyTournament(db) {
+  try {
+    console.log('Creating daily Tournament event...');
+    const currentPrice = await getCurrentPrice(process.env.CRYPTO_ID || 'bitcoin'); // Still use current price for initial reference
+    console.log('Daily tournament creation triggered with price:', currentPrice);
+
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days for a tournament
+    const tournamentDate = new Date().toISOString().split('T')[0];
+    const title = `Weekly Bitcoin Tournament - ${tournamentDate}`;
+    const options = [
+      { id: 'top_10_percent', label: 'Top 10% Price Increase', value: 'Top 10%' },
+      { id: 'bottom_10_percent', label: 'Bottom 10% Price Decrease', value: 'Bottom 10%' },
+      { id: 'stay_within_10_percent', label: 'Stay within 10% Range', value: 'Within 10%' }
+    ]; // Example options for a tournament
+
+    await createEvent(db, 'tournament', title, currentPrice, options);
+    console.log("Created new Weekly Bitcoin Tournament with initial price: $" + currentPrice);
+  } catch (error) {
+    console.error('Error creating daily tournament:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Try fallback with default price
+    try {
+      console.log('Attempting fallback tournament creation with default price...');
+      const startTime = new Date();
+      const endTime = new Date(startTime.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days for a tournament
+      const tournamentDate = new Date().toISOString().split('T')[0];
+      const title = `Weekly Bitcoin Tournament - ${tournamentDate}`;
+      const options = [
+        { id: 'top_10_percent', label: 'Top 10% Price Increase', value: 'Top 10%' },
+        { id: 'bottom_10_percent', label: 'Bottom 10% Price Decrease', value: 'Bottom 10%' },
+        { id: 'stay_within_10_percent', label: 'Stay within 10% Range', value: 'Within 10%' }
+      ];
+      await createEvent(db, 'tournament', title, 50000, options); // Default price
+      console.log("Created fallback Weekly Bitcoin Tournament with default price: $50000");
+    } catch (fallbackError) {
+      console.error('Fallback tournament creation also failed:', {
+        message: fallbackError.message,
+        stack: fallbackError.stack,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+}
+
 module.exports = {
   createEvent,
   resolvePendingEvents,
   createInitialEvent,
   createDailyEvent,
+  createDailyTournament,
   manualResolveEvent,
   broadcastEventResolution,
   // New service functions
