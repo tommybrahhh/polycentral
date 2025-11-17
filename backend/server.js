@@ -66,10 +66,15 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
+    // ADD THIS LINE FOR DEBUGGING
+    console.log('CORS: Incoming request from origin:', origin);
+
     if (allowedOrigins.includes(origin) || !origin) {
       // Allow requests from the whitelist or if there's no origin (like server-to-server)
       callback(null, true);
     } else {
+      // ADD THIS LINE FOR DEBUGGING
+      console.error('CORS: BLOCKED origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   }

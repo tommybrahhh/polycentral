@@ -485,142 +485,282 @@ async function manualResolveEvent(db, trx, eventId, correctAnswer, finalPrice = 
 
 // Placeholder for new service functions
 async function checkExistingEventByTitle(db, title) {
-  console.warn('Placeholder: checkExistingEventByTitle not implemented.');
-  // Implement logic to check if an event with the given title already exists
-  // Example: const { rows } = await db.raw('SELECT id FROM events WHERE title = ?', [title]);
-  // return rows.length > 0;
-  return false; 
+  try {
+    const { rows } = await db.raw('SELECT id FROM events WHERE title = ?', [title]);
+    return rows.length > 0;
+  } catch (error) {
+    console.error(`Error in checkExistingEventByTitle for title ${title}:`, error);
+    return false; // Return false on error
+  }
 }
 
 async function getEventTypeByName(db, name) {
-  console.warn('Placeholder: getEventTypeByName not implemented.');
-  // Implement logic to retrieve event type by name
-  // Example: const { rows } = await db.raw('SELECT id FROM event_types WHERE name = ?', [name]);
-  // return rows[0];
-  return null;
+  try {
+    const { rows } = await db.raw('SELECT id FROM event_types WHERE name = ?', [name]);
+    return rows; // Return the array of rows (should be 0 or 1)
+  } catch (error) {
+    console.error(`Error in getEventTypeByName for name ${name}:`, error);
+    return []; // Return empty array on error
+  }
 }
 
 async function createEventWithDetails(db, eventDetails) {
-  console.warn('Placeholder: createEventWithDetails not implemented.');
-  // Implement logic to create an event with detailed information
-  // Example: await db.raw('INSERT INTO events (...) VALUES (...)', [...]);
-  return { id: 'placeholder-event-id', ...eventDetails };
+  try {
+    const {
+      title, description, options, entry_fee, startTime, endTime,
+      location, capacity, eventTypeId, crypto_symbol, initial_price
+    } = eventDetails;
+
+    const { rows: [newEvent] } = await db.raw(
+      `INSERT INTO events (
+        title, description, options, entry_fee, start_time, end_time,
+        location, max_participants, event_type_id, crypto_symbol, initial_price,
+        status, resolution_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'pending')
+      RETURNING id, title, description, options, entry_fee, start_time, end_time,
+                location, max_participants, event_type_id, crypto_symbol, initial_price,
+                status, resolution_status`,
+      [
+        title, description, JSON.stringify(options), entry_fee, startTime, endTime,
+        location, capacity, eventTypeId, crypto_symbol, initial_price
+      ]
+    );
+    return newEvent;
+  } catch (error) {
+    console.error(`Error in createEventWithDetails for event ${eventDetails.title}:`, error);
+    throw error; // Re-throw the error to be handled by the caller
+  }
 }
 
 async function checkEventExists(db, eventId) {
-  console.warn('Placeholder: checkEventExists not implemented.');
-  // Implement logic to check if an event exists
-  // Example: const { rows } = await db.raw('SELECT id FROM events WHERE id = ?', [eventId]);
-  // return rows.length > 0;
-  return false;
+  try {
+    const { rows } = await db.raw('SELECT id FROM events WHERE id = ?', [eventId]);
+    return rows.length > 0;
+  } catch (error) {
+    console.error(`Error in checkEventExists for event ${eventId}:`, error);
+    return false; // Return false on error
+  }
 }
 
 async function getEventDetails(db, eventId) {
-  console.warn('Placeholder: getEventDetails not implemented.');
-  // Implement logic to get full event details
-  // Example: const { rows } = await db.raw('SELECT * FROM events WHERE id = ?', [eventId]);
-  // return rows[0];
-  return null;
+  try {
+    const { rows } = await db.raw(
+      `SELECT * FROM events
+       WHERE id = ?`,
+      [eventId]
+    );
+    
+    if (rows.length === 0) {
+      console.warn(`getEventDetails: Event with ID ${eventId} not found.`);
+      return null;
+    }
+
+    return rows[0]; // Return the full event object
+  } catch (error) {
+    console.error(`Error in getEventDetails for event ${eventId}:`, error);
+    return null; // Return null on error
+  }
 }
 
 async function checkEventStatus(db, eventId) {
-  console.warn('Placeholder: checkEventStatus not implemented.');
-  // Implement logic to get event status
-  // Example: const { rows } = await db.raw('SELECT status FROM events WHERE id = ?', [eventId]);
-  // return rows[0]?.status;
-  return 'unknown';
+  try {
+    const { rows } = await db.raw('SELECT status, end_time FROM events WHERE id = ?', [eventId]);
+    if (rows.length === 0) {
+      console.warn(`checkEventStatus: Event with ID ${eventId} not found.`);
+      return null; // Or throw an error, depending on desired behavior
+    }
+    return rows[0]; // Returns { status: 'active', end_time: '...' }
+  } catch (error) {
+    console.error(`Error in checkEventStatus for event ${eventId}:`, error);
+    return null; // Return null on error
+  }
 }
 
 async function checkExistingParticipation(db, userId, eventId) {
-  console.warn('Placeholder: checkExistingParticipation not implemented.');
-  // Implement logic to check if a user has already participated in an event
-  // Example: const { rows } = await db.raw('SELECT id FROM participants WHERE user_id = ? AND event_id = ?', [userId, eventId]);
-  // return rows.length > 0;
-  return false;
+  try {
+    const { rows } = await db.raw(
+      `SELECT id FROM participants 
+       WHERE user_id = ? AND event_id = ?`,
+      [userId, eventId]
+    );
+    return rows.length > 0;
+  } catch (error) {
+    console.error(`Error in checkExistingParticipation for user ${userId} and event ${eventId}:`, error);
+    return false; // Return false on error
+  }
 }
 
 async function getUserBalance(db, userId) {
-  console.warn('Placeholder: getUserBalance not implemented.');
-  // Implement logic to get user's current balance
-  // Example: const { rows } = await db.raw('SELECT points FROM users WHERE id = ?', [userId]);
-  // return rows[0]?.points;
-  return 0;
+  try {
+    const { rows } = await db.raw(
+      `SELECT points FROM users 
+       WHERE id = ?`,
+      [userId]
+    );
+    
+    if (rows.length === 0) {
+      console.warn(`getUserBalance: User with ID ${userId} not found.`);
+      return 0; // Return 0 if user not found
+    }
+
+    return rows[0].points; // Return their points balance
+  } catch (error) {
+    console.error(`Error in getUserBalance for user ${userId}:`, error);
+    return 0; // Return 0 on error
+  }
 }
 
 async function insertParticipant(db, participantDetails) {
-  console.warn('Placeholder: insertParticipant not implemented.');
-  // Implement logic to insert a new participant
-  // Example: await db.raw('INSERT INTO participants (...) VALUES (...)', [...]);
-  return { id: 'placeholder-participant-id', ...participantDetails };
+  try {
+    const { eventId, userId, prediction, amount } = participantDetails;
+    const { rows: [newParticipant] } = await db.raw(
+      `INSERT INTO participants (event_id, user_id, prediction, amount)
+       VALUES (?, ?, ?, ?)
+       RETURNING id, event_id, user_id, prediction, amount`,
+      [eventId, userId, prediction, amount]
+    );
+    return newParticipant;
+  } catch (error) {
+    console.error(`Error in insertParticipant for event ${participantDetails.eventId} and user ${participantDetails.userId}:`, error);
+    throw error; // Re-throw the error to be handled by the caller
+  }
 }
 
 async function updateEventStats(db, eventId) {
-  console.warn('Placeholder: updateEventStats not implemented.');
-  // Implement logic to update event statistics (e.g., total participants, pot size)
-  // This might involve recalculating and updating fields in the events table
-  return true;
+  try {
+    // Recalculate current_participants and total_pot (prize_pool)
+    const { rows: [stats] } = await db.raw(
+      `SELECT 
+         COUNT(DISTINCT user_id) as current_participants,
+         COALESCE(SUM(amount), 0) as total_pot
+       FROM participants 
+       WHERE event_id = ?`,
+      [eventId]
+    );
+
+    // Update the events table with the new statistics
+    await db.raw(
+      `UPDATE events
+       SET current_participants = ?, prize_pool = ?
+       WHERE id = ?`,
+      [stats.current_participants, stats.total_pot, eventId]
+    );
+    return true;
+  } catch (error) {
+    console.error(`Error in updateEventStats for event ${eventId}:`, error);
+    return false; // Return false on error
+  }
 }
 
 async function getActiveEvents(db) {
-  console.warn('Placeholder: getActiveEvents not implemented.');
-  // Implement logic to retrieve all active events
-  // Example: const { rows } = await db.raw('SELECT * FROM events WHERE status = ?', ['active']);
-  // return rows;
-  return [];
+  try {
+    const { rows } = await db.raw(
+      `SELECT * FROM events
+       WHERE status = 'active'
+       AND end_time > ?
+       ORDER BY start_time DESC`,
+      [new Date()]
+    );
+    return rows;
+  } catch (error) {
+    console.error('Error in getActiveEvents:', error);
+    return []; // Return empty on error
+  }
 }
 
 async function getParticipationHistory(db, userId) {
-  console.warn('Placeholder: getParticipationHistory not implemented.');
-  // Implement logic to retrieve a user's participation history
-  // Example: const { rows } = await db.raw('SELECT * FROM participants WHERE user_id = ?', [userId]);
-  // return rows;
-  return [];
+  try {
+    const { rows } = await db.raw(
+      `SELECT p.*, e.title, e.crypto_symbol, e.initial_price, e.final_price, e.correct_answer, e.end_time
+       FROM participants p
+       JOIN events e ON p.event_id = e.id
+       WHERE p.user_id = ?
+       ORDER BY p.created_at DESC`,
+      [userId]
+    );
+    return rows;
+  } catch (error) {
+    console.error(`Error in getParticipationHistory for user ${userId}:`, error);
+    return []; // Return empty array on error
+  }
 }
 
 async function getEventPrizePool(db, eventId) {
-  console.warn('Placeholder: getEventPrizePool not implemented.');
-  // Implement logic to get the total prize pool for an event
-  // Example: const { rows } = await db.raw('SELECT SUM(amount) as total_pot FROM participants WHERE event_id = ?', [eventId]);
-  // return rows[0]?.total_pot || 0;
-  return 0;
+  try {
+    const { rows } = await db.raw(
+      `SELECT COALESCE(SUM(amount), 0) as total_pot 
+       FROM participants 
+       WHERE event_id = ?`,
+      [eventId]
+    );
+    return rows[0].total_pot;
+  } catch (error) {
+    console.error(`Error in getEventPrizePool for event ${eventId}:`, error);
+    return 0; // Return 0 on error
+  }
 }
 
-async function getUserPrediction(db, userId, eventId) {
-  console.warn('Placeholder: getUserPrediction not implemented.');
-  // Implement logic to get a user's prediction for a specific event
-  // Example: const { rows } = await db.raw('SELECT prediction FROM participants WHERE user_id = ? AND event_id = ?', [userId, eventId]);
-  // return rows[0]?.prediction;
-  return null;
+async function getUserPrediction(db, eventId, userId) {
+  try {
+    const { rows } = await db.raw(
+      `SELECT prediction FROM participants 
+       WHERE event_id = ? AND user_id = ?`,
+      [eventId, userId]
+    );
+    return rows.length > 0 ? rows[0] : null;
+  } catch (error) {
+    console.error(`Error in getUserPrediction for user ${userId} and event ${eventId}:`, error);
+    return null; // Return null on error
+  }
 }
 
 async function getOptionVolumes(db, eventId) {
-  console.warn('Placeholder: getOptionVolumes not implemented.');
-  // Implement logic to get the volume of bets for each option in an event
-  // Example: const { rows } = await db.raw('SELECT prediction, SUM(amount) as volume FROM participants WHERE event_id = ? GROUP BY prediction', [eventId]);
-  // return rows;
-  return [];
+  try {
+    const { rows } = await db.raw(
+      `SELECT prediction, SUM(amount) as total_amount 
+       FROM participants 
+       WHERE event_id = ? 
+       GROUP BY prediction`,
+      [eventId]
+    );
+    return rows;
+  } catch (error) {
+    console.error(`Error in getOptionVolumes for event ${eventId}:`, error);
+    return []; // Return empty array on error
+  }
 }
 
 async function getParticipantCount(db, eventId) {
-  console.warn('Placeholder: getParticipantCount not implemented.');
-  // Implement logic to get the number of participants for an event
-  // Example: const { rows } = await db.raw('SELECT COUNT(DISTINCT user_id) as count FROM participants WHERE event_id = ?', [eventId]);
-  // return rows[0]?.count || 0;
-  return 0;
+  try {
+    const { rows } = await db.raw(
+      `SELECT COUNT(DISTINCT user_id) as count 
+       FROM participants 
+       WHERE event_id = ?`,
+      [eventId]
+    );
+    return rows[0].count;
+  } catch (error) {
+    console.error(`Error in getParticipantCount for event ${eventId}:`, error);
+    return 0; // Return 0 on error
+  }
 }
 
 async function getCurrentCryptoPrice(cryptoSymbol) {
-  console.warn('Placeholder: getCurrentCryptoPrice not implemented.');
-  // Implement logic to get the current price of a cryptocurrency
-  // Example: return await getCurrentPrice(cryptoSymbol);
-  return 0;
+  try {
+    return await getCurrentPrice(cryptoSymbol);
+  } catch (error) {
+    console.error(`Error in getCurrentCryptoPrice for symbol ${cryptoSymbol}:`, error);
+    return 0; // Return 0 on error
+  }
 }
 
 async function calculatePriceRanges(initialPrice) {
-  console.warn('Placeholder: calculatePriceRanges not implemented.');
-  // Implement logic to calculate price ranges for prediction options
-  // Example: return { lower: initialPrice * 0.9, higher: initialPrice * 1.1 };
-  return { lower: 0, higher: 0 };
+  try {
+    return calculatePriceRanges(initialPrice); // Assuming coingeckoService.js's calculatePriceRanges
+  } catch (error) {
+    console.error(`Error in calculatePriceRanges for initial price ${initialPrice}:`, error);
+    return { lower: 0, higher: 0 }; // Return default on error
+  }
 }
 
 async function createDailyTournament(db) {
