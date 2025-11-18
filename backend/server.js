@@ -63,7 +63,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   // ADD THE NEWLY BLOCKED URL HERE:
-  'https://polyc-clfvtvnua-tommybrahhhs-projects.vercel.app'
+  'https://polyc-clfvtvnua-tommybrahhhs-projects.vercel.app',
+  'https://polyc-iyrcc1xd2-tommybrahhhs-projects.vercel.app'
 ];
 
 const corsOptions = {
