@@ -60,8 +60,8 @@ const cron = require('node-cron');
 // --- CORS Configuration ---
 const allowedOrigins = [
   'https://polyc-seven.vercel.app',
-  // You can add your local dev environment too
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://localhost:5173'
 ];
 
 const corsOptions = {
@@ -84,7 +84,10 @@ const {
   resolvePendingEvents,
   createInitialEvent,
   createDailyEvent,
-  createDailyTournament
+  createDailyTournament,
+  createDailyFootballEvents,
+  resolveFootballMatchEvents,
+  createDailySportEvent
 } = require('./services/eventService');
 const { initWebSocketServer, broadcastMessage } = require('./websocket/websocketServer');
 const app = express();
@@ -192,7 +195,10 @@ cron.schedule('0 0 * * *', () => {
   createDailyEvent(db);
 }); // Run daily at midnight UTC
 cron.schedule('0 1 * * *', () => createDailyTournament(db)); // Run daily at 1 AM UTC
+cron.schedule('0 2 * * *', () => createDailyFootballEvents(db)); // Run daily at 2 AM UTC
+cron.schedule('0 3 * * *', () => createDailySportEvent(db)); // Run daily at 3 AM UTC
 cron.schedule('0 * * * *', () => resolvePendingEvents(db)); // Run hourly at minute 0
+cron.schedule('30 * * * *', () => resolveFootballMatchEvents(db)); // Run hourly at minute 30
 
 async function startServer() {
   try {
