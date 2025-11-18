@@ -61,7 +61,9 @@ const cron = require('node-cron');
 const allowedOrigins = [
   'https://polyc-seven.vercel.app',
   'http://localhost:3000',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  // ADD THE NEWLY BLOCKED URL HERE:
+  'https://polyc-clfvtvnua-tommybrahhhs-projects.vercel.app'
 ];
 
 const corsOptions = {

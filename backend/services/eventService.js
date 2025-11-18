@@ -52,15 +52,18 @@ async function resolvePendingEvents(db) {
     console.log(`🔍 Resolution timestamp: ${now.toISOString()}`);
     
     // Find events ready for resolution with their event types
-    const { rows: events } = await db.raw(
+    const queryResult = await db.raw(
       `SELECT e.*, et.name as event_type_name
        FROM events e
        JOIN event_types et ON e.event_type_id = et.id
        WHERE e.end_time < ? AND e.resolution_status = 'pending'`,
       [now]
     );
+    
+    // Handle both PG (rows) and SQLite (array) raw query results
+    const events = queryResult.rows || queryResult;
 
-    if (events.length === 0) {
+    if (!events || events.length === 0) {
       console.log('🔍 No pending events to resolve');
       return;
     }
@@ -893,17 +896,18 @@ async function getCurrentCryptoPrice(cryptoSymbol) {
 
 async function calculatePriceRanges(initialPrice) {
   try {
+    // Ensure the price is a number and non-zero
     const price = parseFloat(initialPrice);
-
-    // Ensure we have a valid number before calculating
     if (isNaN(price) || price <= 0) {
       console.error('Invalid initial price provided to calculatePriceRanges:', initialPrice);
       return { lower: 0, higher: 0 };
     }
 
-    // Example calculation: setting ranges at 10% below and 10% above the initial price
-    const lowerBound = price * 0.90;
-    const upperBound = price * 1.10;
+    // Set a calculation percentage (e.g., 10% tolerance for the range)
+    const percentage = 0.10; // This can be adjusted to 0.05 for 5%, etc.
+
+    const lowerBound = price * (1 - percentage);
+    const upperBound = price * (1 + percentage);
 
     return {
       lower: lowerBound,
