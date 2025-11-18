@@ -893,9 +893,24 @@ async function getCurrentCryptoPrice(cryptoSymbol) {
 
 async function calculatePriceRanges(initialPrice) {
   try {
-    return calculatePriceRanges(initialPrice); // Assuming coingeckoService.js's calculatePriceRanges
+    const price = parseFloat(initialPrice);
+
+    // Ensure we have a valid number before calculating
+    if (isNaN(price) || price <= 0) {
+      console.error('Invalid initial price provided to calculatePriceRanges:', initialPrice);
+      return { lower: 0, higher: 0 };
+    }
+
+    // Example calculation: setting ranges at 10% below and 10% above the initial price
+    const lowerBound = price * 0.90;
+    const upperBound = price * 1.10;
+
+    return {
+      lower: lowerBound,
+      higher: upperBound
+    };
   } catch (error) {
-    console.error(`Error in calculatePriceRanges for initial price ${initialPrice}:`, error);
+    console.error('Error in calculatePriceRanges:', error);
     return { lower: 0, higher: 0 }; // Return default on error
   }
 }
