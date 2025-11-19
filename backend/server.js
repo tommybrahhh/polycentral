@@ -57,30 +57,46 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 
-// --- CORS Configuration ---
-const allowedOrigins = [
-  'https://polyc-seven.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:5173',
-  // ADD THE NEWLY BLOCKED URL HERE:
-  'https://polyc-clfvtvnua-tommybrahhhs-projects.vercel.app',
-  'https://polyc-iyrcc1xd2-tommybrahhhs-projects.vercel.app'
+// --- CORS Configuration (Dynamic & Robust) ---
+
+// 1. Define your static, permanent domains here
+const whitelist = [
+  'https://polyc-seven.vercel.app', // Your main production domain
 ];
+
+// 2. Define a Regex pattern for your Vercel preview URLs
+// This matches "https://polyc-" followed by anything, ending with "-tommybrahhhs-projects.vercel.app"
+const vercelPreviewPattern = /^https:\/\/polyc-.*-tommybrahhhs-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // ADD THIS LINE FOR DEBUGGING
-    console.log('CORS: Incoming request from origin:', origin);
+    console.log('CORS check for origin:', origin);
 
-    if (allowedOrigins.includes(origin) || !origin) {
-      // Allow requests from the whitelist or if there's no origin (like server-to-server)
-      callback(null, true);
-    } else {
-      // ADD THIS LINE FOR DEBUGGING
-      console.error('CORS: BLOCKED origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (like server-to-server calls, Postman, or mobile apps)
+    if (!origin) {
+      return callback(null, true);
     }
-  }
+
+    // Check 1: Is it in the static whitelist?
+    if (whitelist.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Check 2: Is it a local development environment? (localhost on any port)
+    if (origin.startsWith('http://localhost:')) {
+      return callback(null, true);
+    }
+
+    // Check 3: Is it a valid Vercel preview URL for this project?
+    if (vercelPreviewPattern.test(origin)) {
+      return callback(null, true);
+    }
+
+    // If none of the above, block it
+    console.error('⛔ CORS BLOCKED:', origin);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true, // Important for cookies/authorization headers
 };
 
 const {
