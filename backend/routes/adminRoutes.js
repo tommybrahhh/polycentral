@@ -37,6 +37,7 @@ router.get('/fees/total', authenticateAdmin, handleGetTotalPlatformFees);
 router.get('/events', authenticateAdmin, handleGetEvents);
 router.get('/events/:id/participants', authenticateAdmin, handleGetEventParticipants);
 router.get('/events/templates', authenticateAdmin, handleGetEventTemplates);
+router.get('/event-templates', authenticateAdmin, handleGetEventTemplates);
 router.get('/users', authenticateAdmin, handleGetUsers);
 router.get('/users/:id', authenticateAdmin, handleGetUserDetails);
 router.patch('/users/:id/points', authenticateAdmin, handleAdjustUserPoints);
@@ -61,6 +62,22 @@ router.get('/test-trigger-football', authenticateAdmin, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// TEMPORARY: Endpoint to force run migrations
+router.get('/run-migrations', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('🔄 Starting Database Migration...');
+    // Run the latest migration
+    await req.db.migrate.latest({
+      directory: require('path').join(__dirname, '../migrations')
+    });
+    console.log('✅ Database migrated successfully');
+    res.json({ success: true, message: 'Migrations completed successfully.' });
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
 
