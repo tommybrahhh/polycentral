@@ -62,6 +62,7 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -334,6 +335,38 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
     }
   };
 
+  // Handler for manual football event trigger
+  const handleManualTrigger = async () => {
+    if (!window.confirm("This will force the server to check for Real Madrid matches and create an event immediately. Continue?")) return;
+
+    setIsTesting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/admin/test-trigger-football`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`Success: ${data.message}`);
+        // Refresh the events list
+        fetchData();
+      } else {
+        throw new Error(data.error || 'Failed to trigger');
+      }
+    } catch (error) {
+      console.error('Trigger error:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   // Filter events based on search term and status
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -395,6 +428,13 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
               onClick={() => setShowTemplateForm(true)}
             >
               Manage Templates
+            </button>
+            <button
+              onClick={handleManualTrigger}
+              disabled={isTesting}
+              style={{ backgroundColor: '#f59e0b', color: 'white', padding: '10px', borderRadius: '5px', cursor: 'pointer' }}
+            >
+              {isTesting ? 'Running Logic...' : '⚡ Force Real Madrid Check'}
             </button>
           </div>
         </div>
