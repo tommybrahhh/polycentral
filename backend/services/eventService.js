@@ -648,23 +648,37 @@ async function createEventWithDetails(db, eventDetails) {
   try {
     const {
       title, description, options, entry_fee, startTime, endTime,
-      location, capacity, eventTypeId, crypto_symbol, initial_price
+      location, capacity, eventTypeId, crypto_symbol, initial_price, external_id
     } = eventDetails;
 
-    const { rows: [newEvent] } = await db.raw(
+    const insertResult = await db.raw(
       `INSERT INTO events (
         title, description, options, entry_fee, start_time, end_time,
         location, max_participants, event_type_id, crypto_symbol, initial_price,
         status, resolution_status, external_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'pending', ?)
-      RETURNING id, title, description, options, entry_fee, start_time, end_time,
-                location, max_participants, event_type_id, crypto_symbol, initial_price,
-                status, resolution_status, external_id`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'pending', ?)`,
       [
         title, description, JSON.stringify(options), entry_fee, startTime, endTime,
         location, capacity, eventTypeId, crypto_symbol, initial_price, external_id
       ]
     );
+
+    let newEvent;
+    if (db.client.config.client === 'pg') {
+      newEvent = (insertResult.rows && insertResult.rows.length > 0) ? insertResult.rows[0] : null;
+    } else { // Assume SQLite for now
+      const lastIdResult = await db.raw('SELECT last_insert_rowid() as id');
+      const lastIdRow = (lastIdResult.rows && lastIdResult.rows.length > 0) ? lastIdResult.rows[0] : (lastIdResult.length > 0 ? lastIdResult[0] : null);
+      if (lastIdRow && lastIdRow.id) {
+        // Now fetch the full event details using the last inserted ID
+        const fetchedEventResult = await db.raw('SELECT * FROM events WHERE id = ?', [lastIdRow.id]);
+        newEvent = (fetchedEventResult.rows && fetchedEventResult.rows.length > 0) ? fetchedEventResult.rows[0] : (fetchedEventResult.length > 0 ? fetchedEventResult[0] : null);
+      }
+    }
+    
+    if (!newEvent) {
+      throw new Error('Event creation failed: No new event returned after insert.');
+    }
     return newEvent;
   } catch (error) {
     console.error(`Error in createEventWithDetails for event ${eventDetails.title}:`, error);

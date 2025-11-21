@@ -59,44 +59,44 @@ const cron = require('node-cron');
 
 // --- CORS Configuration (Dynamic & Robust) ---
 
-// 1. Define your static, permanent domains here
+// 1. Define your static, permanent domains here (Production URLs)
 const whitelist = [
-  'https://polyc-seven.vercel.app', // Your main production domain
+  'https://polyc-seven.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173'
 ];
 
 // 2. Define a Regex pattern for your Vercel preview URLs
-// This matches "https://polyc-" followed by anything, ending with "-tommybrahhhs-projects.vercel.app"
+// Matches: https://polyc-[ANYTHING]-tommybrahhhs-projects.vercel.app
 const vercelPreviewPattern = /^https:\/\/polyc-.*-tommybrahhhs-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log('CORS check for origin:', origin);
+    // Log the check to prove the new code is running
+    console.log('🔒 CORS checking origin:', origin);
 
-    // Allow requests with no origin (like server-to-server calls, Postman, or mobile apps)
+    // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
     if (!origin) {
       return callback(null, true);
     }
 
     // Check 1: Is it in the static whitelist?
     if (whitelist.includes(origin)) {
+      console.log('✅ Allowed by Whitelist');
       return callback(null, true);
     }
 
-    // Check 2: Is it a local development environment? (localhost on any port)
-    if (origin.startsWith('http://localhost:')) {
-      return callback(null, true);
-    }
-
-    // Check 3: Is it a valid Vercel preview URL for this project?
+    // Check 2: Is it a valid Vercel preview URL?
     if (vercelPreviewPattern.test(origin)) {
+      console.log('✅ Allowed by Vercel Pattern');
       return callback(null, true);
     }
 
-    // If none of the above, block it
-    console.error('⛔ CORS BLOCKED:', origin);
+    // If we get here, it is BLOCKED
+    console.error('⛔ BLOCKED by CORS:', origin);
     callback(new Error('Not allowed by CORS'));
   },
-  credentials: true, // Important for cookies/authorization headers
+  credentials: true // Essential for cookies/auth
 };
 
 const {

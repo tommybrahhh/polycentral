@@ -7,6 +7,18 @@ require('dotenv').config();
 const API_KEY = process.env.API_FOOTBALL_KEY;
 const API_URL = 'https://v3.football.api-sports.io';
 
+// Current season for API calls (November 2025)
+const CURRENT_SEASON = 2025; // Active season for most leagues (EPL, La Liga) is 2025
+
+// Major league IDs for reliable API calls on free tier
+const MAJOR_LEAGUES = [
+  39,  // Premier League
+  140, // La Liga
+  78,  // Bundesliga
+  135, // Serie A
+  61   // Ligue 1
+];
+
 // Helper function for retry logic
 const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
   for (let i = 0; i < maxRetries; i++) {
@@ -32,7 +44,7 @@ async function getRealMadridTeamId() {
           search: 'Real Madrid'
         },
         headers: {
-          'x-rapidapi-key': API_KEY,
+          'x-apisports-key': API_KEY,
           'x-rapidapi-host': 'v3.football.api-sports.io'
         },
         timeout: 10000
@@ -85,7 +97,7 @@ async function getUpcomingRealMadridMatches() {
           timezone: 'Europe/Madrid'
         },
         headers: {
-          'x-rapidapi-key': API_KEY,
+          'x-apisports-key': API_KEY,
           'x-rapidapi-host': 'v3.football.api-sports.io'
         },
         timeout: 10000
@@ -130,7 +142,7 @@ async function getMatchDetails(matchId) {
           timezone: 'Europe/Madrid'
         },
         headers: {
-          'x-rapidapi-key': API_KEY,
+          'x-apisports-key': API_KEY,
           'x-rapidapi-host': 'v3.football.api-sports.io'
         },
         timeout: 10000
@@ -235,42 +247,74 @@ async function getMatchResult(matchId) {
   });
 }
 
-// Find next upcoming match (generic function for any team)
+// Find next upcoming match with improved reliability for free tier
 async function findNextUpcomingMatch() {
   return withRetry(async () => {
     try {
-      const response = await axios.get(`${API_URL}/fixtures`, {
-        params: {
-          next: 10, // Get next 10 matches
-          timezone: 'Europe/Madrid'
-        },
+      // 1. Try specific major leagues first (More reliable on Free plans)
+      // League 39 = Premier League, 140 = La Liga
+      // SEASON: Must be 2025 for Nov 2025!
+      const url = `${API_URL}/fixtures?league=39&season=${CURRENT_SEASON}&next=5&timezone=Europe/Madrid`;
+      
+      console.log(`🔍 Debug: Fetching from ${url}`);
+      
+      const response = await axios.get(url, {
         headers: {
-          'x-rapidapi-key': API_KEY,
+          'x-apisports-key': API_KEY,
           'x-rapidapi-host': 'v3.football.api-sports.io'
         },
         timeout: 10000
       });
 
-      if (response.data.response && response.data.response.length > 0) {
-        const now = new Date();
-        const upcomingMatches = response.data.response.filter(match => {
-          const matchTime = new Date(match.fixture.date);
-          return matchTime > now;
-        });
-
-        return upcomingMatches.length > 0 ? upcomingMatches[0] : null;
-      } else {
-        console.log('ℹ️ No upcoming matches found');
+      // 2. LOG THE FULL ERROR/RESPONSE
+      // Often the API returns 200 OK but with an internal "errors" object
+      if (response.data.errors && Object.keys(response.data.errors).length > 0) {
+        console.error('❌ API-Football Error:', JSON.stringify(response.data.errors, null, 2));
         return null;
       }
+
+      const matches = response.data.response;
+      
+      if (!matches || matches.length === 0) {
+        console.warn('⚠️ API returned 0 matches. Raw Response:', JSON.stringify(response.data, null, 2));
+        
+        // 3. Fallback: Try other major leagues if Premier League fails
+        for (const leagueId of MAJOR_LEAGUES.slice(1)) { // Skip first (already tried)
+          try {
+            console.log(`🔄 Trying fallback league ${leagueId}...`);
+            const fallbackUrl = `${API_URL}/fixtures?league=${leagueId}&season=${CURRENT_SEASON}&next=5&timezone=Europe/Madrid`;
+            console.log(`🔍 Debug: Fallback to ${fallbackUrl}`);
+            
+            const fallbackResponse = await axios.get(fallbackUrl, {
+              headers: {
+                'x-apisports-key': API_KEY,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+              },
+              timeout: 5000
+            });
+
+            if (fallbackResponse.data.response && fallbackResponse.data.response.length > 0) {
+              console.log(`✅ Found ${fallbackResponse.data.response.length} matches in league ${leagueId}`);
+              return fallbackResponse.data.response[0];
+            }
+          } catch (fallbackError) {
+            console.warn(`⚠️ Fallback league ${leagueId} failed:`, fallbackError.message);
+            continue;
+          }
+        }
+        
+        return null;
+      }
+
+      return matches[0];
+
     } catch (error) {
-      console.error('API-Football error (findNextUpcomingMatch):', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        timestamp: new Date().toISOString()
-      });
-      throw error;
+      console.error('💥 Network Error:', error.message);
+      if (error.response) {
+        console.error('Status:', error.response.status);
+        console.error('Data:', error.response.data);
+      }
+      return null;
     }
   });
 }

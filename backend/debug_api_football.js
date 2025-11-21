@@ -18,7 +18,7 @@ async function debugAPICall() {
         search: 'Real Madrid'
       },
       headers: {
-        'x-rapidapi-key': API_KEY,
+        'x-apisports-key': API_KEY,
         'x-rapidapi-host': 'v3.football.api-sports.io'
       },
       timeout: 10000
