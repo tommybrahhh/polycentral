@@ -81,4 +81,45 @@ router.get('/run-migrations', authenticateAdmin, async (req, res) => {
   }
 });
 
+// Add this DEBUG/REPAIR route
+router.get('/fix-database', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('🔧 Starting Manual Database Repair...');
+    
+    // 1. Check if migration files exist
+    const migrationDir = require('path').join(__dirname, '../migrations');
+    let files = [];
+    try {
+      files = require('fs').readdirSync(migrationDir);
+      console.log('📂 Found migration files:', files);
+    } catch (e) {
+      console.error('❌ Could not read migrations folder:', e.message);
+      return res.status(500).json({ error: 'Migrations folder missing', details: e.message });
+    }
+
+    // 2. Force Run Migrations
+    const result = await req.db.migrate.latest({
+      directory: migrationDir
+    });
+    
+    console.log('✅ Migration Result:', result);
+
+    // 3. Return success details
+    res.json({
+      success: true,
+      message: 'Database synced successfully',
+      filesFound: files,
+      migrationsRun: result[1] // List of executed migration files
+    });
+
+  } catch (error) {
+    console.error('💥 Repair Failed:', error);
+    res.status(500).json({
+      error: 'Repair Failed',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 module.exports = router;

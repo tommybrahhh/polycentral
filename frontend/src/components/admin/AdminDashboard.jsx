@@ -6,6 +6,8 @@ import EventManagement from './EventManagement';
 import useFetch from '../../hooks/useFetch';
 import '../../styles/admin.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 const AdminDashboard = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'fees');
@@ -48,11 +50,39 @@ const AdminDashboard = () => {
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || PlatformFeesManagement;
 
+  // Function to handle repair
+  const handleRepairDatabase = async () => {
+    if (!window.confirm("This will force the database to update. Use only if you see 500 errors. Continue?")) return;
+    
+    try {
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/admin/fix-database`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert(`Success! Migrations run: ${data.migrationsRun.length > 0 ? data.migrationsRun.join(', ') : 'None (Already up to date)'}`);
+        window.location.reload(); // Reload to fix the 500 error page
+      } else {
+        alert(`Error: ${data.error} - ${data.message}`);
+      }
+    } catch (err) {
+      alert('Network Error: Could not reach server.');
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       <div className="admin-header">
         <h1>Admin Dashboard</h1>
         <p>Manage platform users, events, and fees</p>
+        <button
+          onClick={handleRepairDatabase}
+          style={{ backgroundColor: '#dc2626', color: 'white', padding: '10px', margin: '10px', borderRadius: '5px' }}
+        >
+          🔧 Fix Database Error (500)
+        </button>
       </div>
       
       <div className="admin-tabs">
