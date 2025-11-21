@@ -7,8 +7,16 @@ require('dotenv').config();
 const API_KEY = process.env.API_FOOTBALL_KEY;
 const API_URL = 'https://v3.football.api-sports.io';
 
-// Current season for API calls (November 2025)
-const CURRENT_SEASON = 2025; // Active season for most leagues (EPL, La Liga) is 2025
+// Fixed ID for Real Madrid (Standard API-Football ID)
+const REAL_MADRID_TEAM_ID = 541;
+
+// Dynamic Season Logic
+function getCurrentSeason() {
+  const now = new Date();
+  // If we are in the second half of the year (July+), use current year.
+  // Otherwise (Jan-June), use previous year (e.g. Feb 2026 is still 2025 season).
+  return now.getMonth() > 5 ? now.getFullYear() : now.getFullYear() - 1;
+}
 
 // Major league IDs for reliable API calls on free tier
 const MAJOR_LEAGUES = [
@@ -31,53 +39,9 @@ const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
   }
 };
 
-// Get Real Madrid team ID (cache this to avoid repeated API calls)
-let realMadridTeamId = null;
-
+// Replace getRealMadridTeamId with a simple getter
 async function getRealMadridTeamId() {
-  if (realMadridTeamId) return realMadridTeamId;
-
-  return withRetry(async () => {
-    try {
-      const response = await axios.get(`${API_URL}/teams`, {
-        params: {
-          search: 'Real Madrid'
-        },
-        headers: {
-          'x-apisports-key': API_KEY,
-          'x-rapidapi-host': 'v3.football.api-sports.io'
-        },
-        timeout: 10000
-      });
-
-      if (response.data.response && response.data.response.length > 0) {
-        // Find the main Real Madrid team (not youth teams)
-        const mainTeam = response.data.response.find(team =>
-          team.team.name === 'Real Madrid' && team.team.country === 'Spain'
-        );
-        
-        if (mainTeam) {
-          realMadridTeamId = mainTeam.team.id;
-          console.log(`✅ Real Madrid Team ID: ${realMadridTeamId}`);
-          return realMadridTeamId;
-        } else {
-          console.log('❌ Main Real Madrid team not found in API response');
-          return null;
-        }
-      } else {
-        console.log('❌ Real Madrid team not found in API response');
-        return null;
-      }
-    } catch (error) {
-      console.error('API-Football error (team search):', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        timestamp: new Date().toISOString()
-      });
-      throw error;
-    }
-  });
+  return REAL_MADRID_TEAM_ID;
 }
 
 // Get upcoming matches for Real Madrid
@@ -253,8 +217,8 @@ async function findNextUpcomingMatch() {
     try {
       // 1. Try specific major leagues first (More reliable on Free plans)
       // League 39 = Premier League, 140 = La Liga
-      // SEASON: Must be 2025 for Nov 2025!
-      const url = `${API_URL}/fixtures?league=39&season=${CURRENT_SEASON}&next=5&timezone=Europe/Madrid`;
+      // Use dynamic season calculation
+      const url = `${API_URL}/fixtures?league=39&season=${getCurrentSeason()}&next=5&timezone=Europe/Madrid`;
       
       console.log(`🔍 Debug: Fetching from ${url}`);
       
@@ -282,7 +246,7 @@ async function findNextUpcomingMatch() {
         for (const leagueId of MAJOR_LEAGUES.slice(1)) { // Skip first (already tried)
           try {
             console.log(`🔄 Trying fallback league ${leagueId}...`);
-            const fallbackUrl = `${API_URL}/fixtures?league=${leagueId}&season=${CURRENT_SEASON}&next=5&timezone=Europe/Madrid`;
+            const fallbackUrl = `${API_URL}/fixtures?league=${leagueId}&season=${getCurrentSeason()}&next=5&timezone=Europe/Madrid`;
             console.log(`🔍 Debug: Fallback to ${fallbackUrl}`);
             
             const fallbackResponse = await axios.get(fallbackUrl, {

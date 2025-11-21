@@ -985,6 +985,21 @@ async function createDailyTournament(db) {
 // --- Football Match Event Functions ---
 async function createFootballMatchEvent(db, match) {
   try {
+    // 1. Check validity
+    if (!match || !match.id) return null;
+
+    // 2. STRICT check using external_id (Match ID) to prevent duplicates
+    const externalId = match.id.toString();
+    const { rows: existing } = await db.raw(
+      'SELECT id FROM events WHERE external_id = ?',
+      [externalId]
+    );
+
+    if (existing.length > 0) {
+      console.log(`⚽ Event for match ${externalId} already exists.`);
+      return null;
+    }
+
     const realMadridTeamId = await getRealMadridTeamId();
     const opponentName = getOpponentName(match, realMadridTeamId);
     const leagueName = getLeagueName(match);
@@ -992,13 +1007,6 @@ async function createFootballMatchEvent(db, match) {
     
     const title = `Real Madrid vs ${opponentName} - ${leagueName}`;
     const description = `Football match prediction: Real Madrid vs ${opponentName} in ${leagueName}`;
-    
-    // Check if event already exists
-    const existingEvent = await checkExistingEventByTitle(db, title);
-    if (existingEvent) {
-      console.log(`Football match event already exists: ${title}`);
-      return null;
-    }
     
     const options = [
       { id: 'real_madrid_win', label: 'Real Madrid Win', value: 'Real Madrid Win' },

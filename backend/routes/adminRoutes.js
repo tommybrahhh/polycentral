@@ -24,6 +24,9 @@ const {
   handleGetMetrics
 } = require('../controllers/adminController');
 
+// Import event service function for testing
+const { createDailyFootballEvents } = require('../services/eventService');
+
 // Import authentication middleware
 const { authenticateAdmin } = require('../middleware/authMiddleware');
 
@@ -47,5 +50,18 @@ router.post('/fees/transfer', authenticateAdmin, handleTransferPlatformFees);
 
 // GET /metrics route
 router.get('/metrics', authenticateAdmin, handleGetMetrics);
+
+// Temporary test route to trigger football event creation
+router.get('/test-trigger-football', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('Force triggering Football Event Creation...');
+    // Pass the db instance from the request
+    await createDailyFootballEvents(req.db);
+    res.json({ success: true, message: "Triggered. Check server logs for '✅ Created football prediction event'." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router;
