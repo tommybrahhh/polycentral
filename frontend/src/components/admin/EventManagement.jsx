@@ -341,15 +341,14 @@ const handleManualTrigger = async () => {
 
   setIsTesting(true);
   try {
-    // Use the service function (handles URL and Auth automatically)
+    // Use the centralized API service (Fixes the URL/Auth issues)
     const response = await triggerManualFootballTest();
     const data = response.data;
 
     if (data.success) {
-      // Format logs for display if they exist
       const logMsg = data.logs ? `\n\nLogs:\n${data.logs.join('\n')}` : '';
       alert(`Success: ${data.message}${logMsg}`);
-      fetchData(); // Refresh list
+      fetchData(); // Refresh the table to see the new event
     } else {
       throw new Error(data.message || 'Unknown error');
     }
