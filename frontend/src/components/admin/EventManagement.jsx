@@ -336,32 +336,31 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
     }
   };
 
-const handleManualTrigger = async () => {
-  if (!window.confirm("This will force the server to check for Real Madrid matches and create an event immediately. Continue?")) return;
+  // New Handler
+  const handleManualTrigger = async () => {
+    if (!window.confirm("Force check for Real Madrid matches?")) return;
 
-  setIsTesting(true);
-  try {
-    // Use the service instead of raw fetch
-    const response = await triggerManualFootballTest();
-    
-    // Axios returns data in response.data
-    const data = response.data;
+    setIsTesting(true);
+    try {
+      // Use the service function we just added
+      const response = await triggerManualFootballTest();
+      const data = response.data;
 
-    if (data.success) {
-      alert(`Success: ${data.message}`);
-      fetchData();
-    } else {
-      throw new Error(data.message || 'Unknown error');
+      if (data.success) {
+        const logMsg = data.logs ? `\n\nLogs:\n${data.logs.join('\n')}` : '';
+        alert(`Success: ${data.message}${logMsg}`);
+        fetchData();
+      } else {
+        throw new Error(data.message || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Trigger error:', error);
+      const errMsg = error.response?.data?.error || error.message;
+      alert(`Error: ${errMsg}`);
+    } finally {
+      setIsTesting(false);
     }
-  } catch (error) {
-    console.error('Trigger error:', error);
-    // Handle Axios error structure
-    const errMsg = error.response?.data?.error || error.message;
-    alert(`Error: ${errMsg}`);
-  } finally {
-    setIsTesting(false);
-  }
-};
+  };
 
   // Filter events based on search term and status
   const filteredEvents = events.filter(event => {
