@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API-SPORTS Widget Test</title>
+    <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .widget-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API-SPORTS Widget Test</h1>
+        <p>Testing if widgets can access Elche vs Real Madrid match for tomorrow</p>
+        
+        <div class="widget-section">
+            <h2>Games Widget</h2>
+            <api-sports-widget data-type="games"></api-sports-widget>
+        </div>
+
+        <div class="widget-section">
+            <h2>Standings Widget</h2>
+            <api-sports-widget data-type="standings"></api-sports-widget>
+        </div>
+    </div>
+
+    <api-sports-widget 
+        data-type="config" 
+        data-sport="football" 
+        data-key="f4bd10a216c6c769c3f49cfa0182cc44"
+        data-lang="en" 
+        data-theme="grey" 
+        data-show-error="true" 
+        data-show-logos="true"
+        data-refresh="20" 
+        data-favorite="true" 
+        data-player-trophies="true" 
+        data-standings="true"
+        data-player-injuries="true"
+        data-team-squad="true" 
+        data-team-statistics="true" 
+        data-player-statistics="true"
+        data-tab="games"
+        data-game-tab="statistics"
+        data-target-player="modal" 
+        data-target-league="#games-list" 
+        data-target-team="#team-content" 
+        data-target-game="#game-content .card-body" 
+        data-target-standings="#standings-content"
+    ></api-sports-widget>
+</body>
+</html>

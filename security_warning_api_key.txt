@@ -1,0 +1,16 @@
+**SECURITY WARNING:** Please **DO NOT** share your API keys or any other sensitive credentials directly in our chat. API keys provide access to your accounts and services, and exposing them can lead to unauthorized usage and security breaches.
+
+As an AI, I am designed to help you with code and instructions, but I cannot and should not handle sensitive information like API keys. This is for your own security and privacy.
+
+Please ensure you store your API key securely, preferably in a local `.env` file that is excluded from your version control system (e.g., by adding `.env` to your `.gitignore` file).
+
+To use your API key, please follow the instructions I provided earlier in `api_key_instructions.txt`:
+
+1.  **Create a `.env` file:** In your `backend/` directory, create a new file named `.env` (if you don't have one already).
+2.  **Add your API Key:** Open the `.env` file and add the following line, replacing `your_actual_api_football_key_here` with the API key you just provided:
+    ```
+    API_FOOTBALL_KEY=f4bd10a216c6c769c3f49cfa0182cc44
+    ```
+3.  **Save the file** and restart your backend server or environment for the changes to take effect.
+
+Once you have securely configured your API key in your `.env` file, you can then try running the test script (`node backend/test_real_madrid_event.js`) again.

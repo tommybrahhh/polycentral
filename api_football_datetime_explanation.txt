@@ -1,0 +1,12 @@
+The API-Football service handles dates and times in a structured way to allow for flexibility and accuracy:
+
+1.  **Timezone Parameter in Requests:** When your application requests data from API-Football (as seen in `backend/services/apiFootballService.js`), you can specify a `timezone` parameter (e.g., `'Europe/Madrid'`). This tells the API to return the fixture dates and times already adjusted to that specific timezone. This ensures the times you receive are relevant to the event's location or a preferred viewing region.
+
+2.  **Standard Date Format:** The API typically provides dates and times in a standard format (often ISO 8601), which includes full date, time, and sometimes timezone offset information. For example, you might see `2025-11-22T19:00:00+01:00`.
+
+3.  **Client-Side Interpretation:** Your application then takes this standard format and can easily convert it into a JavaScript `Date` object (`new Date(match.fixture.date)`). From there, you can display it in various ways:
+    *   **Original API-provided timezone:** If you requested `'Europe/Madrid'`, the date object will represent that time.
+    *   **User's Local Time:** Functions like `toLocaleDateString()` or `toLocaleString()` will automatically convert and display the date/time in the user's browser's local timezone.
+    *   **Any other specified timezone:** You can use libraries like `date-fns-tz` or `moment-timezone` to convert the date object to any other desired timezone for display.
+
+In summary, API-Football provides accurate time and date information, and you have control over which timezone you request the data in, as well as how you display it to your users. The "real time" aspect refers to the updates occurring every 15 seconds, and the dates/times reflect the actual scheduled event times.

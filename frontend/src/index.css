@@ -280,3 +280,44 @@ body::before {
     border-radius: 0;
   }
 }
+
+/* API-SPORTS Widget Styles */
+.football-matches-widget {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--ui-surface);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--shadow-elevated);
+}
+
+.widget-container {
+  min-height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Ensure widgets integrate with dark theme */
+api-sports-widget {
+  --asw-background: var(--ui-surface) !important;
+  --asw-text-color: var(--off-white) !important;
+  --asw-border-color: var(--ui-border) !important;
+  --asw-primary-color: var(--orange-primary) !important;
+  --asw-secondary-color: var(--light-gray) !important;
+}
+
+/* Loading state for widgets */
+.widget-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--light-gray);
+}
+
+.widget-loading .neon-spinner {
+  margin-bottom: 1rem;
+}

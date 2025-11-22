@@ -1,0 +1,5 @@
+It is possible to get near real-time data from API-Sports, with updates for matches and events occurring every 15 seconds.
+
+While the core REST API (v3.football.api-sports.io) typically requires polling (making repeated requests), API-Sports also offers **LIVESCORE WebSockets push notifications**. This is the most efficient way to receive true real-time updates directly from the server as events happen, rather than constantly requesting new data.
+
+Additionally, while not a native feature of API-Sports, webhooks can be integrated through third-party services to trigger actions based on API updates.

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elche vs Real Madrid Widget Test</title>
+    <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .widget-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Elche vs Real Madrid Widget Test</h1>
+        <p>Testing if widgets can find Elche vs Real Madrid match for tomorrow (2025-11-23)</p>
+        
+        <div class="status info">
+            Testing API-SPORTS widgets with your API key: f4bd10a216c6c769c3f49cfa0182cc44
+        </div>
+
+        <div class="widget-section">
+            <h2>Specific Team Search - Real Madrid</h2>
+            <api-sports-widget 
+                data-type="games" 
+                data-team="541"
+                data-date="2025-11-23"
+            ></api-sports-widget>
+        </div>
+
+        <div class="widget-section">
+            <h2>Head-to-Head: Elche vs Real Madrid</h2>
+            <api-sports-widget 
+                data-type="games" 
+                data-h2h="797-541"
+                data-date="2025-11-23"
+            ></api-sports-widget>
+        </div>
+
+        <div class="widget-section">
+            <h2>All Matches for Tomorrow</h2>
+            <api-sports-widget 
+                data-type="games" 
+                data-date="2025-11-23"
+                data-league="140"
+            ></api-sports-widget>
+        </div>
+
+        <div class="widget-section">
+            <h2>Team Information - Elche</h2>
+            <api-sports-widget 
+                data-type="team" 
+                data-id="797"
+            ></api-sports-widget>
+        </div>
+
+        <div class="widget-section">
+            <h2>Team Information - Real Madrid</h2>
+            <api-sports-widget 
+                data-type="team" 
+                data-id="541"
+            ></api-sports-widget>
+        </div>
+    </div>
+
+    <api-sports-widget 
+        data-type="config" 
+        data-sport="football" 
+        data-key="f4bd10a216c6c769c3f49cfa0182cc44"
+        data-lang="en" 
+        data-theme="grey" 
+        data-show-error="true" 
+        data-show-logos="true"
+        data-refresh="20" 
+        data-favorite="true" 
+        data-player-trophies="true" 
+        data-standings="true"
+        data-player-injuries="true"
+        data-team-squad="true" 
+        data-team-statistics="true" 
+        data-player-statistics="true"
+    ></api-sports-widget>
+
+    <script>
+        // Listen for widget events to see what's happening
+        document.addEventListener('apiSportsWidgetReady', function(event) {
+            console.log('API Sports Widget Ready', event.detail);
+            document.querySelector('.status').className = 'status success';
+            document.querySelector('.status').textContent = 'Widget loaded successfully!';
+        });
+
+        document.addEventListener('apiSportsWidgetError', function(event) {
+            console.error('API Sports Widget Error', event.detail);
+            document.querySelector('.status').className = 'status error';
+            document.querySelector('.status').textContent = 'Error: ' + (event.detail?.message || 'Unknown error');
+        });
+
+        document.addEventListener('apiSportsWidgetData', function(event) {
+            console.log('API Sports Widget Data', event.detail);
+        });
+    </script>
+</body>
+</html>

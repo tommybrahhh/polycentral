@@ -1,0 +1,8 @@
+When fetching data from the API-Football service, the application explicitly requests times and dates in the **'Europe/Madrid'** timezone. This means that the match schedules and event times you receive from the API are set to Central European Time (CET) or Central European Summer Time (CEST), depending on the time of year in Madrid.
+
+For filtering purposes within the backend application (e.g., to find "future" matches), it uses the **current system time of the server** where the backend code is running.
+
+So, to summarize:
+*   **API Data Times:** Primarily presented in the **'Europe/Madrid'** timezone.
+*   **Application's "Now":** The current time of the **backend server's operating system**.
+*   **Your current local system date:** sábado, 22 de noviembre de 2025.
