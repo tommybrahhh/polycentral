@@ -1,4 +1,3 @@
-// backend/services/apiFootballService.js
 const axios = require('axios');
 require('dotenv').config();
 
@@ -6,7 +5,7 @@ const API_KEY = process.env.API_FOOTBALL_KEY;
 const API_URL = 'https://v3.football.api-sports.io';
 
 // --- CRITICAL CONFIGURATION ---
-// 1. Use 2024 to match the REAL WORLD calendar (even if your app simulates 2025)
+// 1. Use 2024 to match the REAL WORLD calendar
 const CURRENT_SEASON = 2024; 
 // 2. Hardcode Real Madrid ID (541) to prevent search errors
 const REAL_MADRID_ID = 541; 
@@ -35,7 +34,7 @@ async function getUpcomingRealMadridMatches() {
       const response = await axios.get(`${API_URL}/fixtures`, {
         params: {
           team: REAL_MADRID_ID,
-          season: CURRENT_SEASON, // <--- THIS PARAMETER WAS MISSING
+          season: CURRENT_SEASON, // <--- THIS WAS MISSING
           next: 5,                // Get the next 5 scheduled games
           timezone: 'Europe/Madrid'
         },
@@ -65,15 +64,7 @@ async function getUpcomingRealMadridMatches() {
   });
 }
 
-// ... Keep the rest of your helper functions (getMatchDetails, isMatchFinished, etc.) ...
-// Just ensure they are exported at the bottom:
-
-async function getNextRealMadridMatch() {
-  const matches = await getUpcomingRealMadridMatches();
-  return matches.length > 0 ? matches[0] : null;
-}
-
-// Get match details including score
+// Helper functions
 async function getMatchDetails(matchId) {
   return withRetry(async () => {
     try {
@@ -92,14 +83,11 @@ async function getMatchDetails(matchId) {
   });
 }
 
-// Check if match is finished
 async function isMatchFinished(matchId) {
   const matchDetails = await getMatchDetails(matchId);
   if (!matchDetails) return { finished: false, winner: null };
 
-  const { fixture, score, teams } = matchDetails;
-  
-  // Determine winner
+  const { fixture, score } = matchDetails;
   let winner = null;
   if (score.fulltime.home > score.fulltime.away) winner = 'home';
   else if (score.fulltime.away > score.fulltime.home) winner = 'away';
@@ -113,10 +101,8 @@ async function isMatchFinished(matchId) {
   };
 }
 
-// Helpers
 function getOpponentName(match, myTeamId) {
   const homeId = match.teams.home.id;
-  // If Real Madrid (myTeamId) is home, opponent is away.
   return homeId === myTeamId ? match.teams.away.name : match.teams.home.name;
 }
 
@@ -125,7 +111,12 @@ function getLeagueName(match) {
 }
 
 function getMatchResult(matchId) {
-  return isMatchFinished(matchId); // Reuse logic
+  return isMatchFinished(matchId);
+}
+
+async function getNextRealMadridMatch() {
+  const matches = await getUpcomingRealMadridMatches();
+  return matches.length > 0 ? matches[0] : null;
 }
 
 async function findNextUpcomingMatch() {
