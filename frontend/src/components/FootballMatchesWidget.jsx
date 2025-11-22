@@ -23,18 +23,17 @@ const FootballMatchesWidget = () => {
     configScript.setAttribute('data-theme', 'dark');
     configScript.setAttribute('data-sport', 'football');
 
-    // Add the games widget with exact parameters for Elche vs Real Madrid
-    const gamesWidget = document.createElement('api-sports-widget');
-    gamesWidget.setAttribute('data-type', 'games');
-    gamesWidget.setAttribute('data-league', '140'); // La Liga
-    gamesWidget.setAttribute('data-season', '2025'); // 2025 season
-    gamesWidget.setAttribute('data-date', '2025-11-23'); // Tomorrow's date
-    gamesWidget.setAttribute('data-show-errors', 'false');
+    // Add the fixtures widget for Real Madrid's next game (better approach)
+    const fixturesWidget = document.createElement('api-sports-widget');
+    fixturesWidget.setAttribute('data-type', 'fixtures');
+    fixturesWidget.setAttribute('data-team', '541'); // Real Madrid ID
+    fixturesWidget.setAttribute('data-season', '2025'); // 2025 season
+    fixturesWidget.setAttribute('data-next', '1'); // Next game only
 
     // Append widgets to container
     if (widgetContainerRef.current) {
       widgetContainerRef.current.appendChild(configScript);
-      widgetContainerRef.current.appendChild(gamesWidget);
+      widgetContainerRef.current.appendChild(fixturesWidget);
     }
 
     // Append script to head to load it globally
@@ -50,8 +49,8 @@ const FootballMatchesWidget = () => {
 
   return (
     <div className="football-matches-widget">
-      <h2 className="text-xl font-semibold mb-4 text-primary">Upcoming Football Matches</h2>
-      <p className="text-secondary mb-4">Live football matches from API-SPORTS for tomorrow (2025-11-23)</p>
+      <h2 className="text-xl font-semibold mb-4 text-primary">Next Real Madrid Match</h2>
+      <p className="text-secondary mb-4">Upcoming Real Madrid fixture from API-SPORTS</p>
       
       <div ref={widgetContainerRef} className="widget-container">
         {/* Widgets will be injected here */}
