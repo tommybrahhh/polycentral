@@ -120,58 +120,49 @@ async function getTotalPlatformFees(db) {
 // Admin service to get all events with pagination and filtering
 async function getEvents(db, queryParams) {
   const { page = 1, limit = 10, search = '', status = 'all' } = queryParams;
-  const offset = (page - 1) * limit;
+  
+  // Start a query builder on the 'events' table
+  const query = db('events as e');
 
-  // Build base query
-  let query = `
-    SELECT
-      e.*,
-      (SELECT COUNT(*) FROM participants WHERE event_id = e.id) as participant_count,
-      COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) as total_pot
-    FROM events e
-  `;
-  const queryParamsArray = [];
-  const whereConditions = [];
+  // Add columns and subqueries safely
+  query.select(
+    'e.*',
+    db.raw('(SELECT COUNT(*) FROM participants WHERE event_id = e.id) as participant_count'),
+    db.raw('COALESCE((SELECT SUM(amount) FROM participants WHERE event_id = e.id), 0) as total_pot')
+  );
 
-  // Add search filter
+  // Add search filter (Case insensitive)
   if (search) {
-    whereConditions.push(`e.title ILIKE $${queryParamsArray.length + 1}`);
-    queryParamsArray.push(`%${search}%`);
+    // Use generic 'like' for broad compatibility, or whereILike if Knex version supports it
+    query.where(function() {
+      this.where('e.title', 'like', `%${search}%`)
+          .orWhere('e.title', 'ilike', `%${search}%`); // Try both for safety
+    });
   }
 
   // Add status filter
   if (status !== 'all') {
     if (status === 'pending') {
-      whereConditions.push(`e.resolution_status = $${queryParamsArray.length + 1}`);
-      queryParamsArray.push('pending');
+      query.where('e.resolution_status', 'pending');
     } else if (status === 'resolved') {
-      whereConditions.push(`e.resolution_status = $${queryParamsArray.length + 1}`);
-      queryParamsArray.push('resolved');
+      query.where('e.resolution_status', 'resolved');
     } else if (status === 'active') {
-      whereConditions.push(`e.status = $${queryParamsArray.length + 1}`);
-      queryParamsArray.push('active');
+      query.where('e.status', 'active');
     }
   }
 
-  // Add WHERE clause if there are conditions
-  if (whereConditions.length > 0) {
-    query += ` WHERE ${whereConditions.join(' AND ')}`;
-  }
+  // 1. Get Total Count for Pagination (using a clone of the query to ignore limit/offset)
+  // We clear the select to just count rows matching the filters
+  const countQuery = query.clone().clearSelect().count('* as count').first();
+  const countResult = await countQuery;
+  const total = parseInt(countResult ? (countResult.count || countResult['count(*)']) : 0);
 
-  // Add ordering and pagination
-  query += ` ORDER BY e.created_at DESC LIMIT $${queryParamsArray.length + 1} OFFSET $${queryParamsArray.length + 2}`;
-  queryParamsArray.push(limit, offset);
+  // 2. Get Data with Pagination
+  query.orderBy('e.created_at', 'desc')
+       .limit(limit)
+       .offset((page - 1) * limit);
 
-  // Get events
-  const { rows: events } = await db.raw(query, queryParamsArray);
-
-  // Get total count for pagination
-  let countQuery = `SELECT COUNT(*) FROM events e`;
-  if (whereConditions.length > 0) {
-    countQuery += ` WHERE ${whereConditions.join(' AND ')}`;
-  }
-  const { rows: countRows } = await db.raw(countQuery, queryParamsArray.slice(0, -2));
-  const total = parseInt(countRows[0].count);
+  const events = await query;
 
   return {
     events,
