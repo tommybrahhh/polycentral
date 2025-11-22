@@ -7,25 +7,11 @@ require('dotenv').config();
 const API_KEY = process.env.API_FOOTBALL_KEY;
 const API_URL = 'https://v3.football.api-sports.io';
 
-// Fixed ID for Real Madrid (Standard API-Football ID)
-const REAL_MADRID_TEAM_ID = 541;
+// CORRECT SEASON: The 2024-2025 season is '2024' in the API
+const CURRENT_SEASON = 2024; 
 
-// Dynamic Season Logic
-function getCurrentSeason() {
-  const now = new Date();
-  // If we are in the second half of the year (July+), use current year.
-  // Otherwise (Jan-June), use previous year (e.g. Feb 2026 is still 2025 season).
-  return now.getMonth() > 5 ? now.getFullYear() : now.getFullYear() - 1;
-}
-
-// Major league IDs for reliable API calls on free tier
-const MAJOR_LEAGUES = [
-  39,  // Premier League
-  140, // La Liga
-  78,  // Bundesliga
-  135, // Serie A
-  61   // Ligue 1
-];
+// HARDCODED ID: Real Madrid is always 541. No need to search.
+const REAL_MADRID_ID = 541;
 
 // Helper function for retry logic
 const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
@@ -39,25 +25,20 @@ const withRetry = async (fn, maxRetries = 3, delay = 1000) => {
   }
 };
 
-// Replace getRealMadridTeamId with a simple getter
+// Simple getter - no API call needed anymore
 async function getRealMadridTeamId() {
-  return REAL_MADRID_TEAM_ID;
+  return REAL_MADRID_ID;
 }
 
 // Get upcoming matches for Real Madrid
 async function getUpcomingRealMadridMatches() {
   return withRetry(async () => {
     try {
-      const teamId = await getRealMadridTeamId();
-      if (!teamId) {
-        console.log('❌ Could not find Real Madrid team ID');
-        return [];
-      }
-
+      console.log(`⚽ Fetching next matches for Team ID ${REAL_MADRID_ID}...`);
       const response = await axios.get(`${API_URL}/fixtures`, {
         params: {
-          team: teamId,
-          next: 10, // Get next 10 matches
+          team: REAL_MADRID_ID,
+          next: 5, // Get next 5 matches to be safe
           timezone: 'Europe/Madrid'
         },
         headers: {
@@ -67,20 +48,22 @@ async function getUpcomingRealMadridMatches() {
         timeout: 10000
       });
 
-      if (response.data.response && response.data.response.length > 0) {
-        return response.data.response;
+      if (response.data.errors && Object.keys(response.data.errors).length > 0) {
+        console.error('❌ API Error:', JSON.stringify(response.data.errors));
+        return [];
+      }
+
+      const matches = response.data.response;
+      if (matches && matches.length > 0) {
+        console.log(`✅ Found ${matches.length} upcoming Real Madrid matches`);
+        return matches;
       } else {
-        console.log('ℹ️ No upcoming Real Madrid matches found');
+        console.log('ℹ️ No upcoming Real Madrid matches found (Response array empty)');
         return [];
       }
     } catch (error) {
-      console.error('API-Football error (fixtures):', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        timestamp: new Date().toISOString()
-      });
-      throw error;
+      console.error('API-Football error (fixtures):', error.message);
+      return [];
     }
   });
 }
@@ -88,11 +71,7 @@ async function getUpcomingRealMadridMatches() {
 // Get next Real Madrid match
 async function getNextRealMadridMatch() {
   const matches = await getUpcomingRealMadridMatches();
-  if (matches.length === 0) {
-    return null;
-  }
-  
-  // Return the earliest upcoming match
+  if (matches.length === 0) return null;
   return matches[0];
 }
 
@@ -101,186 +80,61 @@ async function getMatchDetails(matchId) {
   return withRetry(async () => {
     try {
       const response = await axios.get(`${API_URL}/fixtures`, {
-        params: {
-          id: matchId,
-          timezone: 'Europe/Madrid'
-        },
+        params: { id: matchId, timezone: 'Europe/Madrid' },
         headers: {
           'x-apisports-key': API_KEY,
           'x-rapidapi-host': 'v3.football.api-sports.io'
-        },
-        timeout: 10000
+        }
       });
-
-      if (response.data.response && response.data.response.length > 0) {
-        return response.data.response[0];
-      } else {
-        console.log(`❌ Match ${matchId} not found`);
-        return null;
-      }
+      return response.data.response ? response.data.response[0] : null;
     } catch (error) {
-      console.error('API-Football error (match details):', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        timestamp: new Date().toISOString()
-      });
-      throw error;
+      console.error(`Error fetching match ${matchId}:`, error.message);
+      return null;
     }
   });
 }
 
-// Check if match is finished and get final score
+// Check if match is finished
 async function isMatchFinished(matchId) {
   const matchDetails = await getMatchDetails(matchId);
-  
-  if (!matchDetails) {
-    return {
-      finished: false,
-      homeScore: null,
-      awayScore: null,
-      winner: null
-    };
-  }
+  if (!matchDetails) return { finished: false, winner: null };
 
-  const fixture = matchDetails.fixture;
-  const score = matchDetails.score;
+  const { fixture, score, teams } = matchDetails;
   
+  // Determine winner
+  let winner = null;
+  if (score.fulltime.home > score.fulltime.away) winner = 'home';
+  else if (score.fulltime.away > score.fulltime.home) winner = 'away';
+  else winner = 'draw';
+
   return {
-    finished: fixture.status.short === 'FT' || fixture.status.short === 'AET' || fixture.status.short === 'PEN',
+    finished: ['FT', 'AET', 'PEN'].includes(fixture.status.short),
     homeScore: score.fulltime.home,
     awayScore: score.fulltime.away,
-    winner: getMatchWinner(score.fulltime.home, score.fulltime.away)
+    winner
   };
 }
 
-// Determine match winner
-function getMatchWinner(homeScore, awayScore) {
-  if (homeScore === awayScore) return 'draw';
-  if (homeScore > awayScore) return 'home';
-  return 'away';
+// Helpers
+function getOpponentName(match, myTeamId) {
+  const homeId = match.teams.home.id;
+  // If Real Madrid (myTeamId) is home, opponent is away.
+  return homeId === myTeamId ? match.teams.away.name : match.teams.home.name;
 }
 
-// Get opponent team name for Real Madrid match
-function getOpponentName(match, realMadridTeamId) {
-  const teams = match.teams;
-  const opponent = teams.home.id === realMadridTeamId ? teams.away : teams.home;
-  return opponent.name || 'Unknown Opponent';
-}
-
-// Get league name for match
 function getLeagueName(match) {
   return match.league?.name || 'Unknown League';
 }
 
-// Get match result
-async function getMatchResult(matchId) {
-  return withRetry(async () => {
-    try {
-      const matchDetails = await getMatchDetails(matchId);
-      
-      if (!matchDetails) {
-        return {
-          status: 'unknown',
-          finished: false,
-          homeScore: null,
-          awayScore: null,
-          winner: null
-        };
-      }
-
-      const fixture = matchDetails.fixture;
-      const score = matchDetails.score;
-      
-      return {
-        status: fixture.status.short,
-        finished: fixture.status.short === 'FT' || fixture.status.short === 'AET' || fixture.status.short === 'PEN',
-        homeScore: score.fulltime.home,
-        awayScore: score.fulltime.away,
-        winner: getMatchWinner(score.fulltime.home, score.fulltime.away)
-      };
-    } catch (error) {
-      console.error('API-Football error (getMatchResult):', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        timestamp: new Date().toISOString()
-      });
-      throw error;
-    }
-  });
+function getMatchResult(matchId) {
+  return isMatchFinished(matchId); // Reuse logic
 }
 
-// Find next upcoming match with improved reliability for free tier
+// Optimized: Find next match (General) - Now defaults to Real Madrid to save API calls
 async function findNextUpcomingMatch() {
-  return withRetry(async () => {
-    try {
-      // 1. Try specific major leagues first (More reliable on Free plans)
-      // League 39 = Premier League, 140 = La Liga
-      // Use dynamic season calculation
-      const url = `${API_URL}/fixtures?league=39&season=${getCurrentSeason()}&next=5&timezone=Europe/Madrid`;
-      
-      console.log(`🔍 Debug: Fetching from ${url}`);
-      
-      const response = await axios.get(url, {
-        headers: {
-          'x-apisports-key': API_KEY,
-          'x-rapidapi-host': 'v3.football.api-sports.io'
-        },
-        timeout: 10000
-      });
-
-      // 2. LOG THE FULL ERROR/RESPONSE
-      // Often the API returns 200 OK but with an internal "errors" object
-      if (response.data.errors && Object.keys(response.data.errors).length > 0) {
-        console.error('❌ API-Football Error:', JSON.stringify(response.data.errors, null, 2));
-        return null;
-      }
-
-      const matches = response.data.response;
-      
-      if (!matches || matches.length === 0) {
-        console.warn('⚠️ API returned 0 matches. Raw Response:', JSON.stringify(response.data, null, 2));
-        
-        // 3. Fallback: Try other major leagues if Premier League fails
-        for (const leagueId of MAJOR_LEAGUES.slice(1)) { // Skip first (already tried)
-          try {
-            console.log(`🔄 Trying fallback league ${leagueId}...`);
-            const fallbackUrl = `${API_URL}/fixtures?league=${leagueId}&season=${getCurrentSeason()}&next=5&timezone=Europe/Madrid`;
-            console.log(`🔍 Debug: Fallback to ${fallbackUrl}`);
-            
-            const fallbackResponse = await axios.get(fallbackUrl, {
-              headers: {
-                'x-apisports-key': API_KEY,
-                'x-rapidapi-host': 'v3.football.api-sports.io'
-              },
-              timeout: 5000
-            });
-
-            if (fallbackResponse.data.response && fallbackResponse.data.response.length > 0) {
-              console.log(`✅ Found ${fallbackResponse.data.response.length} matches in league ${leagueId}`);
-              return fallbackResponse.data.response[0];
-            }
-          } catch (fallbackError) {
-            console.warn(`⚠️ Fallback league ${leagueId} failed:`, fallbackError.message);
-            continue;
-          }
-        }
-        
-        return null;
-      }
-
-      return matches[0];
-
-    } catch (error) {
-      console.error('💥 Network Error:', error.message);
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-      }
-      return null;
-    }
-  });
+  // For your specific use case, we can just return the Real Madrid match
+  // This saves you from searching the entire Premier League
+  return getNextRealMadridMatch();
 }
 
 module.exports = {
