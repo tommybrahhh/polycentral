@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import EventCard from './EventCard';
-import FootballMatchesWidget from './FootballMatchesWidget';
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
@@ -60,9 +59,6 @@ const EventList = () => {
 
   return (
     <div className="events-container">
-      {/* API-SPORTS Football Matches Widget */}
-      <FootballMatchesWidget />
-      
       <div className="events-list">
         {activeEvents.map(event => (
           <EventCard key={event.id} event={event} />
