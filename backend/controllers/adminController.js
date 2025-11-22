@@ -129,7 +129,12 @@ async function handleGetEvents(req, res) {
     res.json(result);
   } catch (error) {
     console.error('Error fetching events:', error);
-    res.status(500).json({ error: 'Failed to fetch events' });
+    // CHANGE THIS LINE TO SEE THE REAL ERROR:
+    res.status(500).json({
+      error: 'Failed to fetch events',
+      details: error.message,  // <--- Add this
+      hint: error.hint         // <--- Add this (Postgres often gives hints)
+    });
   }
 }
 
