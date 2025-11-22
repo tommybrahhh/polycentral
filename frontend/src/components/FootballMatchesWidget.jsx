@@ -29,6 +29,7 @@ const FootballMatchesWidget = () => {
     fixturesWidget.setAttribute('data-team', '541'); // Real Madrid ID
     fixturesWidget.setAttribute('data-season', '2025'); // 2025 season
     fixturesWidget.setAttribute('data-next', '1'); // Next game only
+    fixturesWidget.setAttribute('data-show-errors', 'true'); // Show errors for debugging
 
     // Append widgets to container
     if (widgetContainerRef.current) {
