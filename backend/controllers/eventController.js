@@ -305,27 +305,39 @@ async function betOnEvent(db, req, res) {
   
   try {
       console.log('DEBUG: Starting transaction');
-      // await trx.query('BEGIN'); // Knex handles BEGIN implicitly
       console.log('DEBUG: Transaction started');
 
-      // Check event exists
-      console.log('DEBUG: Checking if event exists', { eventId });
-      const event = await getEventDetails(trx, eventId);
-      if (!event) {
-          console.log('DEBUG: Event not found', { eventId });
-          await trx.rollback();
-          return res.status(404).json({ error: 'Event not found' });
-      }
-      console.log('DEBUG: Event found', { event });
-      
-      // Check if event is still active
+      // Check event exists and is still active using database-level check
+      console.log('DEBUG: Checking if event exists and is active', { eventId });
       const now = new Date();
-      const endTime = new Date(event.end_time);
-      console.log('DEBUG: Checking event time', { now, endTime, isEnded: now >= endTime });
-      if (now >= endTime) {
-          console.log('DEBUG: Event has ended', { eventId });
+      const event = await trx.raw(`
+        SELECT * FROM events
+        WHERE id = ?
+        AND status = 'active'
+        AND end_time > ?
+        FOR UPDATE
+      `, [eventId, now]);
+      
+      const eventData = event.rows?.[0] || event?.[0];
+      if (!eventData) {
+          console.log('DEBUG: Event not found or not active', { eventId });
           await trx.rollback();
-          return res.status(400).json({ error: 'Event has ended' });
+          return res.status(400).json({ error: 'Event not found or betting closed' });
+      }
+      console.log('DEBUG: Event found and active', { event: eventData });
+      
+      // Hard timestamp check - compare current server time vs event deadline
+      const eventDeadline = new Date(eventData.end_time);
+      const currentServerTime = new Date();
+      
+      if (currentServerTime > eventDeadline) {
+          console.log('DEBUG: Betting closed - current time exceeds event deadline', {
+              currentServerTime,
+              eventDeadline,
+              timeDifference: currentServerTime - eventDeadline
+          });
+          await trx.rollback();
+          return res.status(400).json({ error: 'Betting closed' });
       }
       
       // Check user has sufficient points
