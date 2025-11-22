@@ -26,6 +26,7 @@ const {
 
 // Import event service function for testing
 const { createDailyFootballEvents } = require('../services/eventService');
+const { findNextUpcomingMatch, getRealMadridTeamId } = require('../services/apiFootballService');
 
 // Import authentication middleware
 const { authenticateAdmin } = require('../middleware/authMiddleware');
@@ -52,16 +53,68 @@ router.post('/fees/transfer', authenticateAdmin, handleTransferPlatformFees);
 // GET /metrics route
 router.get('/metrics', authenticateAdmin, handleGetMetrics);
 
-// Temporary test route to trigger football event creation
+// Diagnostic Route: Returns the exact logic flow to the browser
 router.get('/test-trigger-football', authenticateAdmin, async (req, res) => {
+  const logs = [];
+  const log = (msg) => {
+    console.log(msg);
+    logs.push(msg);
+  };
+
   try {
-    console.log('Force triggering Football Event Creation...');
-    // Pass the db instance from the request
+    log('🚀 Starting Diagnostic Test...');
+
+    // 1. Test Database Connection
+    log('1️⃣ Checking Database...');
+    const eventType = await req.db('event_types').where('name', 'sport_match').first();
+    if (!eventType) {
+      throw new Error("CRITICAL: 'sport_match' event type is missing from DB. Run the database fixer again.");
+    }
+    log(`✅ Found Event Type ID: ${eventType.id}`);
+
+    // 2. Test API Connectivity (Step-by-step)
+    log('2️⃣ Checking Football API...');
+    const teamId = await getRealMadridTeamId();
+    log(`✅ Real Madrid Team ID: ${teamId}`);
+
+    const match = await findNextUpcomingMatch();
+    if (!match) {
+      log('⚠️ API returned NO matches for the next 7 days.');
+      log('Suggestion: Check if the season is correct or if there is an international break.');
+      return res.json({ success: false, logs, message: 'No matches found.' });
+    }
+    
+    log(`✅ Found Match: ${match.teams.home.name} vs ${match.teams.away.name}`);
+    log(`📅 Date: ${match.fixture.date}`);
+    log(`🆔 External ID: ${match.fixture.id}`);
+
+    // 3. Test Event Creation
+    log('3️⃣ Attempting to Save Event...');
+    
+    // Check if it already exists manually to log it
+    const existing = await req.db('events').where('external_id', String(match.fixture.id)).first();
+    if (existing) {
+      log(`⚠️ Event already exists in DB with ID: ${existing.id}`);
+      return res.json({ success: true, logs, message: 'Match found, but event already exists.' });
+    }
+
+    // Run the actual service function
     await createDailyFootballEvents(req.db);
-    res.json({ success: true, message: "Triggered. Check server logs for '✅ Created football prediction event'." });
+    log('✅ createDailyFootballEvents function finished.');
+
+    res.json({
+      success: true,
+      logs,
+      match: `${match.teams.home.name} vs ${match.teams.away.name}`,
+      message: "Event successfully created!"
+    });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    log(`❌ ERROR: ${error.message}`);
+    if (error.response) {
+      log(`📝 API Response: ${JSON.stringify(error.response.data)}`);
+    }
+    res.status(500).json({ success: false, logs, error: error.message });
   }
 });
 
