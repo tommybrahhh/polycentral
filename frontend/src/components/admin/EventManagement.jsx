@@ -341,19 +341,21 @@ const handleManualTrigger = async () => {
 
   setIsTesting(true);
   try {
-    // Use the centralized API service (Fixes the URL/Auth issues)
+    // Use the service instead of raw fetch
     const response = await triggerManualFootballTest();
+    
+    // Axios returns data in response.data
     const data = response.data;
 
     if (data.success) {
-      const logMsg = data.logs ? `\n\nLogs:\n${data.logs.join('\n')}` : '';
-      alert(`Success: ${data.message}${logMsg}`);
-      fetchData(); // Refresh the table to see the new event
+      alert(`Success: ${data.message}`);
+      fetchData();
     } else {
       throw new Error(data.message || 'Unknown error');
     }
   } catch (error) {
     console.error('Trigger error:', error);
+    // Handle Axios error structure
     const errMsg = error.response?.data?.error || error.message;
     alert(`Error: ${errMsg}`);
   } finally {

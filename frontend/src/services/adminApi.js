@@ -125,7 +125,7 @@ export const getAuditLogs = () => {
   return adminApi.get('/api/admin/audit-logs');
 };
 
-// Add this with the other Event Management functions
+// ADD THIS MISSING FUNCTION:
 export const triggerManualFootballTest = () => {
   return adminApi.get('/api/admin/test-trigger-football');
 };

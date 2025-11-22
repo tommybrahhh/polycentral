@@ -38,6 +38,7 @@ async function getUpcomingRealMadridMatches() {
       const response = await axios.get(`${API_URL}/fixtures`, {
         params: {
           team: REAL_MADRID_ID,
+          season: CURRENT_SEASON, // <--- ADDED MISSING SEASON PARAMETER
           next: 5, // Get next 5 matches to be safe
           timezone: 'Europe/Madrid'
         },
