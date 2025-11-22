@@ -212,44 +212,39 @@ async function getEventTemplates() {
 // Admin user management services
 async function getUsers(db, queryParams) {
   const { page = 1, limit = 10, search = '' } = queryParams;
-  const offset = (page - 1) * limit;
   
-  // Build base query with search functionality
-  let query = `
-    SELECT
-      id, username, email, points, is_admin, is_suspended,
-      total_events, won_events, last_login_date, created_at
-    FROM users
-  `;
-  const queryParamsArray = [];
-  const whereConditions = [];
-  
-  // Add search filter
+  // 1. Start Query Builder
+  const query = db('users');
+
+  // 2. Select specific columns (security best practice)
+  query.select(
+    'id', 'username', 'email', 'points', 'is_admin', 'is_suspended',
+    'total_events', 'won_events', 'last_login_date', 'created_at'
+  );
+
+  // 3. Apply Search Filter (Case Insensitive)
   if (search) {
-    whereConditions.push(`(username ILIKE $${queryParamsArray.length + 1} OR email ILIKE $${queryParamsArray.length + 1})`);
-    queryParamsArray.push(`%${search}%`);
+    query.where(function() {
+      this.where('username', 'like', `%${search}%`)
+          .orWhere('email', 'like', `%${search}%`)
+          // Try ilike for Postgres, fallback to like for others automatically
+          .orWhere('username', 'ilike', `%${search}%`)
+          .orWhere('email', 'ilike', `%${search}%`);
+    });
   }
-  
-  // Add WHERE clause if there are conditions
-  if (whereConditions.length > 0) {
-    query += ` WHERE ${whereConditions.join(' AND ')}`;
-  }
-  
-  // Add ordering and pagination
-  query += ` ORDER BY created_at DESC LIMIT $${queryParamsArray.length + 1} OFFSET $${queryParamsArray.length + 2}`;
-  queryParamsArray.push(limit, offset);
-  
-  // Get users
-  const { rows: users } = await db.raw(query, queryParamsArray);
-  
-  // Get total count for pagination
-  let countQuery = `SELECT COUNT(*) FROM users`;
-  if (whereConditions.length > 0) {
-    countQuery += ` WHERE ${whereConditions.join(' AND ')}`;
-  }
-  const { rows: countRows } = await db.raw(countQuery, queryParamsArray.slice(0, -2));
-  const total = parseInt(countRows[0].count);
-  
+
+  // 4. Get Total Count (before pagination)
+  const countQuery = query.clone().clearSelect().count('* as count').first();
+  const countResult = await countQuery;
+  const total = parseInt(countResult ? (countResult.count || countResult['count(*)']) : 0);
+
+  // 5. Apply Pagination & Sorting
+  query.orderBy('created_at', 'desc')
+       .limit(limit)
+       .offset((page - 1) * limit);
+
+  const users = await query;
+
   return {
     users,
     pagination: {
