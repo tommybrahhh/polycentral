@@ -19,19 +19,17 @@ const FootballMatchesWidget = () => {
     // Add the widget configuration
     const configScript = document.createElement('api-sports-widget');
     configScript.setAttribute('data-type', 'config');
-    configScript.setAttribute('data-sport', 'football');
     configScript.setAttribute('data-key', 'f4bd10a216c6c769c3f49cfa0182cc44');
-    configScript.setAttribute('data-lang', 'en');
-    configScript.setAttribute('data-theme', 'grey');
-    configScript.setAttribute('data-show-error', 'true');
-    configScript.setAttribute('data-show-logos', 'true');
-    configScript.setAttribute('data-refresh', '20');
+    configScript.setAttribute('data-theme', 'dark');
+    configScript.setAttribute('data-sport', 'football');
 
-    // Add the games widget
+    // Add the games widget with exact parameters for Elche vs Real Madrid
     const gamesWidget = document.createElement('api-sports-widget');
     gamesWidget.setAttribute('data-type', 'games');
-    gamesWidget.setAttribute('data-date', '2025-11-23'); // Tomorrow's date
     gamesWidget.setAttribute('data-league', '140'); // La Liga
+    gamesWidget.setAttribute('data-season', '2025'); // 2025 season
+    gamesWidget.setAttribute('data-date', '2025-11-23'); // Tomorrow's date
+    gamesWidget.setAttribute('data-show-errors', 'false');
 
     // Append widgets to container
     if (widgetContainerRef.current) {
