@@ -84,41 +84,32 @@ router.get('/run-migrations', authenticateAdmin, async (req, res) => {
 // Add this DEBUG/REPAIR route
 router.get('/fix-database', authenticateAdmin, async (req, res) => {
   try {
-    console.log('🔧 Starting Manual Database Repair...');
+    console.log('🔧 Starting Force Schema Repair...');
     
-    // 1. Check if migration files exist
-    const migrationDir = require('path').join(__dirname, '../migrations');
-    let files = [];
-    try {
-      files = require('fs').readdirSync(migrationDir);
-      console.log('📂 Found migration files:', files);
-    } catch (e) {
-      console.error('❌ Could not read migrations folder:', e.message);
-      return res.status(500).json({ error: 'Migrations folder missing', details: e.message });
+    // 1. Force Add 'external_id' column if missing
+    // Note: "ADD COLUMN IF NOT EXISTS" is standard Postgres
+    await req.db.raw(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='external_id') THEN
+          ALTER TABLE events ADD COLUMN external_id VARCHAR(255);
+        END IF;
+      END $$;
+    `);
+    console.log('✅ Verified external_id column');
+
+    // 2. Force Add 'sport_match' event type
+    const typeCheck = await req.db.raw("SELECT id FROM event_types WHERE name = 'sport_match'");
+    if ((typeCheck.rows || typeCheck).length === 0) {
+      await req.db.raw("INSERT INTO event_types (name, description) VALUES ('sport_match', 'Sports match predictions')");
+      console.log('✅ Added sport_match event type');
     }
 
-    // 2. Force Run Migrations
-    const result = await req.db.migrate.latest({
-      directory: migrationDir
-    });
-    
-    console.log('✅ Migration Result:', result);
-
-    // 3. Return success details
-    res.json({
-      success: true,
-      message: 'Database synced successfully',
-      filesFound: files,
-      migrationsRun: result[1] // List of executed migration files
-    });
+    res.json({ success: true, message: 'Schema repair completed successfully.' });
 
   } catch (error) {
     console.error('💥 Repair Failed:', error);
-    res.status(500).json({
-      error: 'Repair Failed',
-      message: error.message,
-      stack: error.stack
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
