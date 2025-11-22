@@ -11,7 +11,8 @@ import {
   getEventTemplates,
   createEventTemplate,
   updateEventTemplate,
-  deleteEventTemplate
+  deleteEventTemplate,
+  triggerManualFootballTest
 } from '../../services/adminApi';
 import '../../styles/admin.css';
 
@@ -335,37 +336,31 @@ const EventManagement = ({ activeTab, setActiveTab }) => {
     }
   };
 
-  // Handler for manual football event trigger
-  const handleManualTrigger = async () => {
-    if (!window.confirm("This will force the server to check for Real Madrid matches and create an event immediately. Continue?")) return;
+const handleManualTrigger = async () => {
+  if (!window.confirm("This will force the server to check for Real Madrid matches and create an event immediately. Continue?")) return;
 
-    setIsTesting(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/admin/test-trigger-football`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  setIsTesting(true);
+  try {
+    // Use the service function (handles URL and Auth automatically)
+    const response = await triggerManualFootballTest();
+    const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(`Success: ${data.message}`);
-        // Refresh the events list
-        fetchData();
-      } else {
-        throw new Error(data.error || 'Failed to trigger');
-      }
-    } catch (error) {
-      console.error('Trigger error:', error);
-      alert(`Error: ${error.message}`);
-    } finally {
-      setIsTesting(false);
+    if (data.success) {
+      // Format logs for display if they exist
+      const logMsg = data.logs ? `\n\nLogs:\n${data.logs.join('\n')}` : '';
+      alert(`Success: ${data.message}${logMsg}`);
+      fetchData(); // Refresh list
+    } else {
+      throw new Error(data.message || 'Unknown error');
     }
-  };
+  } catch (error) {
+    console.error('Trigger error:', error);
+    const errMsg = error.response?.data?.error || error.message;
+    alert(`Error: ${errMsg}`);
+  } finally {
+    setIsTesting(false);
+  }
+};
 
   // Filter events based on search term and status
   const filteredEvents = events.filter(event => {

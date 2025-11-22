@@ -125,4 +125,9 @@ export const getAuditLogs = () => {
   return adminApi.get('/api/admin/audit-logs');
 };
 
+// Add this with the other Event Management functions
+export const triggerManualFootballTest = () => {
+  return adminApi.get('/api/admin/test-trigger-football');
+};
+
 export default adminApi;
