@@ -1,6 +1,6 @@
 const express = require('express');
-console.log('Express in adminRoutes.js:', express);
-console.log('express.Router in adminRoutes.js:', express.Router);
+// console.log('Express in adminRoutes.js:', express);
+// console.log('express.Router in adminRoutes.js:', express.Router);
 const router = express.Router();
 
 // Import admin controller functions
@@ -60,7 +60,7 @@ router.get('/metrics', authenticateAdmin, handleGetMetrics);
 router.get('/test-trigger-football', authenticateAdmin, async (req, res) => {
   const logs = [];
   const log = (msg) => {
-    console.log(msg);
+    // console.log(msg);
     logs.push(msg);
   };
 
@@ -104,12 +104,12 @@ router.get('/test-trigger-football', authenticateAdmin, async (req, res) => {
 // TEMPORARY: Endpoint to force run migrations
 router.get('/run-migrations', authenticateAdmin, async (req, res) => {
   try {
-    console.log('🔄 Starting Database Migration...');
+    // console.log('🔄 Starting Database Migration...');
     // Run the latest migration
     await req.db.migrate.latest({
       directory: require('path').join(__dirname, '../migrations')
     });
-    console.log('✅ Database migrated successfully');
+    // console.log('✅ Database migrated successfully');
     res.json({ success: true, message: 'Migrations completed successfully.' });
   } catch (error) {
     console.error('❌ Migration failed:', error);
@@ -120,7 +120,7 @@ router.get('/run-migrations', authenticateAdmin, async (req, res) => {
 // Add this DEBUG/REPAIR route
 router.get('/fix-database', authenticateAdmin, async (req, res) => {
   try {
-    console.log('🔧 Starting Force Schema Repair...');
+    // console.log('🔧 Starting Force Schema Repair...');
     
     // 1. Force Add 'external_id' column if missing
     // Note: "ADD COLUMN IF NOT EXISTS" is standard Postgres
@@ -132,13 +132,13 @@ router.get('/fix-database', authenticateAdmin, async (req, res) => {
         END IF;
       END $$;
     `);
-    console.log('✅ Verified external_id column');
+    // console.log('✅ Verified external_id column');
 
     // 2. Force Add 'sport_match' event type
     const typeCheck = await req.db.raw("SELECT id FROM event_types WHERE name = 'sport_match'");
     if ((typeCheck.rows || typeCheck).length === 0) {
       await req.db.raw("INSERT INTO event_types (name, description) VALUES ('sport_match', 'Sports match predictions')");
-      console.log('✅ Added sport_match event type');
+      // console.log('✅ Added sport_match event type');
     }
 
     res.json({ success: true, message: 'Schema repair completed successfully.' });
