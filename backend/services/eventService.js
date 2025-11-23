@@ -34,7 +34,7 @@ async function createEvent(db, eventTypeName, title, initialPrice, options) {
   try {
     await db.raw(
       `INSERT INTO events (title, crypto_symbol, initial_price, start_time, end_time, location, event_type_id, status, resolution_status, entry_fee, options)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'pending', ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', 'pending', ?, ?)`,
       [title, process.env.DEFAULT_CRYPTO_SYMBOL || 'btc', initialPrice, startTime, endTime, 'Global', eventTypeId, entryFee, JSON.stringify(options)]
     );
     console.log(`[createEvent] Successfully inserted event: ${title}`);
@@ -656,7 +656,7 @@ async function createEventWithDetails(db, eventDetails) {
         title, description, options, entry_fee, start_time, end_time,
         location, max_participants, event_type_id, crypto_symbol, initial_price,
         status, resolution_status, external_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'pending', ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', 'pending', ?)`,
       [
         title, description, JSON.stringify(options), entry_fee, startTime, endTime,
         location, capacity, eventTypeId, crypto_symbol, initial_price, external_id
@@ -1255,5 +1255,101 @@ module.exports = {
   createFootballMatchEvent,
   resolveFootballMatchEvents,
   createDailyFootballEvents,
-  createDailySportEvent
+  createDailySportEvent,
+  transitionEventsToLocked,
+  updateEventStatus,
 };
+// --- State Machine Functions ---
+async function transitionEventsToLocked(db) {
+  try {
+    console.log('🔄 Checking for events to transition from OPEN to LOCKED...');
+    const now = new Date();
+    
+    // Find events that should be locked (deadline passed but still OPEN)
+    const queryResult = await db.raw(`
+      SELECT id, title, end_time 
+      FROM events 
+      WHERE status = 'OPEN' 
+      AND end_time < ? 
+      AND resolution_status = 'pending'
+    `, [now]);
+    
+    // Handle both PG (rows) and SQLite (array) raw query results
+    const eventsToLock = queryResult.rows || queryResult;
+    
+    if (!eventsToLock || eventsToLock.length === 0) {
+      console.log('🔍 No events to transition to LOCKED status');
+      return;
+    }
+    
+    console.log(`🔍 Found ${eventsToLock.length} events to transition to LOCKED status`);
+    
+    // Transition each event to LOCKED status
+    for (const event of eventsToLock) {
+      try {
+        await db.raw(`
+          UPDATE events 
+          SET status = 'LOCKED' 
+          WHERE id = ?
+        `, [event.id]);
+        
+        console.log(`✅ Event ${event.id} (${event.title}) transitioned to LOCKED status`);
+        
+        // Add audit log entry
+        await db.raw(`
+          INSERT INTO audit_logs (event_id, action, details)
+          VALUES (?, 'status_transition', ?)
+        `, [event.id, JSON.stringify({
+          from: 'OPEN',
+          to: 'LOCKED',
+          reason: 'Deadline passed',
+          transitionedAt: new Date().toISOString()
+        })]);
+        
+      } catch (error) {
+        console.error(`❌ Failed to transition event ${event.id} to LOCKED:`, error);
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Error in transitionEventsToLocked:', error);
+  }
+}
+
+async function updateEventStatus(db, eventId, newStatus) {
+  try {
+    const validStatuses = ['OPEN', 'LOCKED', 'RESOLVED', 'CANCELED'];
+    if (!validStatuses.includes(newStatus)) {
+      throw new Error(`Invalid status: ${newStatus}`);
+    }
+    
+    const { rows: [currentEvent] } = await db.raw(`
+      SELECT status FROM events WHERE id = ?
+    `, [eventId]);
+    
+    if (!currentEvent) {
+      throw new Error('Event not found');
+    }
+    
+    await db.raw(`
+      UPDATE events SET status = ? WHERE id = ?
+    `, [newStatus, eventId]);
+    
+    // Add audit log entry
+    await db.raw(`
+      INSERT INTO audit_logs (event_id, action, details)
+      VALUES (?, 'status_transition', ?)
+    `, [eventId, JSON.stringify({
+      from: currentEvent.status,
+      to: newStatus,
+      transitionedAt: new Date().toISOString()
+    })]);
+    
+    console.log(`✅ Event ${eventId} status updated from ${currentEvent.status} to ${newStatus}`);
+    return true;
+    
+  } catch (error) {
+    console.error(`❌ Error updating event ${eventId} status to ${newStatus}:`, error);
+    throw error;
+  }
+}

@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { getCurrentPrice } = require('./coingeckoService');
 const { updateUserPoints } = require('../utils/pointsUtils');
 const { manualResolveEvent: eventServiceManualResolveEvent } = require('./eventService');
+const { distributePayouts } = require('../distribute_payouts');
 
 // Admin service for manual event creation
 async function createEvent(db, eventData) {
@@ -418,6 +419,149 @@ async function resetUserClaims(db, userId) {
   };
 }
 
+// Admin service to resolve event using pool logic (Instruction Set 3)
+async function resolveEventWithPoolLogic(db, eventId, winningOutcome) {
+  const trx = await db.transaction();
+  
+  try {
+    // Validate event exists and is in correct state
+    const { rows: eventRows } = await trx.raw(`
+      SELECT id, status, resolution_status
+      FROM events
+      WHERE id = ?
+      FOR UPDATE
+    `, [eventId]);
+
+    if (eventRows.length === 0) {
+      await trx.rollback();
+      throw new Error('Event not found');
+    }
+
+    const event = eventRows[0];
+    
+    // Check event status (must be LOCKED or OPEN, not RESOLVED)
+    if (event.resolution_status === 'resolved') {
+      await trx.rollback();
+      throw new Error('Event is already RESOLVED');
+    }
+
+    if (event.status !== 'LOCKED' && event.status !== 'OPEN') {
+      await trx.rollback();
+      throw new Error('Event must be in LOCKED or OPEN state to resolve');
+    }
+
+    // Get all bets for this event
+    const betsQuery = await trx.raw(`
+      SELECT p.*, u.username
+      FROM participants p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.event_id = ?
+    `, [eventId]);
+
+    const allBets = betsQuery.rows;
+    
+    if (allBets.length === 0) {
+      await trx.rollback();
+      throw new Error('No bets found for this event');
+    }
+
+    // Calculate pools
+    const totalPool = allBets.reduce((sum, bet) => sum + bet.amount, 0);
+    const winningBets = allBets.filter(bet => bet.prediction === winningOutcome);
+    const winningPool = winningBets.reduce((sum, bet) => sum + bet.amount, 0);
+
+    // Calculate platform fee (5%) and remaining pot
+    const platformFeePercentage = 0.05;
+    const platformFee = Math.floor(totalPool * platformFeePercentage);
+    const remainingPot = totalPool - platformFee;
+
+    // Update event with platform fee
+    await trx.raw(`
+      UPDATE events
+      SET platform_fee = platform_fee + ?
+      WHERE id = ?
+    `, [platformFee, eventId]);
+
+    // Distribute payouts to winners
+    if (winningBets.length > 0) {
+      for (const bet of winningBets) {
+        const userPayout = Math.floor((bet.amount / winningPool) * remainingPot);
+        
+        if (userPayout > 0) {
+          // Update user points using centralized utility
+          await updateUserPoints(trx, bet.user_id, userPayout, 'event_win', eventId);
+          
+          // Record platform fee contribution for this participant
+          const participantFee = Math.floor(bet.amount * platformFeePercentage);
+          await trx.raw(`
+            INSERT INTO platform_fees (event_id, participant_id, fee_amount)
+            VALUES (?, ?, ?)
+          `, [eventId, bet.id, participantFee]);
+          
+          // Record winning outcome
+          await trx.raw(`
+            INSERT INTO event_outcomes (participant_id, result, points_awarded)
+            VALUES (?, 'win', ?)
+          `, [bet.id, userPayout]);
+        }
+      }
+    }
+
+    // Record losing outcomes for non-winners
+    const losingBets = allBets.filter(bet => bet.prediction !== winningOutcome);
+    if (losingBets.length > 0) {
+      for (const bet of losingBets) {
+        await trx.raw(`
+          INSERT INTO event_outcomes (participant_id, result, points_awarded)
+          VALUES (?, 'loss', 0)
+        `, [bet.id]);
+      }
+    }
+
+    // Update event status to resolved
+    await trx.raw(`
+      UPDATE events
+      SET resolution_status = 'resolved',
+          status = 'RESOLVED',
+          correct_answer = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [winningOutcome, eventId]);
+
+    // Add audit log entry
+    await trx.raw(`
+      INSERT INTO audit_logs (event_id, action, details)
+      VALUES (?, 'manual_payout_distribution', ?)
+    `, [eventId, JSON.stringify({
+      totalParticipants: allBets.length,
+      totalWinners: winningBets.length,
+      totalPot: totalPool,
+      platformFee: platformFee,
+      distributed: remainingPot,
+      resolvedAt: new Date().toISOString(),
+      winningOutcome: winningOutcome,
+      resolvedBy: 'admin_api'
+    })]);
+
+    await trx.commit();
+    return {
+      success: true,
+      message: `Event ${eventId} resolved successfully with outcome: ${winningOutcome}`,
+      details: {
+        totalParticipants: allBets.length,
+        totalWinners: winningBets.length,
+        totalPot: totalPool,
+        platformFee: platformFee,
+        distributed: remainingPot
+      }
+    };
+    
+  } catch (error) {
+    await trx.rollback();
+    throw error;
+  }
+}
+
 // Admin service for manual event resolution
 async function manualResolveEvent(db, trx, eventId, correct_answer, final_price, clients, WebSocket) {
   // Validate input
@@ -623,5 +767,6 @@ module.exports = {
   suspendEvent,
   deleteEvent,
   transferPlatformFees,
-  getMetrics
+  getMetrics,
+  resolveEventWithPoolLogic
 };

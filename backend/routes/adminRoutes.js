@@ -21,7 +21,8 @@ const {
   handleSuspendEvent,
   handleDeleteEvent,
   handleTransferPlatformFees,
-  handleGetMetrics
+  handleGetMetrics,
+  handleResolveEvent
 } = require('../controllers/adminController');
 
 // Import event service function for testing
@@ -45,6 +46,8 @@ router.patch('/users/:id/points', authenticateAdmin, handleAdjustUserPoints);
 router.patch('/users/:id/role', authenticateAdmin, handleUpdateUserRole);
 router.patch('/users/:id/suspend', authenticateAdmin, handleSuspendUser);
 router.post('/users/:id/reset-claims', authenticateAdmin, handleResetUserClaims);
+// Resolve event using pool logic (Instruction Set 3)
+router.post('/events/resolve', authenticateAdmin, handleResolveEvent);
 router.post('/events/:id/resolve', authenticateAdmin, handleManualResolveEvent);
 router.patch('/events/:id/suspend', authenticateAdmin, handleSuspendEvent);
 router.delete('/events/:id', authenticateAdmin, handleDeleteEvent);

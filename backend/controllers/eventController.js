@@ -216,7 +216,7 @@ function handleParticipationError(error, res) {
   }
 }
 
-// Event betting controller function
+// Event betting controller function - REFACTORED FOR ACID COMPLIANCE
 async function betOnEvent(db, req, res) {
   const eventId = req.params.id;
   const { prediction, entryFee } = req.body;
@@ -224,173 +224,120 @@ async function betOnEvent(db, req, res) {
   
   console.log('DEBUG: Bet placement request received', { eventId, userId, prediction });
   
-  // Validate event configuration first
+  let trx;
   try {
-      // Get event details including entry fee
-      const event = await getEventDetails(db, eventId);
+      console.log('DEBUG: Starting transaction');
+      trx = await db.transaction();
+      console.log('DEBUG: Transaction started');
+
+      // Get event details with FOR UPDATE to lock the row and prevent race conditions
+      console.log('DEBUG: Getting event details with lock', { eventId });
+      const eventQuery = await trx.raw(`
+        SELECT * FROM events 
+        WHERE id = ? 
+        FOR UPDATE
+      `, [eventId]);
       
-      if (!event) {
+      const eventData = eventQuery.rows?.[0] || eventQuery?.[0];
+      if (!eventData) {
+          console.log('DEBUG: Event not found', { eventId });
+          await trx.rollback();
           return res.status(404).json({ error: 'Event not found' });
       }
       
-      // Validate entry fee structure
-      console.log('Validating event entry fee - Value:', event.entry_fee, 'Type:', typeof event.entry_fee);
-      if (typeof event.entry_fee !== 'number' || event.entry_fee < 100) {
-          console.log('Invalid entry fee configuration detected:', event.entry_fee);
+      // Validate event configuration
+      console.log('Validating event entry fee - Value:', eventData.entry_fee, 'Type:', typeof eventData.entry_fee);
+      if (typeof eventData.entry_fee !== 'number' || eventData.entry_fee < 100) {
+          console.log('Invalid entry fee configuration detected:', eventData.entry_fee);
+          await trx.rollback();
           return res.status(400).json({ error: 'Invalid event configuration' });
       }
       
-      // Check event status
+      // Check event status and deadline
       const now = new Date();
-      const endTime = new Date(event.end_time);
-      if (now >= endTime || event.status !== 'active') {
-          return res.status(400).json({ error: 'Event is no longer active' });
-      }
-  } catch (error) {
-      console.error('Event validation failed:', error);
-      return res.status(500).json({ error: 'Failed to validate event' });
-  }
-  
-  // Validate entry fee - use provided entryFee or default to event entry_fee
-  const selectedEntryFee = entryFee || event.entry_fee;
-  const validEntryFees = [100, 200, 500, 1000];
-  
-  if (!validEntryFees.includes(selectedEntryFee)) {
-      return res.status(400).json({
-          error: 'Invalid entry fee. Must be one of: ' + validEntryFees.join(', ')
-      });
-  }
-  
-  // Dynamically validate prediction against the event's actual options
-  try {
-      const eventDetails = await getEventDetails(db, eventId);
-      if (!eventDetails) {
-          return res.status(404).json({ error: 'Event not found for validation' });
+      const endTime = new Date(eventData.end_time);
+      if (eventData.status !== 'OPEN' || now >= endTime) {
+          console.log('DEBUG: Event not open for betting or expired', {
+              status: eventData.status,
+              endTime,
+              currentTime: now
+          });
+          await trx.rollback();
+          return res.status(400).json({ error: 'Event is no longer open for betting' });
       }
       
-      const eventOptions = eventDetails.options; // This can be a JSON string or an array of objects
+      // Validate entry fee - use provided entryFee or default to event entry_fee
+      const selectedEntryFee = entryFee || eventData.entry_fee;
+      const validEntryFees = [100, 200, 500, 1000];
+      
+      if (!validEntryFees.includes(selectedEntryFee)) {
+          await trx.rollback();
+          return res.status(400).json({
+              error: 'Invalid entry fee. Must be one of: ' + validEntryFees.join(', ')
+          });
+      }
+      
+      // Dynamically validate prediction against the event's actual options
       let validPredictions = [];
+      const eventOptions = eventData.options;
       
       if (typeof eventOptions === 'string') {
           const parsedOptions = JSON.parse(eventOptions);
-          // Check if it's an array of strings (like ['Higher', 'Lower'])
           if (typeof parsedOptions[0] === 'string') {
               validPredictions = parsedOptions;
-          } else { // It's an array of objects (like [{label, value}, ...])
+          } else {
               validPredictions = parsedOptions.map(opt => opt.value);
           }
-      } else if (Array.isArray(eventOptions)) { // It's already parsed from the DB
-           validPredictions = eventOptions.map(opt => opt.value);
+      } else if (Array.isArray(eventOptions)) {
+          validPredictions = eventOptions.map(opt => opt.value);
       }
 
       if (!validPredictions.includes(prediction)) {
           console.log('DEBUG: Invalid prediction value received:', prediction);
           console.log('DEBUG: Valid predictions for this event:', validPredictions);
+          await trx.rollback();
           return res.status(400).json({ error: 'Invalid prediction value submitted' });
       }
-  } catch (e) {
-      console.error("Error during prediction validation:", e);
-      return res.status(500).json({ error: 'Server error during prediction validation' });
-  }
+      
+      // Check for existing participation
+      console.log('DEBUG: Checking for existing participation', { eventId, userId });
+      const existing = await checkExistingParticipation(trx, userId, eventId);
+      if (existing) {
+          console.log('DEBUG: User already participated in this event', { eventId, userId });
+          await trx.rollback();
+          throw new Error('DUPLICATE_ENTRY');
+      }
 
-  let trx;
-  try {
-      console.log('DEBUG: Attempting to acquire database client');
-      trx = await db.transaction();
-      console.log('DEBUG: Database client acquired successfully');
-  } catch (error) {
-      console.error('Failed to acquire database client:', error);
-      return res.status(500).json({ error: 'Database connection error' });
-  }
-  
-  try {
-      console.log('DEBUG: Starting transaction');
-      console.log('DEBUG: Transaction started');
-
-      // Check event exists and is still active using database-level check
-      console.log('DEBUG: Checking if event exists and is active', { eventId });
-      const now = new Date();
-      const event = await trx.raw(`
-        SELECT * FROM events
-        WHERE id = ?
-        AND status = 'active'
-        AND end_time > ?
+      // Get user balance with FOR UPDATE to lock the row and prevent race conditions
+      console.log('DEBUG: Getting user balance with lock', { userId });
+      const userBalanceQuery = await trx.raw(`
+        SELECT points FROM users 
+        WHERE id = ? 
         FOR UPDATE
-      `, [eventId, now]);
+      `, [userId]);
       
-      const eventData = event.rows?.[0] || event?.[0];
-      if (!eventData) {
-          console.log('DEBUG: Event not found or not active', { eventId });
+      if (userBalanceQuery.rows?.length === 0 || userBalanceQuery?.length === 0) {
+          console.log('DEBUG: User not found', { userId });
           await trx.rollback();
-          return res.status(400).json({ error: 'Event not found or betting closed' });
-      }
-      console.log('DEBUG: Event found and active', { event: eventData });
-      
-      // Hard timestamp check - compare current server time vs event deadline
-      const eventDeadline = new Date(eventData.end_time);
-      const currentServerTime = new Date();
-      
-      if (currentServerTime > eventDeadline) {
-          console.log('DEBUG: Betting closed - current time exceeds event deadline', {
-              currentServerTime,
-              eventDeadline,
-              timeDifference: currentServerTime - eventDeadline
-          });
-          await trx.rollback();
-          return res.status(400).json({ error: 'Betting closed' });
+          return res.status(404).json({ error: 'User not found' });
       }
       
-      // Check user has sufficient points
-      console.log('DEBUG: Checking user points', { userId });
-      const userBalance = await getUserBalance(trx, userId);
-      console.log('DEBUG: User points check', { userId, userPoints: userBalance, entryFee: selectedEntryFee, sufficient: userBalance >= selectedEntryFee });
-      console.log('User points vs entry fee:', {
-        userPoints: userBalance,
-        entryFee: selectedEntryFee,
-        comparison: userBalance >= selectedEntryFee
+      const userBalance = userBalanceQuery.rows?.[0]?.points || userBalanceQuery?.[0]?.points;
+      console.log('DEBUG: User points check', { 
+          userId, 
+          userPoints: userBalance, 
+          entryFee: selectedEntryFee, 
+          sufficient: userBalance >= selectedEntryFee 
       });
+      
       if (userBalance < selectedEntryFee) {
           console.log('DEBUG: Insufficient points', { userId, userPoints: userBalance, entryFee: selectedEntryFee });
           await trx.rollback();
-          return res.status(400).json({ error: 'Insufficient points' });
+          throw new Error('INSUFFICIENT_FUNDS');
       }
 
-      // Insert bet into participants table
+      // Insert bet into participants table (atomic operation within transaction)
       console.log('DEBUG: Inserting bet into participants table', { eventId, userId, prediction, amount: selectedEntryFee });
-      
-      // First, check if the amount column exists in the participants table
-      try {
-          if (db.client.config.client === 'pg') {
-              const columnCheck = await trx.raw(
-                  `SELECT column_name
-                   FROM information_schema.columns
-                   WHERE table_name = 'participants' AND column_name = 'amount'`
-              );
-              
-              if (columnCheck.rows.length === 0) {
-                  console.error('ERROR: amount column does not exist in participants table');
-                  await trx.rollback();
-                  return res.status(500).json({ error: 'Database schema error: amount column missing' });
-              }
-          } else {
-              // For SQLite
-              const columnCheck = await trx.raw(
-                  `PRAGMA table_info(participants)`
-              );
-              
-              const hasAmountColumn = columnCheck.rows.some(row => row.name === 'amount');
-              if (!hasAmountColumn) {
-                  console.error('ERROR: amount column does not exist in participants table');
-                  await trx.rollback();
-                  return res.status(500).json({ error: 'Database schema error: amount column missing' });
-              }
-          }
-      } catch (schemaError) {
-          console.error('ERROR: Failed to check participants table schema', schemaError);
-          await trx.rollback();
-          return res.status(500).json({ error: 'Database schema check failed' });
-      }
-      
       const newBet = await insertParticipant(trx, {
         eventId,
         userId,
@@ -399,12 +346,12 @@ async function betOnEvent(db, req, res) {
       });
       console.log('DEBUG: Bet inserted successfully', { newBet });
 
-      // Deduct the bet amount from the user's points
+      // Deduct the bet amount from the user's points (atomic operation within transaction)
       console.log('DEBUG: Deducting bet amount from user points', { userId, amount: selectedEntryFee });
       await updateUserPoints(trx, userId, -selectedEntryFee, 'bet', eventId);
       console.log('DEBUG: Entry fee deducted successfully');
       
-      // Remove prize_pool update as it's now calculated from participants table
+      // Update event stats (atomic operation within transaction)
       console.log('DEBUG: Updating event stats', { eventId });
       await updateEventStats(trx, eventId);
       console.log('DEBUG: Event stats updated successfully');
@@ -422,10 +369,9 @@ async function betOnEvent(db, req, res) {
               console.error('Failed to rollback transaction:', rollbackError);
           }
       }
-      console.error('❌ Bet placement error:', error);
-      res.status(500).json({ error: 'Server error' });
-  } finally {
-      // Knex transactions automatically release the connection
+      
+      // Use the existing error handling function for consistent error responses
+      handleParticipationError(error, res);
   }
 }
 

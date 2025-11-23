@@ -106,7 +106,8 @@ const {
   createDailyTournament,
   createDailyFootballEvents,
   resolveFootballMatchEvents,
-  createDailySportEvent
+  createDailySportEvent,
+  transitionEventsToLocked
 } = require('./services/eventService');
 const { initWebSocketServer, broadcastMessage } = require('./websocket/websocketServer');
 const app = express();
@@ -218,6 +219,7 @@ cron.schedule('0 2 * * *', () => createDailyFootballEvents(db)); // Run daily at
 cron.schedule('0 3 * * *', () => createDailySportEvent(db)); // Run daily at 3 AM UTC
 cron.schedule('0 * * * *', () => resolvePendingEvents(db)); // Run hourly at minute 0
 cron.schedule('30 * * * *', () => resolveFootballMatchEvents(db)); // Run hourly at minute 30
+cron.schedule('* * * * *', () => transitionEventsToLocked(db)); // Run every minute to check for events to lock
 
 async function startServer() {
   try {

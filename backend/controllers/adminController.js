@@ -16,7 +16,8 @@ const {
   suspendEvent,
   deleteEvent,
   transferPlatformFees,
-  getMetrics
+  getMetrics,
+  resolveEventWithPoolLogic
 } = require('../services/adminService');
 
 // Admin endpoint for manual event creation
@@ -304,6 +305,59 @@ async function handleResetUserClaims(req, res) {
   }
 }
 
+// Admin endpoint to resolve event using pool logic (Instruction Set 3)
+async function handleResolveEvent(req, res) {
+  try {
+    const { event_id, winning_outcome } = req.body;
+    
+    // Validate input parameters
+    if (!event_id || !winning_outcome) {
+      return res.status(400).json({
+        error: 'Missing required parameters: event_id and winning_outcome are required'
+      });
+    }
+    
+    if (isNaN(event_id) || event_id <= 0) {
+      return res.status(400).json({
+        error: 'Invalid event_id: must be a positive integer'
+      });
+    }
+    
+    if (typeof winning_outcome !== 'string' || winning_outcome.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Invalid winning_outcome: must be a non-empty string'
+      });
+    }
+
+    // Call the service function to resolve the event
+    const result = await resolveEventWithPoolLogic(req.db, event_id, winning_outcome);
+    
+    res.json({
+      success: true,
+      message: result.message,
+      data: result.details
+    });
+    
+  } catch (error) {
+    console.error('Event resolution error:', error);
+    
+    // Handle specific error cases
+    if (error.message.includes('Event not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    
+    if (error.message.includes('already RESOLVED') ||
+        error.message.includes('must be in LOCKED or OPEN state') ||
+        error.message.includes('No bets found')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    res.status(500).json({
+      error: 'Failed to resolve event: ' + error.message
+    });
+  }
+}
+
 // Admin endpoint for manual event resolution
 async function handleManualResolveEvent(req, res, clients, WebSocket) {
   const { correct_answer, final_price } = req.body;
@@ -464,5 +518,6 @@ module.exports = {
   handleSuspendEvent,
   handleDeleteEvent,
   handleTransferPlatformFees,
-  handleGetMetrics
+  handleGetMetrics,
+  handleResolveEvent
 };
