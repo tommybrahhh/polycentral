@@ -27,7 +27,7 @@ const {
 
 // Import event service function for testing
 const { createDailyFootballEvents } = require('../services/eventService');
-const { findNextUpcomingMatch, getRealMadridTeamId } = require('../services/apiFootballService');
+const { findNextUpcomingMatch, getRealMadridTeamId } = require('../services/sportmonksService');
 
 // Import authentication middleware
 const { authenticateAdmin } = require('../middleware/authMiddleware');
