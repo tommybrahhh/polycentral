@@ -9,7 +9,7 @@ const {
   getRealMadridTeamId,
   getMatchResult,
   findNextUpcomingMatch
-} = require('./apiFootballService');
+} = require('./sportmonksService');
 const { updateUserPoints } = require('../utils/pointsUtils');
 const { broadcastEventResolution } = require('../websocket/websocketServer');
 

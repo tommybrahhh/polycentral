@@ -218,5 +218,7 @@ module.exports = {
   isMatchFinished,
   getRealMadridTeamId,
   getOpponentName,
-  getLeagueName
+  getLeagueName,
+  getMatchResult,
+  findNextUpcomingMatch
 };
